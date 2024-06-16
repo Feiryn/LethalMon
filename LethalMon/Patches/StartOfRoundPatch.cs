@@ -28,9 +28,9 @@ public class StartOfRoundPatch
         }
     }
 
-    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnClientDisconnect))]
-    [HarmonyPostfix]
-    private static void OnClientDisconnectPostFix(StartOfRound __instance, ulong clientId)
+    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
+    [HarmonyPrefix]
+    private static void OnPlayerDCPrefix(StartOfRound __instance, int playerObjectNumber, ulong clientId)
     {
         Debug.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
         
@@ -42,7 +42,7 @@ public class StartOfRoundPatch
             {
                 Debug.Log($"Found {customAi.enemyType.name}, retrieving in ball");
                 
-                customAi.RetrieveInBall(__instance.transform.position);
+                customAi.RetrieveInBall(customAi.transform.position);
             }
         }
     }

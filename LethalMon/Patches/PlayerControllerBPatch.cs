@@ -67,7 +67,7 @@ public class PlayerControllerBPatch
         PokeballItem pokeballItem = customAI.RetrieveInBall(spawnPos);
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
         player.SetItemInElevator(inShip, inShip, pokeballItem);
-        player.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
     }
     
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.Update))]
