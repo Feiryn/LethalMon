@@ -141,8 +141,7 @@ public class HoarderBugCustomAI : CustomAI
     public override PokeballItem RetrieveInBall(Vector3 position)
     {
         // Drop held item if any
-        // todo bug in this case
-        if (this.heldItem != null && this.heldItem.itemGrabbableObject.isHeld)
+        if (this.heldItem != null)
         {
             this.DropItemAndCallDropRPC(this.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
         }
