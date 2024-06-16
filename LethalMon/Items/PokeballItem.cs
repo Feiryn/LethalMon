@@ -75,6 +75,7 @@ public abstract class PokeballItem : ThrowableItem
     {
         NetworkManager.__rpc_func_table.Add(1173420115u, __rpc_handler_1173420115);
         NetworkManager.__rpc_func_table.Add(291057008u, __rpc_handler_291057008);
+        NetworkManager.__rpc_func_table.Add(626404720u, __rpc_handler_626404720);
     }
 
     #region CaptureAnimation
@@ -157,8 +158,7 @@ public abstract class PokeballItem : ThrowableItem
         {
             Debug.Log("Capture success");
 
-            this.enemyCaptured = true;
-            this.ChangeName();
+            this.SetCaughtEnemy(this.enemyType);
             
             this.FallToGround();
             this.playerThrownBy = null;
@@ -259,6 +259,49 @@ public abstract class PokeballItem : ThrowableItem
     
     #endregion
 
+    #region SyncContent
+
+    public void SyncContentPacket(NetworkObjectReference networkObjectReference, string enemyTypeName)
+    {
+        ClientRpcParams rpcParams = default(ClientRpcParams);
+        FastBufferWriter writer = this.__beginSendClientRpc(626404720u, rpcParams, RpcDelivery.Reliable);
+        writer.WriteValueSafe(in networkObjectReference);
+        writer.WriteValueSafe(enemyTypeName);
+        this.__endSendClientRpc(ref writer, 626404720u, rpcParams, RpcDelivery.Reliable);
+        Debug.Log("SyncContentPacket client rpc send finished");
+    }
+    
+    [ClientRpc]
+    public void SyncContentClientRpc(NetworkObjectReference networkObjectReference, string enemyTypeName)
+    {
+        Debug.Log("SyncContentPacket client rpc received");
+        if (networkObjectReference.TryGet(out NetworkObject networkObject))
+        {
+            PokeballItem pokeballItem = networkObject.GetComponent<PokeballItem>();
+            EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
+            pokeballItem.SetCaughtEnemy(enemyType);
+        }
+        else
+        {
+            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (SyncContentPacket RPC)");
+        }
+    }
+
+    private static void __rpc_handler_626404720(NetworkBehaviour target, FastBufferReader reader,
+        __RpcParams rpcParams)
+    {
+        NetworkManager networkManager = target.NetworkManager;
+        if (networkManager != null && networkManager.IsListening && !(networkManager.IsServer || networkManager.IsHost))
+        {
+            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
+            reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
+            reader.ReadValueSafe(out string enemyTypeName);
+            ((PokeballItem) target).SyncContentClientRpc(networkObjectReference, enemyTypeName);
+        }
+    }
+    
+    #endregion
+    
     public override void TouchGround()
     {
         Debug.Log("Touch ground");
@@ -375,6 +418,11 @@ public abstract class PokeballItem : ThrowableItem
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
         this.ChangeName();
+
+        if (this.IsHost || this.IsServer)
+        {
+            this.SyncContentPacket(this.GetComponent<NetworkObject>(), this.enemyType.name);
+        }
     }
 
     public override int GetItemDataToSave()

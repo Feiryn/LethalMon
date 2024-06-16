@@ -256,8 +256,8 @@ public class CustomAI : EnemyAI
 	    pokeballItem.fallTime = 0f;
 	    pokeballItem.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds || this.alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(this.ballValue);
-	    pokeballItem.SetCaughtEnemy(this.enemyType);
 	    ball.GetComponent<NetworkObject>().Spawn(false);
+	    pokeballItem.SetCaughtEnemy(this.enemyType);
 	    pokeballItem.FallToGround();
 
 		this.GetComponent<NetworkObject>().Despawn(true);
