@@ -1,8 +1,5 @@
-using System.Collections.Generic;
 using System.Reflection;
 using GameNetcodeStuff;
-using LethalMon.AI;
-using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -87,7 +84,6 @@ namespace LethalMon.Throw
         
         public override void FallWithCurve()
         {
-            // borrowed (and slightly modified) from lethal company
             float magnitude = (this.startFallingPosition - this.targetFloorPosition).magnitude;
             this.transform.rotation = Quaternion.Lerp(this.transform.rotation, Quaternion.Euler(this.itemProperties.restingRotation.x, this.transform.eulerAngles.y, this.itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
             this.transform.localPosition = Vector3.Lerp(this.startFallingPosition, this.targetFloorPosition, FallCurve.fallCurve.Evaluate(this.fallTime));
@@ -119,23 +115,12 @@ namespace LethalMon.Throw
             Vector3 position = base.transform.position;
             Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
             itemThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
-            position = ((!Physics.Raycast(itemThrowRay, out itemHit, 12f, StartOfRound.Instance.collidersAndRoomMaskAndDefault)) ? itemThrowRay.GetPoint(10f) : itemThrowRay.GetPoint(itemHit.distance - 0.05f));
+            position = ((!Physics.Raycast(itemThrowRay, out itemHit, 12f, 268437761, QueryTriggerInteraction.Ignore)) ? itemThrowRay.GetPoint(10f) : itemThrowRay.GetPoint(itemHit.distance - 0.05f));
             Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
-
-            // check if position is inside a collider, and position below is not
-            if (Physics.OverlapSphere(position, 0.02f, StartOfRound.Instance.collidersAndRoomMaskAndDefault).Length > 0)
-            {
-                if(Physics.OverlapSphere(position + (Vector3.down * 0.05f), 0.02f, StartOfRound.Instance.collidersAndRoomMaskAndDefault).Length == 0)
-                {
-                    // set new position
-                    position += (Vector3.down * 0.05f);
-                }
-            }
-
             itemThrowRay = new Ray(position, Vector3.down);
-            if (Physics.Raycast(itemThrowRay, out itemHit, 30f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+            if (Physics.Raycast(itemThrowRay, out itemHit, 30f, 268437761, QueryTriggerInteraction.Ignore))
             {
-                return itemHit.point + Vector3.up * this.itemProperties.verticalOffset;
+                return itemHit.point + Vector3.up * (this.itemProperties.verticalOffset + 0.05f);
             }
             return itemThrowRay.GetPoint(30f);
         }
