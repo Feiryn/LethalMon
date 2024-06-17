@@ -390,7 +390,7 @@ public abstract class PokeballItem : ThrowableItem
     
     private string GetName()
     {
-        return this.itemProperties.itemName + " (" + this.enemyType.name + ")";
+        return this.itemProperties.itemName + " (" + this.catchableEnemy.DisplayName + ")";
     }
 
     public override void SetControlTipsForItem()

@@ -8,11 +8,14 @@ public abstract class CatchableEnemy
 {
     private readonly int _catchDifficulty;
 
+    public string DisplayName { private set; get; }
+
     public int Id { get; }
 
-    protected CatchableEnemy(int id, int catchDifficulty)
+    protected CatchableEnemy(int id, string displayName, int catchDifficulty)
     {
         this.Id = id;
+        this.DisplayName = displayName;
         this._catchDifficulty = catchDifficulty;
     }
 
@@ -25,7 +28,7 @@ public abstract class CatchableEnemy
 
         return Data.CaptureProbabilities[ballStrength][this._catchDifficulty];
     }
-
+    
     public abstract void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player);
 
     public abstract CustomAI AddAiComponent(GameObject gameObject);

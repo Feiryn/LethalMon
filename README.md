@@ -59,7 +59,7 @@ Here are the implementation status of monsters:
 
 Before first release:
 - [ ] Audio
-- [ ] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
+- [x] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
 - [ ] Bracken
 - [ ] Bees
 

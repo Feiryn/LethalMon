@@ -6,7 +6,7 @@ namespace LethalMon.CatchableEnemy;
 
 public class CatchableFlowerman : CatchableEnemy
 {
-    public CatchableFlowerman() : base(1, 9)
+    public CatchableFlowerman() : base(1, "Bracken", 9)
     {
     }
 
