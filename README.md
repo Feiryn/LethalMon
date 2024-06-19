@@ -29,31 +29,31 @@ If a player dies or disconnects, the monster will be called in the ball at it's 
 
 Here are the implementation status of monsters:
 
-|      Monster      | Implemented |                  Behaviour                   |
-|:-----------------:|:-----------:|:--------------------------------------------:|
-|      Bracken      |     WIP     |                     TBD                      |
-|      Spider       |     No      |                     TBD                      |
-|      Butler       |     No      |                     TBD                      |
-|     Coil-head     |     No      |                     TBD                      |
-|    Ghost Girl     |     No      |                     TBD                      |
-|   Hoarding Bug    |     Yes     | Brings items in a line of sight to the owner |
-|     Hygrodere     |     No      |                     TBD                      |
-|      Jester       |     No      |                     TBD                      |
-|      Masked       |     No      |                     TBD                      |
-|    Nutcracker     |     No      |                     TBD                      |
-|    Snare Flea     |     No      |                     TBD                      |
-|   Spore Lizard    |     No      |                     TBD                      |
-|      Thumper      |     No      |                     TBD                      |
-|       Bees        |     WIP     |      Stun monsters that hurt the owner       |
-|     Manticoil     |     No      |                     TBD                      |
-|  Roaming Locusts  | Will not be |                      -                       |
-|    Tulip Snake    |     No      |                     TBD                      |
-|    Baboon Hawk    |     No      |                     TBD                      |
-|  Earth Leviathan  |     No      |                     TBD                      |
-|    Eyeless Dog    |     No      |                     TBD                      |
-|   Forest Keeper   |     No      |                     TBD                      |
-|     Old Bird      |     No      |                     TBD                      |
-|   Mask Hornets    |     No      |                     TBD                      |
+|      Monster      | Implemented |                      Behaviour                       |
+|:-----------------:|:-----------:|:----------------------------------------------------:|
+|      Bracken      |     WIP     |                         TBD                          |
+|      Spider       |     No      |                         TBD                          |
+|      Butler       |     No      |                         TBD                          |
+|     Coil-head     |     No      |                         TBD                          |
+|    Ghost Girl     |     No      |                         TBD                          |
+|   Hoarding Bug    |     Yes     |     Brings items in a line of sight to the owner     |
+|     Hygrodere     |     No      |                         TBD                          |
+|      Jester       |     No      |                         TBD                          |
+|      Masked       |     No      |                         TBD                          |
+|    Nutcracker     |     No      |                         TBD                          |
+|    Snare Flea     |     No      |                         TBD                          |
+|   Spore Lizard    |     No      |                         TBD                          |
+|      Thumper      |     No      |                         TBD                          |
+|       Bees        |     Yes     | Stun monsters and damage players that hurt the owner |
+|     Manticoil     |     No      |                         TBD                          |
+|  Roaming Locusts  | Will not be |                          -                           |
+|    Tulip Snake    |     No      |                         TBD                          |
+|    Baboon Hawk    |     No      |                         TBD                          |
+|  Earth Leviathan  |     No      |                         TBD                          |
+|    Eyeless Dog    |     No      |                         TBD                          |
+|   Forest Keeper   |     No      |                         TBD                          |
+|     Old Bird      |     No      |                         TBD                          |
+|   Mask Hornets    |     No      |                         TBD                          |
 
 ## Roadmap
 
