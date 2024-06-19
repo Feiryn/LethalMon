@@ -49,6 +49,7 @@ public class LethalMon : BaseUnityPlugin
         HoarderBugCustomAI.InitializeRPCS();
         PlayerControllerBPatch.InitializeRPCS();
         ThrowableItem.InitializeRPCS();
+        RedLocustBeesCustomAI.InitializeRPCS();
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }

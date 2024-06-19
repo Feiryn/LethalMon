@@ -61,7 +61,7 @@ Before first release:
 - [ ] Audio
 - [x] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
 - [ ] Bracken
-- [ ] Bees
+- [x] Bees
 
 In a future release:
 - [ ] HUD

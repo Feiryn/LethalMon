@@ -164,4 +164,45 @@ public class PlayerControllerBPatch
             customAI.RetrieveInBall(customAI.transform.position);
         }
     }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DamagePlayer))]
+    [HarmonyPostfix]
+    private static void DamagePlayerPostfix(PlayerControllerB __instance, int damageNumber, bool hasDamageSFX, bool callRPC, CauseOfDeath causeOfDeath, int deathAnimation, bool fallDamage, Vector3 force)
+    {
+        CustomAI? customAI = Utils.GetPlayerPet(__instance);
+
+        if (customAI != null && customAI.GetType() == typeof(RedLocustBeesCustomAI))
+        {
+            EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
+
+            if (enemyAI != null)
+            {
+                ((RedLocustBeesCustomAI)customAI).AttackEnemyAI(enemyAI);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DamagePlayerFromOtherClientServerRpc))]
+    [HarmonyPostfix]
+    private static void DamagePlayerFromOtherClientServerRpcPostFix(PlayerControllerB __instance, Vector3 hitDirection, int playerWhoHit)
+    {
+        if ((int) __instance.playerClientId == playerWhoHit)
+        {
+            return;
+        }
+        
+        CustomAI? customAI = Utils.GetPlayerPet(__instance);
+
+        if (customAI != null && customAI.GetType() == typeof(RedLocustBeesCustomAI) && (__instance.IsServer || __instance.IsHost))
+        {
+            PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
+            Debug.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
+
+            if (__instance != playerWhoHitControllerB &&
+                Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)
+            {
+                ((RedLocustBeesCustomAI)customAI).AttackPlayer(playerWhoHitControllerB);
+            }
+        }
+    }
 }
