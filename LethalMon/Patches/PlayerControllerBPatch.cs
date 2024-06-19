@@ -1,17 +1,26 @@
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.AI;
 using LethalMon.Items;
-using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Debug = UnityEngine.Debug;
 
 namespace LethalMon.Patches;
 
 public class PlayerControllerBPatch
 {
+    private static bool lastTestPressed = false;
+
+    private static int currentTestEnemyTypeIndex = 0;
+
+    private static string[] testEnemyTypes = new List<string>(Data.CatchableMonsters.Keys).ToArray();
+    
     internal static void InitializeRPCS()
     {
         NetworkManager.__rpc_func_table.Add(346187524u, __rpc_handler_346187524u);
@@ -74,20 +83,54 @@ public class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void UpdatePostfix(PlayerControllerB __instance)
     {
-        if (__instance is { isPlayerControlled: true, IsOwner: true } && InputControlExtensions.IsPressed(Keyboard.current[Key.P]))
+        if (__instance is { isPlayerControlled: true, IsOwner: true })
         {
-            Debug.Log("P pressed");
-            CustomAI? customAI = Utils.GetPlayerPet(__instance);
-            
-            if (customAI != null)
+            if (Keyboard.current[Key.P].IsPressed())
             {
-                if (__instance.NetworkManager.IsServer || __instance.NetworkManager.IsHost)
+                Debug.Log("P pressed");
+                CustomAI? customAI = Utils.GetPlayerPet(__instance);
+
+                if (customAI != null)
                 {
-                    PetRetrieve(__instance, customAI);
+                    if (__instance.NetworkManager.IsServer || __instance.NetworkManager.IsHost)
+                    {
+                        PetRetrieve(__instance, customAI);
+                    }
+                    else
+                    {
+                        SendPetRetrievePacket(__instance);
+                    }
                 }
-                else
+            }
+            else if (StartOfRound.Instance.testRoom != null && (__instance.IsHost || __instance.IsServer))
+            {
+                bool oPressed = Keyboard.current[Key.O].IsPressed();
+                if (oPressed && !lastTestPressed)
                 {
-                    SendPetRetrievePacket(__instance);
+                    lastTestPressed = true;
+
+                    GrabbableObject heldItem = __instance.ItemSlots[__instance.currentItemSlot];
+                    if (heldItem != null)
+                    {
+                        PokeballItem pokeballItem = heldItem.GetComponent<PokeballItem>();
+                        if (pokeballItem != null)
+                        {
+                            EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
+                                enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
+                            pokeballItem.SetCaughtEnemy(enemyType);
+                            HUDManager.Instance.AddTextMessageClientRpc("Caught enemy: " + enemyType.name);
+                            
+                            currentTestEnemyTypeIndex++;
+                            if (currentTestEnemyTypeIndex >= testEnemyTypes.Length)
+                            {
+                                currentTestEnemyTypeIndex = 0;
+                            }
+                        }
+                    }
+                }
+                else if (!oPressed)
+                {
+                    lastTestPressed = false;
                 }
             }
         }
