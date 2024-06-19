@@ -102,6 +102,7 @@ public abstract class PokeballItem : ThrowableItem
             this.enemyType = this.enemyAI.enemyType;
             this.captureSuccess = catchSuccess;
             this.captureRounds = roundsNumber;
+            this.currentCaptureRound = 0;
             this.PlayCaptureAnimation();
         }
         else
@@ -169,14 +170,29 @@ public abstract class PokeballItem : ThrowableItem
         {
             Debug.Log("Capture failed");
 
-            this.enemyAI!.gameObject.SetActive(true); // Show enemy
             if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
             {
-                this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.playerThrownBy);
+                this.GetComponent<NetworkObject>().Despawn(true);
             }
-
-            Destroy(this.gameObject);
         }
+    }
+
+    public override void OnDestroy()
+    {
+        if (!this.captureSuccess && !this.enemyCaptured)
+        {
+            if (this.enemyAI != null)
+            {
+                this.enemyAI.gameObject.SetActive(true); // Show enemy
+
+                if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
+                {
+                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.playerThrownBy);
+                }
+            }
+        }
+        
+        base.OnDestroy();
     }
 
     private static void __rpc_handler_1173420115(NetworkBehaviour target, FastBufferReader reader,
