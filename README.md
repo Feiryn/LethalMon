@@ -2,7 +2,7 @@
 
 LethalMon is a Lethal Company mod that includes the possibility to catch monsters and use them to help you.
 
-This mod is not yet finished and so not available on the Thunderstore or elsewhere.
+This mod is still in alpha so expect bugs or not a lot of features.
 
 
 ## How to catch monsters?
