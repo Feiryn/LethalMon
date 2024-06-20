@@ -13,7 +13,7 @@ Each ball has a different probability of success depending on the type of ball a
 
 The stronger the monster is, the harder to catch it is. And be careful, if the catch fails, the ball disappears and the monster will want to kill you.
 
-![Balls](./Images/balls.png)
+![balls.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/balls.png)
 
 
 ## Now that I caught one, what should I do?
