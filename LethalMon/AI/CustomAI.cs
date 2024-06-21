@@ -66,8 +66,9 @@ public class CustomAI : EnemyAI
 		        out potentialPosition1,
 		        out potentialPosition2))
 	    {
-		    float distance1 = Vector3.Distance(this.transform.position, potentialPosition1);
-		    float distance2 = Vector3.Distance(this.transform.position, potentialPosition2);
+		    var position = this.transform.position;
+		    float distance1 = Vector3.Distance(position, potentialPosition1);
+		    float distance2 = Vector3.Distance(position, potentialPosition2);
 
 		    if (distance1 > 4f && distance2 > 4f)
 		    {
@@ -75,6 +76,8 @@ public class CustomAI : EnemyAI
 			    SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);   
 		    }
 	    }
+	    
+	    // todo else turn in the direction of the owner
     }
 
     public override void DoAIInterval()
@@ -270,5 +273,6 @@ public class CustomAI : EnemyAI
 	    this.enemyType = enemyAI.enemyType;
 	    this.creatureSFX = enemyAI.creatureSFX;
 	    this.creatureVoice = enemyAI.creatureVoice;
+	    this.eye = enemyAI.eye;
     }
 }
