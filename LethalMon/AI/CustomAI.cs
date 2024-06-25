@@ -8,21 +8,45 @@ using Object = UnityEngine.Object;
 
 namespace LethalMon.AI;
 
+/// <summary>
+/// The AI of a captured monster
+/// </summary>
 public class CustomAI : EnemyAI
 {
+	/// <summary>
+	/// The owner of the CustomAI
+	/// </summary>
     public PlayerControllerB ownerPlayer;
     
+	/// <summary>
+	/// Owner client ID
+	/// </summary>
     public ulong ownClientId;
 
-    public BallType ballType;
-    
-    protected Vector3 previousPosition;
-
+	/// <summary>
+	/// The ball used to capture the monster
+	/// </summary>
+	public BallType ballType;
+	
+	/// <summary>
+	/// The value of the ball used to capture the monster
+	/// </summary>
     public int ballValue;
 
+	/// <summary>
+	/// True if the ball of the monster was present in the previous round
+	/// </summary>
     public bool scrapPersistedThroughRounds;
 
+	/// <summary>
+	/// True if the ball has already been collected this round
+	/// </summary>
     public bool alreadyCollectedThisRound;
+
+    /// <summary>
+    /// Previous position of the AI
+    /// </summary>
+    protected Vector3 previousPosition;
     
     private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
     {
@@ -52,6 +76,9 @@ public class CustomAI : EnemyAI
         }
     }
 
+    /// <summary>
+    /// Make the AI follows the owner
+    /// </summary>
     public void FollowOwner()
     {
 	    Vector3 potentialPosition1, potentialPosition2;
@@ -80,6 +107,9 @@ public class CustomAI : EnemyAI
 	    // todo else turn in the direction of the owner
     }
 
+    /// <summary>
+    /// Function called at regular interval. Put the AI logic in there
+    /// </summary>
     public override void DoAIInterval()
     {
 	    if (this.openDoorSpeedMultiplier > 0f)
@@ -103,6 +133,9 @@ public class CustomAI : EnemyAI
 	    base.DoAIInterval();
     }
 
+    /// <summary>
+    /// Called when Unity updates the GameObject
+    /// </summary>
     public override void Update()
     {
 		if (stunnedIndefinitely <= 0)
@@ -202,6 +235,9 @@ public class CustomAI : EnemyAI
 		}
     }
 
+    /// <summary>
+    /// Unity Start function
+    /// </summary>
     public override void Start()
     {
         try
@@ -236,6 +272,11 @@ public class CustomAI : EnemyAI
         }
     }
 
+    /// <summary>
+    /// Retrieve this CustomAI in a ball
+    /// </summary>
+    /// <param name="position">The position of the ball</param>
+    /// <returns></returns>
     public virtual PokeballItem RetrieveInBall(Vector3 position)
     {
 	    GameObject ball;
@@ -268,6 +309,10 @@ public class CustomAI : EnemyAI
 	    return pokeballItem;
     }
 
+    /// <summary>
+    /// Copy properties from the original EnemyAI that will be used by this CustomAI
+    /// </summary>
+    /// <param name="enemyAI">Original AI</param>
     public virtual void CopyProperties(EnemyAI enemyAI)
     {
 	    this.enemyType = enemyAI.enemyType;
