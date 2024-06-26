@@ -1,0 +1,123 @@
+﻿using BepInEx;
+using BepInEx.Configuration;
+using GameNetcodeStuff;
+using HarmonyLib;
+using LethalCompanyInputUtils.Api;
+using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Netcode;
+using Unity.Services.Authentication;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using static Unity.Netcode.CustomMessagingManager;
+
+namespace LethalMon
+{
+    public sealed class Config : LcInputActions
+    {
+        #region Properties
+        public struct ConfigValues
+        {
+            public bool DebugLog { get; set; }
+        }
+
+        public ConfigValues values = new ConfigValues();
+
+        // Seperate key
+        public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
+
+        private static Config instance = null;
+        public static Config Instance
+        {
+            get
+            {
+                if (instance == null)
+                    instance = new Config();
+
+                return instance;
+            }
+        }
+        #endregion
+
+        public void Setup()
+        {
+            values.DebugLog = LethalMon.Instance.Config.Bind("Alpha", "DebugLog", false, "Additional logging to help identifying issues of this mod.").Value;
+        }
+
+        override public void CreateInputActions(in InputActionMapBuilder builder)
+        {
+            var retrieveBallKeyKeyboard = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyKeyboard", "<Keyboard>/p", "Seperate keyboard key for dashing. Requires a restart after changing.").Value;
+            var retrieveBallKeyGamepad = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyGamepad", "<Gamepad>/rightShoulder", "Seperate gamepad key for dashing. Requires a restart after changing.").Value;
+            builder.NewActionBinding()
+                .WithActionId("retreiveBallKey")
+                .WithActionType(InputActionType.Button)
+                .WithBindingName("RetrieveBallKey")
+                .WithKbmPath(retrieveBallKeyKeyboard)
+                .WithGamepadPath(retrieveBallKeyGamepad)
+                .Finish();
+        }
+
+        [HarmonyPatch]
+        public class SyncHandshake
+        {
+            #region Constants
+            private const string REQUEST_MESSAGE = MyPluginInfo.PLUGIN_NAME + "_" + "HostConfigRequested";
+            private const string RECEIVE_MESSAGE = MyPluginInfo.PLUGIN_NAME + "_" + "HostConfigReceived";
+            #endregion
+
+            #region Networking
+            [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
+            [HarmonyPostfix]
+            public static void Initialize()
+            {
+                if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
+                {
+                    Debug.Log("Current player is the host.");
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(REQUEST_MESSAGE, new HandleNamedMessageDelegate(HostConfigRequested));
+                }
+                else
+                {
+                    Debug.Log("Current player is not the host.");
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(RECEIVE_MESSAGE, new HandleNamedMessageDelegate(HostConfigReceived));
+                    RequestHostConfig();
+                }
+            }
+
+            public static void RequestHostConfig()
+            {
+                if (NetworkManager.Singleton.IsClient)
+                {
+                    Debug.Log("Sending config request to host.");
+                    NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(REQUEST_MESSAGE, 0uL, new FastBufferWriter(0, Allocator.Temp), NetworkDelivery.ReliableSequenced);
+                }
+                else
+                    Debug.Log("Config request not required. No other player available."); // Shouldn't happen, but who knows..
+            }
+
+            public static void HostConfigRequested(ulong clientId, FastBufferReader reader)
+            {
+                if (!NetworkManager.Singleton.IsHost && !NetworkManager.Singleton.IsServer) // Current player is not the host and therefor not the one who should react
+                    return;
+
+                string json = JsonConvert.SerializeObject(Instance.values);
+                Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
+
+                int writeSize = FastBufferWriter.GetWriteSize(json);
+                using FastBufferWriter writer = new FastBufferWriter(writeSize, Allocator.Temp);
+                writer.WriteValueSafe(json);
+                NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(RECEIVE_MESSAGE, clientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+            }
+
+            public static void HostConfigReceived(ulong clientId, FastBufferReader reader)
+            {
+                reader.ReadValueSafe(out string json);
+                Debug.Log("Received host config: " + json);
+                ConfigValues hostValues = JsonConvert.DeserializeObject<ConfigValues>(json);
+
+                Instance.values = hostValues;
+            }
+            #endregion
+        }
+    }
+}
