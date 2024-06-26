@@ -1,20 +1,16 @@
-﻿using BepInEx;
-using BepInEx.Configuration;
-using GameNetcodeStuff;
+﻿using GameNetcodeStuff;
 using HarmonyLib;
 using LethalCompanyInputUtils.Api;
 using Newtonsoft.Json;
-using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Netcode;
-using Unity.Services.Authentication;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Unity.Netcode.CustomMessagingManager;
 
 namespace LethalMon
 {
-    public sealed class Config : LcInputActions
+    public sealed class ModConfig : LcInputActions
     {
         #region Properties
         public struct ConfigValues
@@ -27,14 +23,14 @@ namespace LethalMon
         // Seperate key
         public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
 
-        private static Config instance = null;
-        public static Config Instance
+        private static ModConfig instance = null;
+        public static ModConfig Instance
         {
             get
             {
                 if (instance == null)
-                    instance = new Config();
-
+                    instance = new ModConfig();
+                
                 return instance;
             }
         }

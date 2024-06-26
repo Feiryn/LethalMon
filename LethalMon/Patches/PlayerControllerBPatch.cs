@@ -78,6 +78,38 @@ public class PlayerControllerBPatch
         player.SetItemInElevator(inShip, inShip, pokeballItem);
         pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
     }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ConnectClientToPlayerObject))]
+    [HarmonyPostfix]
+    public static void ConnectPlayerPostfix(PlayerControllerB __instance)
+    {
+        ModConfig.Instance.RetrieveBallKey.performed += RetrieveBallKeyPressed;
+    }
+
+    [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Disconnect))]
+    [HarmonyPrefix]
+    public static void DisconnectPlayerPrefix()
+    {
+        ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
+    }
+
+    internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
+    {
+        LethalMon.Logger.LogInfo("RetrieveBallKeyPressed");
+        CustomAI? customAI = Utils.GetPlayerPet(GameNetworkManager.Instance.localPlayerController);
+
+        if (customAI != null)
+        {
+            if (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)
+            {
+                PetRetrieve(GameNetworkManager.Instance.localPlayerController, customAI);
+            }
+            else
+            {
+                SendPetRetrievePacket(GameNetworkManager.Instance.localPlayerController);
+            }
+        }
+    }
     
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.Update))]
     [HarmonyPostfix]
@@ -85,24 +117,7 @@ public class PlayerControllerBPatch
     {
         if (__instance is { isPlayerControlled: true, IsOwner: true })
         {
-            if (Keyboard.current[Key.P].IsPressed())
-            {
-                Debug.Log("P pressed");
-                CustomAI? customAI = Utils.GetPlayerPet(__instance);
-
-                if (customAI != null)
-                {
-                    if (__instance.NetworkManager.IsServer || __instance.NetworkManager.IsHost)
-                    {
-                        PetRetrieve(__instance, customAI);
-                    }
-                    else
-                    {
-                        SendPetRetrievePacket(__instance);
-                    }
-                }
-            }
-            else if (StartOfRound.Instance.testRoom != null && (__instance.IsHost || __instance.IsServer))
+            if (StartOfRound.Instance.testRoom != null && (__instance.IsHost || __instance.IsServer))
             {
                 bool oPressed = Keyboard.current[Key.O].IsPressed();
                 if (oPressed && !lastTestPressed)
