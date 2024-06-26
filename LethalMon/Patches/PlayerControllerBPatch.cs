@@ -92,14 +92,10 @@ public class PlayerControllerBPatch
 
                 if (customAI != null)
                 {
-                    if (__instance.NetworkManager.IsServer || __instance.NetworkManager.IsHost)
-                    {
+                    if (Utils.IsHost)
                         PetRetrieve(__instance, customAI);
-                    }
                     else
-                    {
                         SendPetRetrievePacket(__instance);
-                    }
                 }
             }
             else if (StartOfRound.Instance.testRoom != null && (__instance.IsHost || __instance.IsServer))

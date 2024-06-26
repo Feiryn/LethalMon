@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using GameNetcodeStuff;
 using LethalMon.AI;
+using Unity.Netcode;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -65,4 +66,24 @@ public class Utils
         
         return null;
     }
+
+    #region Player
+    public static PlayerControllerB CurrentPlayer => GameNetworkManager.Instance.localPlayerController;
+
+    public static ulong? CurrentPlayerID => CurrentPlayer?.playerClientId;
+
+    public static bool IsHost
+    {
+        get
+        {
+            if (NetworkManager.Singleton != null)
+                return NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer;
+
+            if (CurrentPlayerID.HasValue)
+                return CurrentPlayerID.Value == 0ul;
+
+            return false;
+        }
+    }
+    #endregion
 }

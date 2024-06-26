@@ -81,7 +81,7 @@ public class RedLocustBeesCustomAI : CustomAI
             {
                 Debug.Log("Target player collided");
 
-                BeeDamagePacket(this.targetPlayer.GetComponent<NetworkObject>());
+                BeeDamageServerRpc(this.targetPlayer.GetComponent<NetworkObject>());
             
                 ChangeAngryMode(false);
                 this.targetPlayer = null;
@@ -176,7 +176,7 @@ public class RedLocustBeesCustomAI : CustomAI
     {
         this.angry = angry;
         this.ResetBeeZapTimer();
-        this.AngryPacket(this.GetComponent<NetworkObject>(), angry);
+        this.AngryServerRpc(angry);
     }
     
     private void ResetBeeZapTimer()
@@ -184,92 +184,49 @@ public class RedLocustBeesCustomAI : CustomAI
         beesZapCurrentTimer = 0f;
         beeZapAudio.Stop();
     }
-    
-    internal static void InitializeRPCS()
-    {
-        NetworkManager.__rpc_func_table.Add(3703853659u, __rpc_handler_3703853659);
-        NetworkManager.__rpc_func_table.Add(1715570234u, __rpc_handler_1715570234);
-    }
-    
+
     #region AngryRpc
-    
-    public void AngryPacket(NetworkObjectReference networkObjectReference, bool angry)
+
+    [ServerRpc(RequireOwnership = false)]
+    public void AngryServerRpc(bool angry)
     {
-        ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(3703853659u, rpcParams, RpcDelivery.Reliable);
-        writer.WriteValueSafe(in networkObjectReference);
-        writer.WriteValueSafe(angry);
-        this.__endSendClientRpc(ref writer, 3703853659u, rpcParams, RpcDelivery.Reliable);
-        Debug.Log("AngryPacket client rpc send finished");
+        AngryClientRpc(angry);
     }
     
     [ClientRpc]
-    public void AngryClientRpc(NetworkObjectReference networkObjectReference, bool angry)
+    public void AngryClientRpc(bool angry)
     {
-        Debug.Log("AngryPacket client rpc received");
-        if (networkObjectReference.TryGet(out NetworkObject networkObject))
-        {
-            RedLocustBeesCustomAI bees = networkObject.GetComponent<RedLocustBeesCustomAI>();
-            bees.angry = angry;
-            bees.ResetBeeZapTimer();
-        }
-        else
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (AngryClientRpc RPC)");
-        }
+        this.angry = angry;
+        ResetBeeZapTimer();
     }
 
-    private static void __rpc_handler_3703853659(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening && !(networkManager.IsServer || networkManager.IsHost))
-        {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
-            reader.ReadValueSafe(out bool angry);
-            ((RedLocustBeesCustomAI) target).AngryClientRpc(networkObjectReference, angry);
-        }
-    }
-    
     #endregion
 
     #region BeeDamage
 
-    public void BeeDamagePacket(NetworkObjectReference networkObjectReference)
+    [ServerRpc(RequireOwnership = false)]
+    public void BeeDamageServerRpc(NetworkObjectReference playerObjectReference)
     {
-        ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(1715570234u, rpcParams, RpcDelivery.Reliable);
-        writer.WriteValueSafe(in networkObjectReference);
-        this.__endSendClientRpc(ref writer, 1715570234u, rpcParams, RpcDelivery.Reliable);
-        Debug.Log("BeeDamagePacket client rpc send finished");
+        BeeDamageClientRpc(playerObjectReference);
     }
     
     [ClientRpc]
-    public void BeeDamageClientRpc(NetworkObjectReference networkObjectReference)
+    public void BeeDamageClientRpc(NetworkObjectReference playerObjectReference)
     {
         Debug.Log("BeeDamage client rpc received");
-        if (networkObjectReference.TryGet(out NetworkObject networkObject))
-        {
-            PlayerControllerB player = networkObject.GetComponent<PlayerControllerB>();
-            player.DamagePlayer(30, hasDamageSFX: true, callRPC: true, CauseOfDeath.Electrocution, 3);
-        }
-        else
+        if (!playerObjectReference.TryGet(out NetworkObject networkObject))
         {
             Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)");
+            return;
         }
-    }
 
-    private static void __rpc_handler_1715570234(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening)
+        if(!networkObject.TryGetComponent(out PlayerControllerB player))
         {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
-            ((RedLocustBeesCustomAI) target).BeeDamageClientRpc(networkObjectReference);
+            Debug.LogError(this.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)");
+            return;
         }
+
+        player.DamagePlayer(30, hasDamageSFX: true, callRPC: true, CauseOfDeath.Electrocution, 3);
     }
 
     #endregion

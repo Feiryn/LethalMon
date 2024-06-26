@@ -164,7 +164,7 @@ public class CustomAI : EnemyAI
 			}
 			if (addPlayerVelocityToDestination > 0f)
 			{
-				if (targetPlayer == GameNetworkManager.Instance.localPlayerController)
+				if (targetPlayer == Utils.CurrentPlayer)
 				{
 					destination += Vector3.Normalize(targetPlayer.thisController.velocity * 100f) * addPlayerVelocityToDestination;
 				}
