@@ -10,10 +10,10 @@ using LethalMon.Items;
 using LethalMon.Patches;
 using LethalMon.Throw;
 using UnityEngine;
-using Object = System.Object;
 
 namespace LethalMon;
 
+[BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class LethalMon : BaseUnityPlugin
 {
@@ -33,7 +33,9 @@ public class LethalMon : BaseUnityPlugin
     {
         Logger = base.Logger;
         Instance = this;
-        
+
+        ModConfig.Instance.Setup();
+
         AssetBundle assetBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "lethalmon"));
 
         this.SetupPokeball(assetBundle);
@@ -45,6 +47,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(PlayerControllerBPatch));
         Harmony.PatchAll(typeof(RedLocustBeesPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
+        Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
         PokeballItem.InitializeRPCS();
         HoarderBugCustomAI.InitializeRPCS();
         PlayerControllerBPatch.InitializeRPCS();
