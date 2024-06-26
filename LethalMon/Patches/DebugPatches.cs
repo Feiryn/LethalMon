@@ -5,6 +5,8 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 using LethalMon.Items;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace LethalMon.Patches
 {
@@ -50,23 +52,27 @@ namespace LethalMon.Patches
             {
             }
 
-            else if (Keyboard.current.f5Key.wasPressedThisFrame)
+            else */if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Hoarding bug");
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Spring");
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Red Locust Bees");
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Flowerman");
             }
 
-            else */if (Keyboard.current.f9Key.wasPressedThisFrame)
+            else if (Keyboard.current.f9Key.wasPressedThisFrame)
             {
                 if (Pokeball.spawnPrefab != null)
                     SpawnItemInFront(Pokeball.spawnPrefab);
@@ -96,7 +102,7 @@ namespace LethalMon.Patches
             GameNetworkManager.Instance?.StartCoroutine(WaitAfterKeyPress());
         }
 
-        #region Methods
+        #region Item
         public static void SpawnItemInFront(Item item)
         {
             if (item == null) return;
@@ -124,6 +130,29 @@ namespace LethalMon.Patches
             item.transform.position = Utils.CurrentPlayer.transform.position + Utils.CurrentPlayer.transform.forward * 1.5f;
             if (item.TryGetComponent(out GrabbableObject grabbableObject))
                 grabbableObject.itemProperties.canBeGrabbedBeforeGameStart = true;
+        }
+        #endregion
+
+        #region Enemy
+        public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
+
+        public static void SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, string enemyName)
+        {
+            foreach (EnemyType enemyType in EnemyTypes)
+            {
+                if (enemyName == enemyType.enemyName)
+                {
+                    var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
+                    LethalMon.Log("Spawn enemy: " + enemyName);
+                    GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
+                    gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+                    var enemyAI = gameObject.GetComponent<EnemyAI>();
+                    RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
+                    return;
+                }
+            }
+
+            LethalMon.Log("No enemy found..");
         }
         #endregion
 #endif
