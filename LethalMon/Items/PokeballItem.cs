@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using LethalLib;
@@ -38,21 +39,26 @@ public abstract class PokeballItem : ThrowableItem
         this.captureStrength = captureStrength;
     }
 
-    internal static GameObject? GetBallPrefab(AssetBundle assetBundle, string assetPath)
+    internal static GameObject? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : PokeballItem
     {
         if (assetBundle == null) return null;
 
-        Item masterballItem = assetBundle.LoadAsset<Item>(assetPath);
+        var ballItem = assetBundle.LoadAsset<Item>(Path.Combine("Assets/Balls", assetPath));
+        if(ballItem == null)
+        {
+            LethalMon.Log($"{assetPath} not found.", LethalMon.LogType.Error);
+            return null;
+        }
 
-        Masterball script = masterballItem.spawnPrefab.AddComponent<Masterball>();
-        script.itemProperties = masterballItem;
+        T script = ballItem.spawnPrefab.AddComponent<T>();
+        script.itemProperties = ballItem;
         script.grabbable = true;
         script.grabbableToEnemies = true;
-        LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(masterballItem.spawnPrefab);
+        LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(ballItem.spawnPrefab);
 
-        LethalLib.Modules.Items.RegisterScrap(masterballItem, 2, Levels.LevelTypes.All);
+        LethalLib.Modules.Items.RegisterScrap(ballItem, scrapRarity, Levels.LevelTypes.All);
 
-        return masterballItem.spawnPrefab;
+        return ballItem.spawnPrefab;
     }
 
     public override void ItemActivate(bool used, bool buttonDown = true)
@@ -281,6 +287,7 @@ public abstract class PokeballItem : ThrowableItem
                 newAi.CopyProperties(enemyAi);
                 newAi.ownerPlayer = this.playerThrownBy;
                 newAi.ownClientId = this.playerThrownBy.playerClientId;
+                LethalMon.Log(ballType.ToString(), LethalMon.LogType.Warning);
                 newAi.ballType = this.ballType;
                 newAi.ballValue = this.scrapValue;
                 newAi.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;

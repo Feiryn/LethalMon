@@ -12,6 +12,6 @@ public class Greatball : PokeballItem
 
     internal static void Setup(AssetBundle assetBundle)
     {
-        spawnPrefab = GetBallPrefab(assetBundle, "Assets/Balls/Greatball/Greatball.asset");
+        spawnPrefab = InitBallPrefab<Greatball>(assetBundle, "Greatball/Greatball.asset", 10);
     }
 }

@@ -11,6 +11,6 @@ public class Ultraball : PokeballItem
 
     internal static void Setup(AssetBundle assetBundle)
     {
-        spawnPrefab = GetBallPrefab(assetBundle, "Assets/Balls/Ultraball/Ultraball.asset");
+        spawnPrefab = InitBallPrefab<Ultraball>(assetBundle, "Ultraball/Ultraball.asset", 6);
     }
 }

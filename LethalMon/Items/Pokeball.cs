@@ -1,3 +1,4 @@
+using LethalLib.Modules;
 using UnityEngine;
 
 namespace LethalMon.Items;
@@ -12,6 +13,6 @@ public class Pokeball : PokeballItem
 
     internal static void Setup(AssetBundle assetBundle)
     {
-        spawnPrefab = GetBallPrefab(assetBundle, "Assets/Balls/Pokeball/Pokeball.asset");
+        spawnPrefab = InitBallPrefab<Pokeball>(assetBundle, "Pokeball/Pokeball.asset", 20);
     }
 }

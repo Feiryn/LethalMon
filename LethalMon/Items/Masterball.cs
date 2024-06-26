@@ -11,6 +11,6 @@ public class Masterball : PokeballItem
 
     internal static void Setup(AssetBundle assetBundle)
     {
-        spawnPrefab = GetBallPrefab(assetBundle, "Assets/Balls/Masterball/Masterball.asset");
+        spawnPrefab = InitBallPrefab<Masterball>(assetBundle, "Masterball/Masterball.asset", 2);
     }
 }
