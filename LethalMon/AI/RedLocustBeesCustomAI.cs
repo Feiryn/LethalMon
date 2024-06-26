@@ -71,15 +71,15 @@ public class RedLocustBeesCustomAI : CustomAI
         if (this.targetPlayer != null)
         {
             float distance = Vector3.Distance(this.targetPlayer.transform.position, this.transform.position);
-            Debug.Log("Distance to player: " + distance);
+            LethalMon.Log("Distance to player: " + distance);
             if (this.targetPlayer.isPlayerDead || !this.targetPlayer.isPlayerControlled || distance > 25f)
             {
-                Debug.Log("Stop targeting player");
+                LethalMon.Log("Stop targeting player");
                 this.targetPlayer = null;
             }
             else if (distance < 2.5f)
             {
-                Debug.Log("Target player collided");
+                LethalMon.Log("Target player collided");
 
                 BeeDamageServerRpc(this.targetPlayer.GetComponent<NetworkObject>());
             
@@ -88,7 +88,7 @@ public class RedLocustBeesCustomAI : CustomAI
             }
             else
             {
-                Debug.Log("Follow player");
+                LethalMon.Log("Follow player");
                 this.SetDestinationToPosition(this.targetPlayer.transform.position);
                 return;
             }
@@ -96,15 +96,15 @@ public class RedLocustBeesCustomAI : CustomAI
         else if (this.targetEnemyAI != null)
         {
             float distance = Vector3.Distance(this.targetEnemyAI.transform.position, this.transform.position);
-            Debug.Log("Distance to enemy: " + distance);
+            LethalMon.Log("Distance to enemy: " + distance);
             if (this.targetEnemyAI.isEnemyDead || distance > 25f)
             {
-                Debug.Log("Stop targeting enemy");
+                LethalMon.Log("Stop targeting enemy");
                 this.targetEnemyAI = null;
             }
             else if (distance < 2.5f)
             {
-                Debug.Log("Target enemy collided");
+                LethalMon.Log("Target enemy collided");
             
                 this.targetEnemyAI.SetEnemyStunned(true, 5f);
             
@@ -113,19 +113,19 @@ public class RedLocustBeesCustomAI : CustomAI
             }
             else
             {
-                Debug.Log("Follow enemy");
+                LethalMon.Log("Follow enemy");
                 this.SetDestinationToPosition(this.targetEnemyAI.transform.position);  
                 return;
             }
         }
         
-        Debug.Log("Follow owner");
+        LethalMon.Log("Follow owner");
         this.FollowOwner();
     }
 
     public void AttackPlayer(PlayerControllerB player)
     {
-        Debug.Log($"Bees of {this.ownerPlayer.playerUsername} attack {player.playerUsername}");
+        LethalMon.Log($"Bees of {this.ownerPlayer.playerUsername} attack {player.playerUsername}");
 
         ChangeAngryMode(true);
         this.targetPlayer = player;
@@ -133,7 +133,7 @@ public class RedLocustBeesCustomAI : CustomAI
     
     public void AttackEnemyAI(EnemyAI enemyAI)
     {
-        Debug.Log($"Bees of {this.ownerPlayer.playerUsername} attack {enemyAI.enemyType.name}");
+        LethalMon.Log($"Bees of {this.ownerPlayer.playerUsername} attack {enemyAI.enemyType.name}");
 
         ChangeAngryMode(true);
         this.targetEnemyAI = enemyAI;
@@ -213,16 +213,16 @@ public class RedLocustBeesCustomAI : CustomAI
     [ClientRpc]
     public void BeeDamageClientRpc(NetworkObjectReference playerObjectReference)
     {
-        Debug.Log("BeeDamage client rpc received");
+        LethalMon.Log("BeeDamage client rpc received");
         if (!playerObjectReference.TryGet(out NetworkObject networkObject))
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)");
+            LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)", LethalMon.LogType.Error);
             return;
         }
 
         if(!networkObject.TryGetComponent(out PlayerControllerB player))
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)");
+            LethalMon.Log(this.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)", LethalMon.LogType.Error);
             return;
         }
 

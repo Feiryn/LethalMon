@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using LethalLib;
 using LethalLib.Modules;
 using LethalMon.AI;
 using LethalMon.Throw;
@@ -64,10 +65,10 @@ public abstract class PokeballItem : ThrowableItem
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Collided with " + other.gameObject.name);
+        LethalMon.Log("Collided with " + other.gameObject.name);
 
-        Debug.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
-        Debug.Log("Pokeball was thrown by: " + this.playerThrownBy);
+        LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
+        LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
         
         if (Utils.IsHost && !this.enemyCaptured && this.playerThrownBy != null)
         {
@@ -81,7 +82,7 @@ public abstract class PokeballItem : ThrowableItem
                 }
                 else
                 {
-                    Debug.Log(enemyToCapture.enemyType.name + " is not catchable");
+                    LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
                 }
             }
         }
@@ -98,11 +99,11 @@ public abstract class PokeballItem : ThrowableItem
     [ClientRpc]
     public void PlayCaptureAnimationClientRpc(NetworkObjectReference enemy, int roundsNumber, bool catchSuccess)
     {
-        Debug.Log("Play capture animation client rpc received");
+        LethalMon.Log("Play capture animation client rpc received");
         
         if (!enemy.TryGet(out NetworkObject enemyAINetworkObject))
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)");
+            LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
 
@@ -134,7 +135,7 @@ public abstract class PokeballItem : ThrowableItem
     
     private void CaptureEnemy(EnemyAI enemyAI, CatchableEnemy.CatchableEnemy catchable)
     {
-        Debug.Log("Start to capture " + enemyAI.name);
+        LethalMon.Log("Start to capture " + enemyAI.name);
         this.playerThrownBy = null;
         this.catchableEnemy = catchable;
         this.enemyAI = enemyAI;
@@ -148,19 +149,19 @@ public abstract class PokeballItem : ThrowableItem
 
     public void CaptureEnd(string message)
     {
-        Debug.Log("Capture animation end");
+        LethalMon.Log("Capture animation end");
 
         // Test if we need to play the animation more times
         if (this.currentCaptureRound + 1 < this.captureRounds)
         {
-            Debug.Log("Play the animation again");
+            LethalMon.Log("Play the animation again");
             
             this.currentCaptureRound++;
             PlayCaptureAnimationAnimator();
         }
         else if (this.captureSuccess)
         {
-            Debug.Log("Capture success");
+            LethalMon.Log("Capture success");
 
             this.SetCaughtEnemy(this.enemyType);
             
@@ -171,7 +172,7 @@ public abstract class PokeballItem : ThrowableItem
         }
         else
         {
-            Debug.Log("Capture failed");
+            LethalMon.Log("Capture failed");
 
             if (Utils.IsHost)
                 this.GetComponent<NetworkObject>().Despawn(true);
@@ -199,30 +200,30 @@ public abstract class PokeballItem : ThrowableItem
     #region CustomAiSpawning
 
     [ServerRpc(RequireOwnership = false)]
-    public void ReplaceWithCustomAiServerRpc(NetworkObjectReference networkObjectReference, string customAiName, ulong ownerClientId)
+    public void ReplaceWithCustomAiServerRpc(NetworkObjectReference enemyObjectReference, string customAiName, ulong ownerClientId)
     {
-        ReplaceWithCustomAiClientRpc(networkObjectReference, customAiName, ownerClientId);
+        ReplaceWithCustomAiClientRpc(enemyObjectReference, customAiName, ownerClientId);
     }
     
     [ClientRpc]
-    public void ReplaceWithCustomAiClientRpc(NetworkObjectReference networkObjectReference, string customAiName, ulong ownerClientId)
+    public void ReplaceWithCustomAiClientRpc(NetworkObjectReference enemyObjectReference, string customAiName, ulong ownerClientId)
     {
-        Debug.Log("ReplaceWithCustomAi client rpc received");
-        if (!networkObjectReference.TryGet(out NetworkObject networkObject))
+        LethalMon.Log("ReplaceWithCustomAi client rpc received");
+        if (!enemyObjectReference.TryGet(out NetworkObject networkObject))
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)");
+            LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
 
         if(!networkObject.TryGetComponent(out EnemyAI enemyAi))
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get enemyAi (Capture animation RPC)");
+            LethalMon.Log(this.gameObject.name + ": Failed to get enemyAi (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
 
         if (!Data.CatchableMonsters.TryGetValue(customAiName, out CatchableEnemy.CatchableEnemy catchableEnemy))
         {
-            Debug.Log("Custom AI name not found (maybe mod version mismatch)");
+            LethalMon.Log("Custom AI name not found (maybe mod version mismatch)");
             return;
         }
 
@@ -243,35 +244,23 @@ public abstract class PokeballItem : ThrowableItem
     #region SyncContent
 
     [ServerRpc(RequireOwnership = false)]
-    public void SyncContentServerRpc(NetworkObjectReference networkObjectReference, string enemyTypeName)
+    public void SyncContentServerRpc(string enemyTypeName)
     {
-        SyncContentClientRpc(networkObjectReference, enemyTypeName);
+        SyncContentClientRpc(enemyTypeName);
     }
     
     [ClientRpc]
-    public void SyncContentClientRpc(NetworkObjectReference networkObjectReference, string enemyTypeName)
+    public void SyncContentClientRpc(string enemyTypeName)
     {
-        Debug.Log("SyncContentPacket client rpc received");
-        if (!networkObjectReference.TryGet(out NetworkObject networkObject))
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (SyncContentPacket RPC)");
-            return;
-        }
-
-        if(!networkObject.TryGetComponent(out PokeballItem pokeballItem))
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get pokeball item (SyncContentPacket RPC)");
-            return;
-        }
-
-        EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
-        pokeballItem.SetCaughtEnemy(enemyType);
+        LethalMon.Log("SyncContentPacket client rpc received");
+        EnemyType enemyType = Utils.EnemyTypes.First(type => type.name == enemyTypeName);
+        SetCaughtEnemy(enemyType, false);
     }
     #endregion
     
     public override void TouchGround()
     {
-        Debug.Log("Touch ground");
+        LethalMon.Log("Touch ground");
 
         if (base.IsHost && this.playerThrownBy != null && this.enemyCaptured)
         {
@@ -365,7 +354,7 @@ public abstract class PokeballItem : ThrowableItem
         string[] toolTips = itemProperties.toolTips;
         if (toolTips.Length < 1)
         {
-            Debug.LogError("Pokeball control tips array length is too short to set tips!");
+            LethalMon.Log("Pokeball control tips array length is too short to set tips!", LethalMon.LogType.Error);
             return;
         }
         if (this.enemyCaptured && this.enemyType != null)
@@ -379,17 +368,16 @@ public abstract class PokeballItem : ThrowableItem
         HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
     }
 
-    public void SetCaughtEnemy(EnemyType enemyType)
+    public void SetCaughtEnemy(EnemyType enemyType, bool callRpc = true)
     {
+        LethalMon.Log("SetCaughtEnemy");
         this.enemyType = enemyType;
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
         this.ChangeName();
 
-        if (this.IsHost || this.IsServer)
-        {
-            this.SyncContentServerRpc(this.GetComponent<NetworkObject>(), this.enemyType.name);
-        }
+        if (callRpc && Utils.IsHost)
+            this.SyncContentServerRpc(this.enemyType.name);
     }
 
     public override int GetItemDataToSave()

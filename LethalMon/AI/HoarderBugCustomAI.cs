@@ -51,12 +51,12 @@ public class HoarderBugCustomAI : CustomAI
             {
                 if (Vector3.Distance(this.transform.position, this.ownerPlayer.transform.position) < 6f)
                 {
-                    Debug.Log("HoarderBugAI drops held item to the owner");
+                    LethalMon.Log("HoarderBugAI drops held item to the owner");
                     this.DropItemAndCallDropRPC(heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
                 }
                 else
                 {
-                    Debug.Log("HoarderBugAI move held item to the owner");
+                    LethalMon.Log("HoarderBugAI move held item to the owner");
                     this.SetMovingTowardsTargetPlayer(this.ownerPlayer);   
                 }
             }
@@ -64,7 +64,7 @@ public class HoarderBugCustomAI : CustomAI
             {
                 if (this.targetItem != null)
                 {
-                    Debug.Log("HoarderBugAI found an object and move towards it");
+                    LethalMon.Log("HoarderBugAI found an object and move towards it");
                     SetGoTowardsTargetObject(this.targetItem.gameObject);
                 }
                 else
@@ -73,23 +73,23 @@ public class HoarderBugCustomAI : CustomAI
                     currentTimer++;
                     if (currentTimer >= HoarderBugCustomAI.searchTimer)
                     {
-                        Debug.Log("HoarderBugAI searches for items");
+                        LethalMon.Log("HoarderBugAI searches for items");
                         currentTimer = 0;
                         Collider[] colliders = Physics.OverlapSphere(this.transform.position, 15f);
-                        Debug.Log("HoarderBugAI found " + colliders.Length + " colliders");
+                        LethalMon.Log("HoarderBugAI found " + colliders.Length + " colliders");
                         
                         foreach (Collider collider in colliders)
                         {
                             GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
                             if (grabbable != null)
                             {
-                                Debug.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
+                                LethalMon.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
                                 if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, this.ownerPlayer.transform.position) > 8f)
                                 {
                                     // Check LOS
                                     if (!Physics.Linecast(this.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                                     {
-                                        Debug.Log("HoarderBugAI found item: " + grabbable.name);
+                                        LethalMon.Log("HoarderBugAI found item: " + grabbable.name);
                                         this.targetItem = grabbable;
                                         return;   
                                     }
@@ -98,14 +98,14 @@ public class HoarderBugCustomAI : CustomAI
                         }
                     }
 
-                    Debug.Log("HoarderBugAI follows the owner");
+                    LethalMon.Log("HoarderBugAI follows the owner");
                     this.FollowOwner();
                 }
             }
         }
         else
         {
-            Debug.Log("HoarderBugAI grabbed close item");
+            LethalMon.Log("HoarderBugAI grabbed close item");
         }
     }
 
@@ -153,13 +153,13 @@ public class HoarderBugCustomAI : CustomAI
     {
         if (SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
         {
-            Debug.Log(base.gameObject.name + ": Setting target object and going towards it.");
+            LethalMon.Log(base.gameObject.name + ": Setting target object and going towards it.");
             targetItem = foundObject.GetComponent<GrabbableObject>();
         }
         else
         {
             targetItem = null;
-            Debug.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
+            LethalMon.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
         }
     }
     
@@ -185,7 +185,7 @@ public class HoarderBugCustomAI : CustomAI
         }
         if (heldItem != null)
         {
-            Debug.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
+            LethalMon.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
             DropItemAndCallDropRPC(heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
         }
         targetItem = null;
@@ -211,7 +211,7 @@ public class HoarderBugCustomAI : CustomAI
         }
         if (heldItem == null)
         {
-            Debug.LogError("Hoarder bug: my held item is null when attempting to drop it!!");
+            LethalMon.Log("Hoarder bug: my held item is null when attempting to drop it!!", LethalMon.LogType.Error);
             return;
         }
         GrabbableObject itemGrabbableObject = heldItem.itemGrabbableObject;
@@ -250,7 +250,7 @@ public class HoarderBugCustomAI : CustomAI
 	{
         if (!objectRef.TryGet(out var networkObject))
         {
-            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)");
+            LethalMon.Log(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)", LethalMon.LogType.Error);
             return;
         }
         
@@ -269,7 +269,7 @@ public class HoarderBugCustomAI : CustomAI
         // SwitchToBehaviourStateOnLocalClient(1);
         if (!objectRef.TryGet(out var networkObject))
         {
-            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)");
+            LethalMon.Log(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)", LethalMon.LogType.Error);
             return;
         }
 

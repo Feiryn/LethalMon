@@ -94,14 +94,14 @@ public class FlowermanCustomAI : CustomAI
         {
             if (Vector3.Distance(this.transform.position, this.destination) < 2f)
             {
-                Debug.Log("Enemy brought to destination, release it");
+                LethalMon.Log("Enemy brought to destination, release it");
                 
                 ReleaseEnemy();
                 
                 this.CalmDown();
             }
             
-            Debug.Log("Enemy already grabbed and moving, skip AI interval");
+            LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
             
             return;
         }
@@ -111,13 +111,13 @@ public class FlowermanCustomAI : CustomAI
             {
                 if (this.targetEnemy.meshRenderers.Any(meshRendererTarget => this.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
                 {
-                    Debug.Log("Collided with target, grab it");
+                    LethalMon.Log("Collided with target, grab it");
                     
                     GrabEnemy(targetEnemy);
                 }
                 else
                 {
-                    Debug.Log("Moving to target");
+                    LethalMon.Log("Moving to target");
                     
                     SetDestinationToPosition(targetEnemy.transform.position);
                 }
@@ -125,7 +125,7 @@ public class FlowermanCustomAI : CustomAI
                 return;
             }
             
-            Debug.Log("Target is dead, stop targeting it");
+            LethalMon.Log("Target is dead, stop targeting it");
             
             targetEnemy = null;
             
@@ -139,15 +139,15 @@ public class FlowermanCustomAI : CustomAI
                 {
                     targetEnemy = spawnedEnemy;
                     this.StandUp();
-                    Debug.Log("Targeting " + targetEnemy.enemyType.name);
+                    LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
                     return;
                 }
             } 
 
-            Debug.Log("No grabbable enemy in sight");
+            LethalMon.Log("No grabbable enemy in sight");
         }
         
-        Debug.Log("Follow owner");
+        LethalMon.Log("Follow owner");
         
         this.FollowOwner();
     }
@@ -208,7 +208,7 @@ public class FlowermanCustomAI : CustomAI
 
         Vector3 farthestPosition = ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
         this.SetDestinationToPosition(farthestPosition);
-        Debug.Log("Moving to " + farthestPosition);
+        LethalMon.Log("Moving to " + farthestPosition);
     }
 
     public void ReleaseEnemy()
@@ -226,7 +226,7 @@ public class FlowermanCustomAI : CustomAI
             grabbedEnemyAi.agent.enabled = true;
             grabbedEnemyAi = null;
             
-            Debug.Log("Enemy release");
+            LethalMon.Log("Enemy release");
         }
     }
 

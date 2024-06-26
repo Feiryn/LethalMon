@@ -134,11 +134,9 @@ namespace LethalMon.Patches
         #endregion
 
         #region Enemy
-        public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
-
         public static void SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, string enemyName)
         {
-            foreach (EnemyType enemyType in EnemyTypes)
+            foreach (EnemyType enemyType in Utils.EnemyTypes)
             {
                 if (enemyName == enemyType.enemyName)
                 {

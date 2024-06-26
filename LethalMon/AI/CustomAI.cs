@@ -1,5 +1,6 @@
 using System;
 using GameNetcodeStuff;
+using LethalLib;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
@@ -90,7 +91,7 @@ public class CustomAI : EnemyAI
 			    DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
 			    if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
 			    {
-				    Debug.Log("CustomAI opens door");
+				    LethalMon.Log("CustomAI opens door");
 				    if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
 				    {
 					    trigger.TriggerAnimationNonPlayer(false, true, false);
@@ -154,12 +155,12 @@ public class CustomAI : EnemyAI
 			{
 				setDestinationToPlayerInterval = 0.25f;
 				destination = RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position, RoundManager.Instance.navHit, 2.7f);
-				Debug.Log("Set destination to target player A");
+				LethalMon.Log("Set destination to target player A");
 			}
 			else
 			{
 				destination = new Vector3(targetPlayer.transform.position.x, destination.y, targetPlayer.transform.position.z);
-				Debug.Log("Set destination to target player B");
+				LethalMon.Log("Set destination to target player B");
 				setDestinationToPlayerInterval -= Time.deltaTime;
 			}
 			if (addPlayerVelocityToDestination > 0f)
@@ -232,13 +233,14 @@ public class CustomAI : EnemyAI
         }
         catch (Exception arg)
         {
-            Debug.LogError($"Error when initializing enemy variables for {base.gameObject.name} : {arg}");
+            LethalMon.Log($"Error when initializing enemy variables for {base.gameObject.name} : {arg}", LethalMon.LogType.Error);
         }
     }
 
     public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
 	    GameObject? spawnPrefab = null;
+		LethalMon.Log("balltype: " + ballType.ToString());
 	    switch (this.ballType)
 	    {
 		    case BallType.GREAT_BALL:

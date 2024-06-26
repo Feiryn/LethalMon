@@ -11,15 +11,15 @@ namespace LethalMon.Throw
         [ServerRpc(RequireOwnership = false)]
         public void ThrowServerRpc(NetworkObjectReference playerNetworkObjectReference)
         {
-            Debug.Log("SendThrowRpc server rpc received");
+            LethalMon.Log("SendThrowRpc server rpc received");
             if (!playerNetworkObjectReference.TryGet(out NetworkObject playerNetworkObject))
             {
-                Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (SendThrowRpc)");
+                LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (SendThrowRpc)", LethalMon.LogType.Error);
                 return;
             }
 
             if(!playerNetworkObject.TryGetComponent(out playerThrownBy))
-                Debug.LogError(this.gameObject.name + ": Failed to get player component (SendThrowRpc)");
+                LethalMon.Log(this.gameObject.name + ": Failed to get player component (SendThrowRpc)", LethalMon.LogType.Error);
         }
         
         #endregion

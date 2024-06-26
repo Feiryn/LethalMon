@@ -45,7 +45,7 @@ public class PlayerControllerBPatch
                 rpcParams,
                 RpcDelivery.Reliable
             });
-        Debug.Log("Send pet retrieve server rpc send finished");
+        LethalMon.Log("Send pet retrieve server rpc send finished");
     }
     
     private static void __rpc_handler_346187524u(NetworkBehaviour target, FastBufferReader reader,
@@ -54,7 +54,7 @@ public class PlayerControllerBPatch
         NetworkManager networkManager = target.NetworkManager;
         if (networkManager != null && networkManager.IsListening)
         {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
+            LethalMon.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             
             PlayerControllerB player = (PlayerControllerB) target;
             CustomAI? customAI = Utils.GetPlayerPet(player);
@@ -65,7 +65,7 @@ public class PlayerControllerBPatch
             }
             else
             {
-                Debug.Log("No custom AI found for " + player + " but they sent a retrieve ball RPC");
+                LethalMon.Log("No custom AI found for " + player + " but they sent a retrieve ball RPC");
             }
         }
     }
@@ -73,7 +73,9 @@ public class PlayerControllerBPatch
     private static void PetRetrieve(PlayerControllerB player, CustomAI customAI)
     {
         Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
-        PokeballItem pokeballItem = customAI.RetrieveInBall(spawnPos);
+        var pokeballItem = customAI.RetrieveInBall(spawnPos);
+        if (pokeballItem == null) return;
+
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
         player.SetItemInElevator(inShip, inShip, pokeballItem);
         pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
@@ -85,9 +87,9 @@ public class PlayerControllerBPatch
     {
         if (__instance is { isPlayerControlled: true, IsOwner: true })
         {
-            if (Keyboard.current[Key.P].IsPressed())
+            if (Keyboard.current[Key.P].wasPressedThisFrame)
             {
-                Debug.Log("P pressed");
+                LethalMon.Log("P pressed");
                 CustomAI? customAI = Utils.GetPlayerPet(__instance);
 
                 if (customAI != null)
@@ -100,7 +102,7 @@ public class PlayerControllerBPatch
             }
             else if (StartOfRound.Instance.testRoom != null && (__instance.IsHost || __instance.IsServer))
             {
-                bool oPressed = Keyboard.current[Key.O].IsPressed();
+                bool oPressed = Keyboard.current[Key.O].wasPressedThisFrame;
                 if (oPressed && !lastTestPressed)
                 {
                     lastTestPressed = true;
@@ -140,7 +142,7 @@ public class PlayerControllerBPatch
 
         if (customAI != null)
         {
-            Debug.Log("Teleport CustomAI to " + pos);
+            LethalMon.Log("Teleport CustomAI to " + pos);
             customAI.agent.enabled = false;
             customAI.transform.position = pos;
             customAI.agent.enabled = true;
@@ -156,7 +158,7 @@ public class PlayerControllerBPatch
         
         if (customAI != null)
         {
-            Debug.Log("Owner is dead, go back to the ball");
+            LethalMon.Log("Owner is dead, go back to the ball");
             customAI.RetrieveInBall(customAI.transform.position);
         }
     }
@@ -192,7 +194,7 @@ public class PlayerControllerBPatch
         if (customAI != null && customAI.GetType() == typeof(RedLocustBeesCustomAI) && (__instance.IsServer || __instance.IsHost))
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
-            Debug.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
+            LethalMon.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
 
             if (__instance != playerWhoHitControllerB &&
                 Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)

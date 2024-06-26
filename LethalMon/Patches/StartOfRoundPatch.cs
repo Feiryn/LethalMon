@@ -13,12 +13,12 @@ public class StartOfRoundPatch
     private static void OnShipHasLeftPreFix(StartOfRound __instance)
     {
         CustomAI[] customAis = GameObject.FindObjectsOfType<CustomAI>();
-        Debug.Log($"End of game, processing {customAis.Length} custom AIs");
+        LethalMon.Log($"End of game, processing {customAis.Length} custom AIs");
         
         foreach (CustomAI customAi in customAis)
         {
             PlayerControllerB player = customAi.ownerPlayer;
-            Debug.Log("Player is in hangar ship room: " + player.isInHangarShipRoom);
+            LethalMon.Log("Player is in hangar ship room: " + player.isInHangarShipRoom);
             if (player.isInHangarShipRoom)
             {
                 PokeballItem pokeballItem = customAi.RetrieveInBall(player.transform.position);
@@ -32,7 +32,7 @@ public class StartOfRoundPatch
     [HarmonyPrefix]
     private static void OnPlayerDCPrefix(StartOfRound __instance, int playerObjectNumber, ulong clientId)
     {
-        Debug.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
+        LethalMon.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
         
         CustomAI[] customAis = GameObject.FindObjectsOfType<CustomAI>();
 
@@ -40,7 +40,7 @@ public class StartOfRoundPatch
         {
             if (customAi.ownClientId == clientId)
             {
-                Debug.Log($"Found {customAi.enemyType.name}, retrieving in ball");
+                LethalMon.Log($"Found {customAi.enemyType.name}, retrieving in ball");
                 
                 customAi.RetrieveInBall(customAi.transform.position);
             }

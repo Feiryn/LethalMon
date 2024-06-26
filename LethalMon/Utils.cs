@@ -34,11 +34,11 @@ public class Utils
         foreach (StackFrame stackFrame in stackFrames[1..])
         {
             Type classType = stackFrame.GetMethod().DeclaringType;
-            Debug.Log("Stackframe type: " + classType);
+            LethalMon.Log("Stackframe type: " + classType);
 
             if (classType.IsSubclassOf(typeof(EnemyAI)))
             {
-                Debug.Log("Class is assignable from EnemyAI");
+                LethalMon.Log("Class is assignable from EnemyAI");
                 EnemyAI? closestEnemy = null;
                 float? closestEnemyDistance = float.MaxValue;
                 
@@ -85,5 +85,9 @@ public class Utils
             return false;
         }
     }
+    #endregion
+
+    #region Enemy
+    public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
     #endregion
 }
