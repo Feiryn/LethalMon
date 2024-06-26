@@ -76,4 +76,31 @@ public class LethalMon : BaseUnityPlugin
 
         Logger.LogDebug("Finished unpatching!");
     }
+
+    #region Logging
+    public enum LogType
+    {
+        Message,
+        Warning,
+        Error,
+        Fatal,
+        Debug
+    }
+
+    internal static void Log(string message, LogType type = LogType.Debug)
+    {
+#if !DEBUG
+            if (type == LogType.Debug /*&& !ModConfig.DebugLog*/)
+                return;
+#endif
+
+        switch (type)
+        {
+            case LogType.Warning: Logger.LogWarning(message); break;
+            case LogType.Error: Logger.LogError(message); break;
+            case LogType.Fatal: Logger.LogFatal(message); break;
+            default: Logger.LogMessage(message); break;
+        }
+    }
+    #endregion
 }

@@ -236,26 +236,34 @@ public class CustomAI : EnemyAI
         }
     }
 
-    public virtual PokeballItem RetrieveInBall(Vector3 position)
+    public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
-	    GameObject ball;
+	    GameObject? spawnPrefab = null;
 	    switch (this.ballType)
 	    {
 		    case BallType.GREAT_BALL:
-			    ball = Object.Instantiate(LethalMon.greatBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+                spawnPrefab = Greatball.spawnPrefab;
 			    break;
 		    case BallType.ULTRA_BALL:
-			    ball = Object.Instantiate(LethalMon.ultraBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
+                spawnPrefab = Ultraball.spawnPrefab;
+                break;
 		    case BallType.MASTER_BALL:
-			    ball = Object.Instantiate(LethalMon.masterBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
+                spawnPrefab = Masterball.spawnPrefab;
+                break;
 		    default:
-			    ball = Object.Instantiate(LethalMon.pokeballSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
+                spawnPrefab = Pokeball.spawnPrefab;
+                break;
 	    }
 
-	    PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+		if(spawnPrefab == null)
+		{
+			LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
+			return null;
+		}	
+
+		var ball = Object.Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+
+        PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
 	    pokeballItem.fallTime = 0f;
 	    pokeballItem.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds || this.alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(this.ballValue);

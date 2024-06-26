@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using LethalLib.Modules;
 using LethalMon.AI;
 using LethalMon.Throw;
 using Unity.Netcode;
@@ -34,6 +35,23 @@ public abstract class PokeballItem : ThrowableItem
     {
         this.ballType = ballType;
         this.captureStrength = captureStrength;
+    }
+
+    internal static GameObject? GetBallPrefab(AssetBundle assetBundle, string assetPath)
+    {
+        if (assetBundle == null) return null;
+
+        Item masterballItem = assetBundle.LoadAsset<Item>(assetPath);
+
+        Masterball script = masterballItem.spawnPrefab.AddComponent<Masterball>();
+        script.itemProperties = masterballItem;
+        script.grabbable = true;
+        script.grabbableToEnemies = true;
+        LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(masterballItem.spawnPrefab);
+
+        LethalLib.Modules.Items.RegisterScrap(masterballItem, 2, Levels.LevelTypes.All);
+
+        return masterballItem.spawnPrefab;
     }
 
     public override void ItemActivate(bool used, bool buttonDown = true)
