@@ -1,54 +1,17 @@
-using System.Linq;
 using System.Reflection;
-using DigitalRuby.ThunderAndLightning;
 using GameNetcodeStuff;
-using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.VFX;
 
 namespace LethalMon.AI;
 
-public class RedLocustBeesCustomAI : CustomAI
+public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 {
+    internal RedLocustBees bees { get; private set; }
+
     public bool angry = false;
     
     public EnemyAI? targetEnemyAI = null;
-    
-    public VisualEffect beeParticles;
-    
-    public Transform[] lightningPoints;
-    
-    public LightningBoltPathScript lightningComponent;
-    
-    public Transform beeParticlesTarget;
-    
-    public AudioSource beeZapAudio;
-    
-    private System.Random beeZapRandom = new();
-    
-    private float beesZapCurrentTimer;
-
-    private float beesZapTimer;
-    
-    public override void CopyProperties(EnemyAI enemyAI)
-    {
-        base.CopyProperties(enemyAI);
-        
-        this.beeParticles = ((RedLocustBees) enemyAI).beeParticles;
-        this.lightningPoints = ((RedLocustBees) enemyAI).lightningPoints;
-        this.lightningComponent = ((RedLocustBees) enemyAI).lightningComponent;
-        this.beeParticlesTarget = ((RedLocustBees) enemyAI).beeParticlesTarget;
-        this.beeZapAudio = ((RedLocustBees) enemyAI).beeZapAudio;
-        this.beesZapCurrentTimer = ((RedLocustBees) enemyAI).beesZapCurrentTimer;
-        this.beesZapTimer = ((RedLocustBees) enemyAI).beesZapTimer;
-        ((RedLocustBees) enemyAI).beesIdle.volume = 0.2f;
-        ((RedLocustBees) enemyAI).beesDefensive.volume = 0.2f;
-        ((RedLocustBees) enemyAI).beesAngry.Stop();
-        this.beeZapAudio.Stop();
-        this.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make it smaller
-
-    }
 
     public override void Update()
     {
@@ -60,129 +23,134 @@ public class RedLocustBeesCustomAI : CustomAI
     public override void Start()
     {
         base.Start();
-        
-        this.agent.speed = 10.3f;
+
+        bees = enemy as RedLocustBees;
+        if (bees == null)
+            bees = gameObject.AddComponent<RedLocustBees>();
+
+        LethalMon.Logger.LogWarning("RedLocustBeesCustomAI.Start: " + (bees == null).ToString());
+        if(bees != null )
+            bees.agent.speed = 10.3f;
     }
 
     public override void DoAIInterval()
     {
         base.DoAIInterval();
 
-        if (this.targetPlayer != null)
+        if (bees.targetPlayer != null)
         {
-            float distance = Vector3.Distance(this.targetPlayer.transform.position, this.transform.position);
+            float distance = Vector3.Distance(bees.targetPlayer.transform.position, bees.transform.position);
             Debug.Log("Distance to player: " + distance);
-            if (this.targetPlayer.isPlayerDead || !this.targetPlayer.isPlayerControlled || distance > 25f)
+            if (bees.targetPlayer.isPlayerDead || !bees.targetPlayer.isPlayerControlled || distance > 25f)
             {
                 Debug.Log("Stop targeting player");
-                this.targetPlayer = null;
+                bees.targetPlayer = null;
             }
             else if (distance < 2.5f)
             {
                 Debug.Log("Target player collided");
 
-                BeeDamagePacket(this.targetPlayer.GetComponent<NetworkObject>());
+                BeeDamagePacket(bees.targetPlayer.GetComponent<NetworkObject>());
             
                 ChangeAngryMode(false);
-                this.targetPlayer = null;
+                bees.targetPlayer = null;
             }
             else
             {
                 Debug.Log("Follow player");
-                this.SetDestinationToPosition(this.targetPlayer.transform.position);
+                bees.SetDestinationToPosition(bees.targetPlayer.transform.position);
                 return;
             }
         }
-        else if (this.targetEnemyAI != null)
+        else if (targetEnemyAI != null)
         {
-            float distance = Vector3.Distance(this.targetEnemyAI.transform.position, this.transform.position);
+            float distance = Vector3.Distance(targetEnemyAI.transform.position, bees.transform.position);
             Debug.Log("Distance to enemy: " + distance);
-            if (this.targetEnemyAI.isEnemyDead || distance > 25f)
+            if (targetEnemyAI.isEnemyDead || distance > 25f)
             {
                 Debug.Log("Stop targeting enemy");
-                this.targetEnemyAI = null;
+                targetEnemyAI = null;
             }
             else if (distance < 2.5f)
             {
                 Debug.Log("Target enemy collided");
             
-                this.targetEnemyAI.SetEnemyStunned(true, 5f);
+                targetEnemyAI.SetEnemyStunned(true, 5f);
             
                 ChangeAngryMode(false);
-                this.targetEnemyAI = null;
+                targetEnemyAI = null;
             }
             else
             {
                 Debug.Log("Follow enemy");
-                this.SetDestinationToPosition(this.targetEnemyAI.transform.position);  
+                bees.SetDestinationToPosition(targetEnemyAI.transform.position);  
                 return;
             }
         }
         
         Debug.Log("Follow owner");
-        this.FollowOwner();
+        FollowOwner();
     }
 
     public void AttackPlayer(PlayerControllerB player)
     {
-        Debug.Log($"Bees of {this.ownerPlayer.playerUsername} attack {player.playerUsername}");
+        Debug.Log($"Bees of {ownerPlayer?.playerUsername} attack {player.playerUsername}");
 
         ChangeAngryMode(true);
-        this.targetPlayer = player;
+        bees.targetPlayer = player;
     }
     
     public void AttackEnemyAI(EnemyAI enemyAI)
     {
-        Debug.Log($"Bees of {this.ownerPlayer.playerUsername} attack {enemyAI.enemyType.name}");
+        Debug.Log($"Bees of {ownerPlayer?.playerUsername} attack {enemyAI.enemyType.name}");
 
         ChangeAngryMode(true);
-        this.targetEnemyAI = enemyAI;
+        targetEnemyAI = enemyAI;
     }
     
     private void BeesZapOnTimer()
     {
-        if (!this.angry)
-        {
+        if (!angry)
             return;
-        }
-        if (beesZapCurrentTimer > beesZapTimer)
+
+        if (bees.beesZapCurrentTimer > bees.beesZapTimer)
         {
-            beesZapCurrentTimer = 0f;
-            beesZapTimer = beeZapRandom.Next(1, 7) * 0.06f;
+            bees.beesZapCurrentTimer = 0f;
+            bees.beesZapTimer = bees.beeZapRandom.Next(1, 7) * 0.06f;
             BeesZap();
         }
         else
         {
-            beesZapCurrentTimer += Time.deltaTime;
+            bees.beesZapCurrentTimer += Time.deltaTime;
         }
     }
     
     public void BeesZap()
     {
-        if (beeParticles.GetBool("Alive"))
+        if (bees.beeParticles.GetBool("Alive"))
         {
-            for (int i = 0; i < lightningPoints.Length; i++)
+            for (int i = 0; i < bees.lightningPoints.Length; i++)
             {
-                lightningPoints[i].transform.position = RoundManager.Instance.GetRandomPositionInBoxPredictable(beeParticlesTarget.transform.position, 4f, beeZapRandom);
+                bees.lightningPoints[i].transform.position = RoundManager.Instance.GetRandomPositionInBoxPredictable(bees.beeParticlesTarget.transform.position, 4f, bees.beeZapRandom);
             }
-            lightningComponent.Trigger(0.1f);
+            bees.lightningComponent.Trigger(0.1f);
         }
 
-        beeZapAudio.pitch = Random.Range(0.8f, 1.1f);
-        beeZapAudio.PlayOneShot(enemyType.audioClips[Random.Range(0, enemyType.audioClips.Length)], Random.Range(0.6f, 1f));
+        bees.beeZapAudio.pitch = Random.Range(0.8f, 1.1f);
+        bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[Random.Range(0, bees.enemyType.audioClips.Length)], Random.Range(0.6f, 1f));
     }
 
     public void ChangeAngryMode(bool angry)
     {
         this.angry = angry;
-        this.ResetBeeZapTimer();
-        this.AngryPacket(this.GetComponent<NetworkObject>(), angry);
+        ResetBeeZapTimer();
+        AngryPacket(bees.GetComponent<NetworkObject>(), angry);
     }
     
     private void ResetBeeZapTimer()
     {
-        beesZapCurrentTimer = 0f;
-        beeZapAudio.Stop();
+        bees.beesZapCurrentTimer = 0f;
+        bees.beeZapAudio.Stop();
     }
     
     internal static void InitializeRPCS()
@@ -196,10 +164,10 @@ public class RedLocustBeesCustomAI : CustomAI
     public void AngryPacket(NetworkObjectReference networkObjectReference, bool angry)
     {
         ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(3703853659u, rpcParams, RpcDelivery.Reliable);
+        FastBufferWriter writer = __beginSendClientRpc(3703853659u, rpcParams, RpcDelivery.Reliable);
         writer.WriteValueSafe(in networkObjectReference);
         writer.WriteValueSafe(angry);
-        this.__endSendClientRpc(ref writer, 3703853659u, rpcParams, RpcDelivery.Reliable);
+        __endSendClientRpc(ref writer, 3703853659u, rpcParams, RpcDelivery.Reliable);
         Debug.Log("AngryPacket client rpc send finished");
     }
     
@@ -209,13 +177,13 @@ public class RedLocustBeesCustomAI : CustomAI
         Debug.Log("AngryPacket client rpc received");
         if (networkObjectReference.TryGet(out NetworkObject networkObject))
         {
-            RedLocustBeesCustomAI bees = networkObject.GetComponent<RedLocustBeesCustomAI>();
+            RedLocustBeesTamedBehaviour bees = networkObject.GetComponent<RedLocustBeesTamedBehaviour>();
             bees.angry = angry;
             bees.ResetBeeZapTimer();
         }
         else
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (AngryClientRpc RPC)");
+            Debug.LogError(bees.gameObject.name + ": Failed to get network object from network object reference (AngryClientRpc RPC)");
         }
     }
 
@@ -228,7 +196,7 @@ public class RedLocustBeesCustomAI : CustomAI
             Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
             reader.ReadValueSafe(out bool angry);
-            ((RedLocustBeesCustomAI) target).AngryClientRpc(networkObjectReference, angry);
+            ((RedLocustBeesTamedBehaviour) target).AngryClientRpc(networkObjectReference, angry);
         }
     }
     
@@ -239,9 +207,9 @@ public class RedLocustBeesCustomAI : CustomAI
     public void BeeDamagePacket(NetworkObjectReference networkObjectReference)
     {
         ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(1715570234u, rpcParams, RpcDelivery.Reliable);
+        FastBufferWriter writer = __beginSendClientRpc(1715570234u, rpcParams, RpcDelivery.Reliable);
         writer.WriteValueSafe(in networkObjectReference);
-        this.__endSendClientRpc(ref writer, 1715570234u, rpcParams, RpcDelivery.Reliable);
+        __endSendClientRpc(ref writer, 1715570234u, rpcParams, RpcDelivery.Reliable);
         Debug.Log("BeeDamagePacket client rpc send finished");
     }
     
@@ -256,7 +224,7 @@ public class RedLocustBeesCustomAI : CustomAI
         }
         else
         {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)");
+            Debug.LogError(bees.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)");
         }
     }
 
@@ -268,7 +236,7 @@ public class RedLocustBeesCustomAI : CustomAI
         {
             Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
-            ((RedLocustBeesCustomAI) target).BeeDamageClientRpc(networkObjectReference);
+            ((RedLocustBeesTamedBehaviour) target).BeeDamageClientRpc(networkObjectReference);
         }
     }
 

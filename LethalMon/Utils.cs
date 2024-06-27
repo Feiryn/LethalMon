@@ -11,9 +11,9 @@ namespace LethalMon;
 
 public class Utils
 {
-    public static CustomAI? GetPlayerPet(PlayerControllerB player)
+    public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
-        return GameObject.FindObjectsOfType<CustomAI>().FirstOrDefault(customAi => customAi.ownClientId == player.playerClientId);
+        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownClientId == player.playerClientId);
     }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)
@@ -65,4 +65,8 @@ public class Utils
         
         return null;
     }
+
+    #region Enemy
+    public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
+    #endregion
 }

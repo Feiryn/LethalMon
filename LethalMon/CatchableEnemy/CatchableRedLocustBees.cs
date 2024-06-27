@@ -19,9 +19,4 @@ public class CatchableRedLocustBees : CatchableEnemy
         ai.SwitchToBehaviourState(2);
         RedLocustBeesPatch.AngryUntil.Add(ai.GetInstanceID(), DateTime.Now.AddSeconds(10));
     }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<RedLocustBeesCustomAI>();
-    }
 }

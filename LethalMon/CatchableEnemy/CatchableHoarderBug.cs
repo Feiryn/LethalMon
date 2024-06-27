@@ -16,9 +16,4 @@ public class CatchableHoarderBug : CatchableEnemy
         ai.angryTimer = 10f;
         ai.angryAtPlayer = player;
     }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<HoarderBugCustomAI>();
-    }
 }

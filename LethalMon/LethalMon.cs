@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -48,11 +48,13 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(RedLocustBeesPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
+        Harmony.PatchAll(typeof(DebugPatches));
+        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
         PokeballItem.InitializeRPCS();
-        HoarderBugCustomAI.InitializeRPCS();
+        HoarderBugTamedBehaviour.InitializeRPCS();
         PlayerControllerBPatch.InitializeRPCS();
         ThrowableItem.InitializeRPCS();
-        RedLocustBeesCustomAI.InitializeRPCS();
+        RedLocustBeesTamedBehaviour.InitializeRPCS();
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }

@@ -7,22 +7,14 @@ using Random = UnityEngine.Random;
 
 namespace LethalMon.AI;
 
-public class FlowermanCustomAI : CustomAI
+public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 {
-    private Vector3 agentLocalVelocity;
-    
-    public Transform animationContainer;
-    
-    private float velX;
-    
-    private float velZ;
-    
-    public AudioSource creatureAngerVoice;
+    internal FlowermanAI bracken { get; private set; }
 
     private EnemyAI? grabbedEnemyAi;
 
     private EnemyAI? targetEnemy;
-    
+
     // Left arm
     private Transform arm1L;
     
@@ -40,7 +32,7 @@ public class FlowermanCustomAI : CustomAI
     private Transform arm3R;
     
     private Transform hand1R;
-    
+
     // Grabbed monsters positions (height, distance, rotation)
     private static Dictionary<string, Tuple<float, float, Quaternion>> grabbedMonstersPositions = new()
     {
@@ -60,18 +52,22 @@ public class FlowermanCustomAI : CustomAI
     public override void Start()
     {
         base.Start();
+
+        bracken = enemy as FlowermanAI;
+        if (bracken == null)
+            bracken = gameObject.AddComponent<FlowermanAI>();
+
+        bracken.creatureAnimator.SetBool("sneak", value: true);
+        bracken.creatureAnimator.Play("Base Layer.CreepForward");
         
-        creatureAnimator.SetBool("sneak", value: true);
-        this.creatureAnimator.Play("Base Layer.CreepForward");
-        
-        Transform torso3 = this.gameObject.transform
+        Transform torso3 = bracken.gameObject.transform
             .Find("FlowermanModel")
             .Find("AnimContainer")
             .Find("metarig")
             .Find("Torso1")
             .Find("Torso2")
             .Find("Torso3");
-        
+
         arm1L = torso3.Find("Arm1.L");
         arm2L = arm1L.Find("Arm2.L");
         arm3L = arm2L.Find("Arm3.L");
@@ -90,9 +86,9 @@ public class FlowermanCustomAI : CustomAI
         // todo check inside only
         // todo cooldown
 
-        if (this.grabbedEnemyAi != null)
+        if (grabbedEnemyAi != null)
         {
-            if (Vector3.Distance(this.transform.position, this.destination) < 2f)
+            if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f)
             {
                 Debug.Log("Enemy brought to destination, release it");
                 
@@ -109,7 +105,7 @@ public class FlowermanCustomAI : CustomAI
         {
             if (!targetEnemy.isEnemyDead)
             {
-                if (this.targetEnemy.meshRenderers.Any(meshRendererTarget => this.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+                if (this.targetEnemy.meshRenderers.Any(meshRendererTarget => bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
                 {
                     Debug.Log("Collided with target, grab it");
                     
@@ -118,8 +114,8 @@ public class FlowermanCustomAI : CustomAI
                 else
                 {
                     Debug.Log("Moving to target");
-                    
-                    SetDestinationToPosition(targetEnemy.transform.position);
+
+                    bracken.SetDestinationToPosition(targetEnemy.transform.position);
                 }
 
                 return;
@@ -135,11 +131,11 @@ public class FlowermanCustomAI : CustomAI
         {
             foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies)
             {
-                if (spawnedEnemy != null && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && this.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
+                if (spawnedEnemy != null && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
                 {
                     targetEnemy = spawnedEnemy;
                     this.StandUp();
-                    Debug.Log("Targeting " + targetEnemy.enemyType.name);
+                    Debug.Log("Targeting " + spawnedEnemy.enemyType.name);
                     return;
                 }
             } 
@@ -161,28 +157,28 @@ public class FlowermanCustomAI : CustomAI
 
     private void CalculateAnimationDirection(float maxSpeed = 1f)
     {
-        agentLocalVelocity = animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
-        velX = Mathf.Lerp(velX, agentLocalVelocity.x, 10f * Time.deltaTime);
-        creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(velX, 0f - maxSpeed, maxSpeed));
-        velZ = Mathf.Lerp(velZ, 0f - agentLocalVelocity.y, 10f * Time.deltaTime);
-        creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(velZ, 0f - maxSpeed, maxSpeed));
-        creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
+        bracken.agentLocalVelocity = bracken.animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
+        bracken.velX = Mathf.Lerp(bracken.velX, bracken.agentLocalVelocity.x, 10f * Time.deltaTime);
+        bracken.creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(bracken.velX, 0f - maxSpeed, maxSpeed));
+        bracken.velZ = Mathf.Lerp(bracken.velZ, 0f - bracken.agentLocalVelocity.y, 10f * Time.deltaTime);
+        bracken.creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(bracken.velZ, 0f - maxSpeed, maxSpeed));
+        bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
         previousPosition = base.transform.position;
     }
 
     public void StandUp()
     {
-        creatureAngerVoice.Play();
-        creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
-        creatureAnimator.SetBool("anger", true);
-        creatureAnimator.SetBool("sneak", false);
+        bracken.creatureAngerVoice.Play();
+        bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
+        bracken.creatureAnimator.SetBool("anger", true);
+        bracken.creatureAnimator.SetBool("sneak", false);
     }
 
     public void CalmDown()
     {
-        creatureAngerVoice.Stop();
-        creatureAnimator.SetBool("sneak", true);
-        creatureAnimator.SetBool("anger", false);
+        bracken.creatureAngerVoice.Stop();
+        bracken.creatureAnimator.SetBool("sneak", true);
+        bracken.creatureAnimator.SetBool("anger", false);
     }
 
     public void GrabEnemy(EnemyAI enemyAI)
@@ -192,11 +188,11 @@ public class FlowermanCustomAI : CustomAI
             this.ReleaseEnemy();
         }
 
-        creatureAngerVoice.Stop();
+        bracken.creatureAngerVoice.Stop();
         enemyAI.enabled = false;
         enemyAI.agent.enabled = false;
         var enemyAiTransform = enemyAI.transform;
-        var flowermanTransform = this.transform;
+        var flowermanTransform = bracken.transform;
         enemyAiTransform.transform.SetParent(flowermanTransform);
 
         Tuple<float, float, Quaternion> monsterPositions = grabbedMonstersPositions[enemyAI.GetType().Name];
@@ -206,8 +202,8 @@ public class FlowermanCustomAI : CustomAI
         grabbedEnemyAi = enemyAI;
         targetEnemy = null;
 
-        Vector3 farthestPosition = ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
-        this.SetDestinationToPosition(farthestPosition);
+        Vector3 farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
+        bracken.SetDestinationToPosition(farthestPosition);
         Debug.Log("Moving to " + farthestPosition);
     }
 
@@ -217,7 +213,7 @@ public class FlowermanCustomAI : CustomAI
         {
             Transform enemyAiTransform = grabbedEnemyAi.transform;
             enemyAiTransform.SetParent(null);
-            var selfTransform = this.transform;
+            var selfTransform = bracken.transform;
             enemyAiTransform.localPosition = selfTransform.localPosition;
             enemyAiTransform.position = selfTransform.position;
             enemyAiTransform.rotation = selfTransform.rotation;
@@ -228,14 +224,6 @@ public class FlowermanCustomAI : CustomAI
             
             Debug.Log("Enemy release");
         }
-    }
-
-    public override void CopyProperties(EnemyAI enemyAI)
-    {
-        base.CopyProperties(enemyAI);
-
-        this.animationContainer = ((FlowermanAI) enemyAI).animationContainer;
-        this.creatureAngerVoice = ((FlowermanAI) enemyAI).creatureAngerVoice;
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)
