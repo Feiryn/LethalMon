@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HarmonyLib;
 using LethalMon.Items;
 using Unity.Netcode;
@@ -6,37 +5,23 @@ using UnityEngine;
 
 namespace LethalMon.AI;
 
-public class HoarderBugCustomAI : CustomAI
+public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 {
-    private Vector3 agentLocalVelocity;
-    
-    public Transform animationContainer;
-    
-    private float velX;
-    
-    private float velZ;
-    
-    public GrabbableObject targetItem;
-    
-    public HoarderBugItem heldItem;
-    
-    private bool sendingGrabOrDropRPC;
-    
-    public Transform grabTarget;
+    internal HoarderBugAI hoarderBug { get; private set; }
+
+    public int currentTimer = 0;
 
     public const int searchTimer = 10;
 
-    public int currentTimer = 0;
-    
-    public AudioClip bugFlySFX;
-    
-    public AudioClip[] chitterSFX;
-    
     public override void Start()
     {
         base.Start();
-        
-        this.creatureAnimator.Play("Base Layer.Walking");
+
+        hoarderBug = enemy as HoarderBugAI;
+        if (hoarderBug == null)
+            hoarderBug = gameObject.AddComponent<HoarderBugAI>();
+
+        hoarderBug.creatureAnimator.Play("Base Layer.Walking");
     }
 
     public override void DoAIInterval()
@@ -47,35 +32,35 @@ public class HoarderBugCustomAI : CustomAI
         if (!GrabTargetItemIfClose())
         {
             // We currently have an item to give to the owner
-            if (this.heldItem != null)
+            if (hoarderBug.heldItem != null && ownerPlayer != null)
             {
-                if (Vector3.Distance(this.transform.position, this.ownerPlayer.transform.position) < 6f)
+                if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
                 {
                     Debug.Log("HoarderBugAI drops held item to the owner");
-                    this.DropItemAndCallDropRPC(heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+                    DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
                 }
                 else
                 {
                     Debug.Log("HoarderBugAI move held item to the owner");
-                    this.SetMovingTowardsTargetPlayer(this.ownerPlayer);   
+                    hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);   
                 }
             }
             else
             {
-                if (this.targetItem != null)
+                if (hoarderBug?.targetItem != null)
                 {
                     Debug.Log("HoarderBugAI found an object and move towards it");
-                    SetGoTowardsTargetObject(this.targetItem.gameObject);
+                    SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
                 }
-                else
+                else if(ownerPlayer != null)
                 {
                     // Do not search too often
                     currentTimer++;
-                    if (currentTimer >= HoarderBugCustomAI.searchTimer)
+                    if (currentTimer >= HoarderBugTamedBehaviour.searchTimer)
                     {
                         Debug.Log("HoarderBugAI searches for items");
                         currentTimer = 0;
-                        Collider[] colliders = Physics.OverlapSphere(this.transform.position, 15f);
+                        Collider[] colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
                         Debug.Log("HoarderBugAI found " + colliders.Length + " colliders");
                         
                         foreach (Collider collider in colliders)
@@ -84,13 +69,13 @@ public class HoarderBugCustomAI : CustomAI
                             if (grabbable != null)
                             {
                                 Debug.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
-                                if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, this.ownerPlayer.transform.position) > 8f)
+                                if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) > 8f)
                                 {
                                     // Check LOS
-                                    if (!Physics.Linecast(this.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                                    if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                                     {
                                         Debug.Log("HoarderBugAI found item: " + grabbable.name);
-                                        this.targetItem = grabbable;
+                                        hoarderBug.targetItem = grabbable;
                                         return;   
                                     }
                                 }
@@ -99,7 +84,7 @@ public class HoarderBugCustomAI : CustomAI
                     }
 
                     Debug.Log("HoarderBugAI follows the owner");
-                    this.FollowOwner();
+                    FollowOwner();
                 }
             }
         }
@@ -118,32 +103,21 @@ public class HoarderBugCustomAI : CustomAI
     
     private void CalculateAnimationDirection(float maxSpeed = 1f)
     {
-        agentLocalVelocity = animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
-        velX = Mathf.Lerp(velX, agentLocalVelocity.x, 10f * Time.deltaTime);
-        creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(velX, 0f - maxSpeed, maxSpeed));
-        velZ = Mathf.Lerp(velZ, 0f - agentLocalVelocity.y, 10f * Time.deltaTime);
-        creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(velZ, 0f - maxSpeed, maxSpeed));
-        creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
-        previousPosition = base.transform.position;
-    }
-
-    public override void CopyProperties(EnemyAI enemyAI)
-    {
-        base.CopyProperties(enemyAI);
-
-        HoarderBugAI ai = ((HoarderBugAI)enemyAI);
-        this.animationContainer = ai.animationContainer;
-        this.grabTarget = ai.grabTarget;
-        this.bugFlySFX = ai.bugFlySFX;
-        this.chitterSFX = ai.chitterSFX;
+        hoarderBug.agentLocalVelocity = hoarderBug.animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(hoarderBug.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
+        hoarderBug.velX = Mathf.Lerp(hoarderBug.velX, hoarderBug.agentLocalVelocity.x, 10f * Time.deltaTime);
+        hoarderBug.creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(hoarderBug.velX, 0f - maxSpeed, maxSpeed));
+        hoarderBug.velZ = Mathf.Lerp(hoarderBug.velZ, 0f - hoarderBug.agentLocalVelocity.y, 10f * Time.deltaTime);
+        hoarderBug.creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(hoarderBug.velZ, 0f - maxSpeed, maxSpeed));
+        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
+        previousPosition = hoarderBug.transform.position;
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)
     {
         // Drop held item if any
-        if (this.heldItem != null)
+        if (hoarderBug.heldItem != null)
         {
-            this.DropItemAndCallDropRPC(this.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
         }
         
         return base.RetrieveInBall(position);
@@ -151,25 +125,25 @@ public class HoarderBugCustomAI : CustomAI
     
     private void SetGoTowardsTargetObject(GameObject foundObject)
     {
-        if (SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
+        if (hoarderBug.SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
         {
             Debug.Log(base.gameObject.name + ": Setting target object and going towards it.");
-            targetItem = foundObject.GetComponent<GrabbableObject>();
+            hoarderBug.targetItem = foundObject.GetComponent<GrabbableObject>();
         }
         else
         {
-            targetItem = null;
+            hoarderBug.targetItem = null;
             Debug.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
         }
     }
     
     private bool GrabTargetItemIfClose()
     {
-        if (targetItem != null && heldItem == null && Vector3.Distance(base.transform.position, targetItem.transform.position) < 0.75f)
+        if (hoarderBug.targetItem != null && hoarderBug.heldItem == null && Vector3.Distance(hoarderBug.transform.position, hoarderBug.targetItem.transform.position) < 0.75f)
         {
-            NetworkObject component = targetItem.GetComponent<NetworkObject>();
+            NetworkObject component = hoarderBug.targetItem.GetComponent<NetworkObject>();
             GrabItem(component);
-            sendingGrabOrDropRPC = true;
+            hoarderBug.sendingGrabOrDropRPC = true;
             GrabItemServerRpc(component);
             return true;
         }
@@ -178,43 +152,43 @@ public class HoarderBugCustomAI : CustomAI
     
     private void GrabItem(NetworkObject item)
     {
-        if (sendingGrabOrDropRPC)
+        if (hoarderBug.sendingGrabOrDropRPC)
         {
-            sendingGrabOrDropRPC = false;
+            hoarderBug.sendingGrabOrDropRPC = false;
             return;
         }
-        if (heldItem != null)
+        if (hoarderBug.heldItem != null)
         {
-            Debug.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
-            DropItemAndCallDropRPC(heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+            Debug.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + hoarderBug.heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
+            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
         }
-        targetItem = null;
+        hoarderBug.targetItem = null;
         GrabbableObject component = item.gameObject.GetComponent<GrabbableObject>();
-        heldItem = new HoarderBugItem(component, HoarderBugItemStatus.Owned, new Vector3());
-        component.parentObject = grabTarget;
+        hoarderBug.heldItem = new HoarderBugItem(component, HoarderBugItemStatus.Owned, new Vector3());
+        component.parentObject = hoarderBug.grabTarget;
         component.hasHitGround = false;
-        component.GrabItemFromEnemy(this);
+        component.GrabItemFromEnemy(enemy);
         component.EnablePhysics(enable: false);
         
-        this.creatureAnimator.SetBool("Chase", true);
-        this.creatureSFX.clip = bugFlySFX;
-        this.creatureSFX.Play();
-        RoundManager.PlayRandomClip(creatureVoice, chitterSFX);
+        hoarderBug.creatureAnimator.SetBool("Chase", true);
+        hoarderBug.creatureSFX.clip = hoarderBug.bugFlySFX;
+        hoarderBug.creatureSFX.Play();
+        RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
     }
     
     private void DropItem(NetworkObject dropItemNetworkObject, Vector3 targetFloorPosition)
     {
-        if (sendingGrabOrDropRPC)
+        if (hoarderBug.sendingGrabOrDropRPC)
         {
-            sendingGrabOrDropRPC = false;
+            hoarderBug.sendingGrabOrDropRPC = false;
             return;
         }
-        if (heldItem == null)
+        if (hoarderBug.heldItem == null)
         {
             Debug.LogError("Hoarder bug: my held item is null when attempting to drop it!!");
             return;
         }
-        GrabbableObject itemGrabbableObject = heldItem.itemGrabbableObject;
+        GrabbableObject itemGrabbableObject = hoarderBug.heldItem.itemGrabbableObject;
         itemGrabbableObject.parentObject = null;
         itemGrabbableObject.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
         itemGrabbableObject.EnablePhysics(enable: true);
@@ -223,19 +197,19 @@ public class HoarderBugCustomAI : CustomAI
         itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
         itemGrabbableObject.floorYRot = -1;
         itemGrabbableObject.DiscardItemFromEnemy();
-        heldItem = null;
+        hoarderBug.heldItem = null;
         
-        this.SetDestinationToPosition(this.transform.position);
-        this.creatureAnimator.SetBool("Chase", false);
-        this.creatureSFX.Stop();
-        RoundManager.PlayRandomClip(creatureVoice, chitterSFX);
+        hoarderBug.SetDestinationToPosition(hoarderBug.transform.position);
+        hoarderBug.creatureAnimator.SetBool("Chase", false);
+        hoarderBug.creatureSFX.Stop();
+        RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
     }
     
     private void DropItemAndCallDropRPC(NetworkObject dropItemNetworkObject)
     {
-        Vector3 targetFloorPosition = RoundManager.Instance.RandomlyOffsetPosition(heldItem.itemGrabbableObject.GetItemFloorPosition(), 1.2f, 0.4f);
+        Vector3 targetFloorPosition = RoundManager.Instance.RandomlyOffsetPosition(hoarderBug.heldItem.itemGrabbableObject.GetItemFloorPosition(), 1.2f, 0.4f);
         DropItem(dropItemNetworkObject, targetFloorPosition);
-        sendingGrabOrDropRPC = true;
+        hoarderBug.sendingGrabOrDropRPC = true;
         DropItemServerRpc(dropItemNetworkObject, targetFloorPosition);
     }
     
@@ -325,7 +299,7 @@ public class HoarderBugCustomAI : CustomAI
         reader.ReadValueSafe(out Vector3 value2);
         Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
         rpcExecStageField.SetValue(__RpcExecStage.Server);
-        ((HoarderBugCustomAI)target).DropItemServerRpc(value, value2);
+        ((HoarderBugTamedBehaviour)target).DropItemServerRpc(value, value2);
         rpcExecStageField.SetValue(__RpcExecStage.None);
     }
     
@@ -338,7 +312,7 @@ public class HoarderBugCustomAI : CustomAI
             reader.ReadValueSafe(out Vector3 value2);
             Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
             rpcExecStageField.SetValue(__RpcExecStage.Client);
-            ((HoarderBugCustomAI)target).DropItemClientRpc(value, value2);
+            ((HoarderBugTamedBehaviour)target).DropItemClientRpc(value, value2);
             rpcExecStageField.SetValue(__RpcExecStage.None);
         }
     }
@@ -420,7 +394,7 @@ public class HoarderBugCustomAI : CustomAI
             reader.ReadValueSafe(out NetworkObjectReference value);
             Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
             rpcExecStageField.SetValue(__RpcExecStage.Server);
-            ((HoarderBugCustomAI)target).GrabItemServerRpc(value);
+            ((HoarderBugTamedBehaviour)target).GrabItemServerRpc(value);
             rpcExecStageField.SetValue(__RpcExecStage.None);
         }
     }
@@ -433,7 +407,7 @@ public class HoarderBugCustomAI : CustomAI
             reader.ReadValueSafe(out NetworkObjectReference value);
             Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
             rpcExecStageField.SetValue(__RpcExecStage.Client);
-            ((HoarderBugCustomAI)target).GrabItemClientRpc(value);
+            ((HoarderBugTamedBehaviour)target).GrabItemClientRpc(value);
             rpcExecStageField.SetValue(__RpcExecStage.None);
         }
     }

@@ -233,20 +233,13 @@ public abstract class PokeballItem : ThrowableItem
         Debug.Log("ReplaceWithCustomAi client rpc received");
         if (networkObjectReference.TryGet(out NetworkObject networkObject))
         {
-            EnemyAI enemyAi = networkObject.GetComponent<EnemyAI>();
             if (Data.CatchableMonsters.TryGetValue(customAiName, out CatchableEnemy.CatchableEnemy catchableEnemy))
             {
-                CustomAI newAi = catchableEnemy.AddAiComponent(networkObject.gameObject);
-                // Dirty, but we need to add the CustomAi in order to be able to process the RPCs
-                ((List<NetworkBehaviour>) networkObject.GetType()
-                    .GetField("m_ChildNetworkBehaviours", BindingFlags.NonPublic | BindingFlags.Instance)
-                    .GetValue(networkObject))
-                    .Add(newAi);
-                CopyProperties(enemyAi, newAi);
-                newAi.CopyProperties(enemyAi);
-                newAi.ownClientId = ownerClientId;
-                enemyAi.enabled = false;
-                Destroy(this.gameObject);
+                if (networkObject.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+                {
+                    tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
+                    tamedBehaviour.ownClientId = ownerClientId;
+                }
             }
             else
             {
@@ -336,20 +329,22 @@ public abstract class PokeballItem : ThrowableItem
                     Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
                 EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
-                CustomAI newAi = this.catchableEnemy!.AddAiComponent(gameObject);
-                CopyProperties(enemyAi, newAi);
-                newAi.CopyProperties(enemyAi);
-                newAi.ownerPlayer = this.playerThrownBy;
-                newAi.ownClientId = this.playerThrownBy.playerClientId;
-                newAi.ballType = this.ballType;
-                newAi.ballValue = this.scrapValue;
-                newAi.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-                newAi.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
-                
-                enemyAi.enabled = false;
-                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                SendReplaceWithCustomAiPacket(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, newAi.ownClientId);
-                Destroy(this.gameObject);
+                if (gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+                {
+                    tamedBehaviour.ownerPlayer = this.playerThrownBy;
+                    tamedBehaviour.ownClientId = this.playerThrownBy.playerClientId;
+                    tamedBehaviour.ballType = this.ballType;
+                    tamedBehaviour.ballValue = this.scrapValue;
+                    tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+                    tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+                    tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
+
+                    gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+                    SendReplaceWithCustomAiPacket(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, tamedBehaviour.ownClientId);
+                    Destroy(this.gameObject);
+                }
+                else
+                    LethalMon.Logger.LogWarning("TouchGround: No custom ai found");
             }
         }
     }

@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -10,7 +10,6 @@ using LethalMon.Items;
 using LethalMon.Patches;
 using LethalMon.Throw;
 using UnityEngine;
-using Object = System.Object;
 
 namespace LethalMon;
 
@@ -45,11 +44,13 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(PlayerControllerBPatch));
         Harmony.PatchAll(typeof(RedLocustBeesPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
+        Harmony.PatchAll(typeof(DebugPatches));
+        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
         PokeballItem.InitializeRPCS();
-        HoarderBugCustomAI.InitializeRPCS();
+        HoarderBugTamedBehaviour.InitializeRPCS();
         PlayerControllerBPatch.InitializeRPCS();
         ThrowableItem.InitializeRPCS();
-        RedLocustBeesCustomAI.InitializeRPCS();
+        RedLocustBeesTamedBehaviour.InitializeRPCS();
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }

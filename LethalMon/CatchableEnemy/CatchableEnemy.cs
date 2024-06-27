@@ -1,6 +1,4 @@
 using GameNetcodeStuff;
-using LethalMon.AI;
-using UnityEngine;
 
 namespace LethalMon.CatchableEnemy;
 
@@ -30,6 +28,4 @@ public abstract class CatchableEnemy
     }
     
     public abstract void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player);
-
-    public abstract CustomAI AddAiComponent(GameObject gameObject);
 }

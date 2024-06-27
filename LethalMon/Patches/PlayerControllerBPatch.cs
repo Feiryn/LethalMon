@@ -57,23 +57,23 @@ public class PlayerControllerBPatch
             Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             
             PlayerControllerB player = (PlayerControllerB) target;
-            CustomAI? customAI = Utils.GetPlayerPet(player);
+            TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(player);
 
-            if (customAI != null)
+            if (tamedEnemyBehaviour != null)
             {
-                PetRetrieve(player, customAI);
+                PetRetrieve(player, tamedEnemyBehaviour);
             }
             else
             {
-                Debug.Log("No custom AI found for " + player + " but they sent a retrieve ball RPC");
+                Debug.Log("No tamed enemy found for " + player + " but they sent a retrieve ball RPC");
             }
         }
     }
 
-    private static void PetRetrieve(PlayerControllerB player, CustomAI customAI)
+    private static void PetRetrieve(PlayerControllerB player, TamedEnemyBehaviour tamedEnemyBehaviour)
     {
         Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
-        PokeballItem pokeballItem = customAI.RetrieveInBall(spawnPos);
+        PokeballItem pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
         player.SetItemInElevator(inShip, inShip, pokeballItem);
         pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
@@ -88,13 +88,13 @@ public class PlayerControllerBPatch
             if (Keyboard.current[Key.P].IsPressed())
             {
                 Debug.Log("P pressed");
-                CustomAI? customAI = Utils.GetPlayerPet(__instance);
+                TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(__instance);
 
-                if (customAI != null)
+                if (tamedEnemyBehaviour != null)
                 {
                     if (__instance.NetworkManager.IsServer || __instance.NetworkManager.IsHost)
                     {
-                        PetRetrieve(__instance, customAI);
+                        PetRetrieve(__instance, tamedEnemyBehaviour);
                     }
                     else
                     {
@@ -111,6 +111,7 @@ public class PlayerControllerBPatch
 
                     GrabbableObject heldItem = __instance.ItemSlots[__instance.currentItemSlot];
                     if (heldItem != null)
+
                     {
                         PokeballItem pokeballItem = heldItem.GetComponent<PokeballItem>();
                         if (pokeballItem != null)
@@ -140,15 +141,15 @@ public class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void TeleportPlayer(PlayerControllerB __instance, Vector3 pos)
     {
-        CustomAI? customAI = Utils.GetPlayerPet(__instance);
+        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (customAI != null)
+        if (tamedBehaviour != null)
         {
-            Debug.Log("Teleport CustomAI to " + pos);
-            customAI.agent.enabled = false;
-            customAI.transform.position = pos;
-            customAI.agent.enabled = true;
-            customAI.serverPosition = pos;
+            Debug.Log("Teleport tamed enemy to " + pos);
+            tamedBehaviour.enemy.agent.enabled = false;
+            tamedBehaviour.enemy.transform.position = pos;
+            tamedBehaviour.enemy.agent.enabled = true;
+            tamedBehaviour.enemy.serverPosition = pos;
         }
     }
     
@@ -156,12 +157,12 @@ public class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void KillPlayerPostfix(PlayerControllerB __instance)
     {
-        CustomAI? customAI = Utils.GetPlayerPet(__instance);
+        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
         
-        if (customAI != null)
+        if (tamedBehaviour != null)
         {
             Debug.Log("Owner is dead, go back to the ball");
-            customAI.RetrieveInBall(customAI.transform.position);
+            tamedBehaviour.RetrieveInBall(tamedBehaviour.enemy.transform.position);
         }
     }
 
@@ -169,15 +170,15 @@ public class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void DamagePlayerPostfix(PlayerControllerB __instance, int damageNumber, bool hasDamageSFX, bool callRPC, CauseOfDeath causeOfDeath, int deathAnimation, bool fallDamage, Vector3 force)
     {
-        CustomAI? customAI = Utils.GetPlayerPet(__instance);
+        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (customAI != null && customAI.GetType() == typeof(RedLocustBeesCustomAI))
+        if (tamedBehaviour != null && tamedBehaviour.GetType() == typeof(RedLocustBeesTamedBehaviour))
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
 
             if (enemyAI != null)
             {
-                ((RedLocustBeesCustomAI)customAI).AttackEnemyAI(enemyAI);
+                ((RedLocustBeesTamedBehaviour)tamedBehaviour).AttackEnemyAI(enemyAI);
             }
         }
     }
@@ -190,10 +191,10 @@ public class PlayerControllerBPatch
         {
             return;
         }
-        
-        CustomAI? customAI = Utils.GetPlayerPet(__instance);
 
-        if (customAI != null && customAI.GetType() == typeof(RedLocustBeesCustomAI) && (__instance.IsServer || __instance.IsHost))
+        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
+
+        if (tamedBehaviour != null && tamedBehaviour.GetType() == typeof(RedLocustBeesTamedBehaviour) && (__instance.IsServer || __instance.IsHost))
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
             Debug.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
@@ -201,7 +202,7 @@ public class PlayerControllerBPatch
             if (__instance != playerWhoHitControllerB &&
                 Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)
             {
-                ((RedLocustBeesCustomAI)customAI).AttackPlayer(playerWhoHitControllerB);
+                ((RedLocustBeesTamedBehaviour)tamedBehaviour).AttackPlayer(playerWhoHitControllerB);
             }
         }
     }

@@ -14,9 +14,4 @@ public class CatchableFlowerman : CatchableEnemy
     {
         (enemyAI as FlowermanAI)!.AddToAngerMeter(float.MaxValue);
     }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<FlowermanCustomAI>();
-    }
 }
