@@ -24,9 +24,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.Start();
 
-        bees = enemy as RedLocustBees;
-        if (bees == null)
-            bees = gameObject.AddComponent<RedLocustBees>();
+        bees = (Enemy as RedLocustBees)!;
 
         LethalMon.Logger.LogWarning("RedLocustBeesCustomAI.Start: " + (bees == null).ToString());
         if(bees != null )

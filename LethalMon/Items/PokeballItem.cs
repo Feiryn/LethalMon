@@ -317,20 +317,27 @@ public abstract class PokeballItem : ThrowableItem
 
         if (base.IsHost && this.playerThrownBy != null && this.enemyCaptured)
         {
+            LethalMon.Logger.LogInfo("Getting pet..");
             if (Utils.GetPlayerPet(this.playerThrownBy) != null)
             {
+                LethalMon.Logger.LogInfo("You already have a monster out!");
                 HUDManager.Instance.AddTextMessageClientRpc("You already have a monster out!");
             }
             else
             {
+                LethalMon.Logger.LogInfo("1");
                 EnemyType typeToSpawn = this.enemyType!;
 
+                LethalMon.Logger.LogInfo("2");
                 GameObject gameObject = Object.Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
                     Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
+                LethalMon.Logger.LogInfo("3");
                 EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
+                LethalMon.Logger.LogInfo("4");
                 if (gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
                 {
+                    LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
                     tamedBehaviour.ownerPlayer = this.playerThrownBy;
                     tamedBehaviour.ownClientId = this.playerThrownBy.playerClientId;
                     tamedBehaviour.ballType = this.ballType;
@@ -339,12 +346,13 @@ public abstract class PokeballItem : ThrowableItem
                     tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
                     tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
 
+                    LethalMon.Logger.LogInfo("5");
                     gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
                     SendReplaceWithCustomAiPacket(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, tamedBehaviour.ownClientId);
                     Destroy(this.gameObject);
                 }
                 else
-                    LethalMon.Logger.LogWarning("TouchGround: No custom ai found");
+                    LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
             }
         }
     }

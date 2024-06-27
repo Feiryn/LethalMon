@@ -146,10 +146,10 @@ public class PlayerControllerBPatch
         if (tamedBehaviour != null)
         {
             Debug.Log("Teleport tamed enemy to " + pos);
-            tamedBehaviour.enemy.agent.enabled = false;
-            tamedBehaviour.enemy.transform.position = pos;
-            tamedBehaviour.enemy.agent.enabled = true;
-            tamedBehaviour.enemy.serverPosition = pos;
+            tamedBehaviour.Enemy.agent.enabled = false;
+            tamedBehaviour.Enemy.transform.position = pos;
+            tamedBehaviour.Enemy.agent.enabled = true;
+            tamedBehaviour.Enemy.serverPosition = pos;
         }
     }
     
@@ -162,7 +162,7 @@ public class PlayerControllerBPatch
         if (tamedBehaviour != null)
         {
             Debug.Log("Owner is dead, go back to the ball");
-            tamedBehaviour.RetrieveInBall(tamedBehaviour.enemy.transform.position);
+            tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
         }
     }
 

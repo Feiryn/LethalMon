@@ -17,7 +17,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.Start();
 
-        hoarderBug = enemy as HoarderBugAI;
+        hoarderBug = (Enemy as HoarderBugAI)!;
         if (hoarderBug == null)
             hoarderBug = gameObject.AddComponent<HoarderBugAI>();
 
@@ -167,7 +167,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         hoarderBug.heldItem = new HoarderBugItem(component, HoarderBugItemStatus.Owned, new Vector3());
         component.parentObject = hoarderBug.grabTarget;
         component.hasHitGround = false;
-        component.GrabItemFromEnemy(enemy);
+        component.GrabItemFromEnemy(Enemy);
         component.EnablePhysics(enable: false);
         
         hoarderBug.creatureAnimator.SetBool("Chase", true);
