@@ -41,9 +41,9 @@ public class StartOfRoundPatch
         {
             if (tamedBehaviour.ownClientId == clientId)
             {
-                Debug.Log($"Found {tamedBehaviour.enemy.enemyType.name}, retrieving in ball");
+                Debug.Log($"Found {tamedBehaviour.Enemy.enemyType.name}, retrieving in ball");
 
-                tamedBehaviour.RetrieveInBall(tamedBehaviour.enemy.transform.position);
+                tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
             }
         }
     }

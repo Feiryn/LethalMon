@@ -53,7 +53,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.Start();
 
-        bracken = enemy as FlowermanAI;
+        bracken = (Enemy as FlowermanAI)!;
         if (bracken == null)
             bracken = gameObject.AddComponent<FlowermanAI>();
 
