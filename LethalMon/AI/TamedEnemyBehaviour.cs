@@ -6,7 +6,6 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
-using Object = UnityEngine.Object;
 
 namespace LethalMon.AI;
 
@@ -36,6 +35,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public PlayerControllerB? ownerPlayer = null;
 
+    public EnemyAI? targetEnemy = null;
+
+    public PlayerControllerB? targetPlayer = null;
+
     public ulong ownClientId;
 
     public BallType ballType;
@@ -48,9 +51,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
-	public NetworkVariable<bool> IsEnabled = new NetworkVariable<bool>(false);
-
 	private int LastDefaultBehaviourIndex = 0;
+
+    public bool isOutsideOfBall = false;
 
 	#region CustomBehaviour
 	public enum CustomBehaviour
@@ -112,36 +115,46 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
     }
 
-	// Skip original code if using enemy is at a custom behaviour
-	internal static bool IsUsingCustomBehaviour(EnemyAI enemyAI) => enemyAI.currentBehaviourStateIndex > LastDefaultBehaviourIndices.GetValueOrDefault(enemyAI.GetType(), int.MaxValue);
-
-	[HarmonyPrefix, HarmonyPatch(typeof(RedLocustBees), nameof(RedLocustBees.Update))]
-	public static void UpdateBeesPrefix(RedLocustBees __instance)
+    internal virtual void OnTamedFollowing()
 	{
-		LethalMon.Logger.LogInfo("RedLocustBees.Update");
-	}
+        if (ownerPlayer == null) return;
 
-    /*[HarmonyPrefix, HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.Update))]
-    public static bool UpdatePrefix(EnemyAI __instance) => IsUsingCustomBehaviour(__instance);
+        LethalMon.Logger.LogInfo("Following");
+        if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
+        {
+            Enemy.agent.enabled = false;
+            Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
+            Enemy.agent.enabled = true;
+        }
+        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
+                out Vector3 potentialPosition1,
+                out Vector3 potentialPosition2))
+        {
+            var position = Enemy.transform.position;
+            float distance1 = Vector3.Distance(position, potentialPosition1);
+            float distance2 = Vector3.Distance(position, potentialPosition2);
 
-    [HarmonyPrefix, HarmonyPatch(typeof(EnemyAI), "LateUpdate")]
-    public static bool LateUpdatePrefix(EnemyAI __instance) => IsUsingCustomBehaviour(__instance);
+            if (distance1 > 4f && distance2 > 4f)
+            {
+                LethalMon.Logger.LogInfo("Following to destination");
+                previousPosition = Enemy.transform.position;
+                Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
 
-	[HarmonyPrefix, HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.DoAIInterval))]
-	public static bool DoAIIntervalPrefix(EnemyAI __instance)
-	{
-		if(IsUsingCustomBehaviour(__instance))
-		{
-			if (__instance.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
-                tamedBehaviour.DoAIInterval();
 
-            return false;
-		}
-		return true;
-	}*/
+                if (Enemy.moveTowardsDestination)
+                {
+                    Enemy.agent.SetDestination(Enemy.destination);
+                }
+                Enemy.SyncPositionToClients();
+            }
+        }
 
-    internal virtual void OnTamedFollowing() { }
-    internal virtual void OnTamedDefending() { }
+        // todo else turn in the direction of the owner
+    }
+    internal virtual void OnTamedDefending() {
+        if(targetEnemy == null && targetEnemy == null) // lost target
+            SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
+    }
     internal virtual void OnEscapedFromBall() { }
     #endregion
 
@@ -173,37 +186,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public void FollowOwner()
-    {
-        if (ownerPlayer == null) return;
-
-	    if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
-	    {
-            Enemy.agent.enabled = false;
-            Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
-            Enemy.agent.enabled = true;
-	    }
-	    else if (FindRaySphereIntersections(Enemy.transform.position,  (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
-		        out Vector3 potentialPosition1,
-		        out Vector3 potentialPosition2))
-	    {
-		    var position = Enemy.transform.position;
-		    float distance1 = Vector3.Distance(position, potentialPosition1);
-		    float distance2 = Vector3.Distance(position, potentialPosition2);
-
-		    if (distance1 > 4f && distance2 > 4f)
-		    {
-			    previousPosition = base.transform.position;
-			    Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);   
-		    }
-	    }
-	    
-	    // todo else turn in the direction of the owner
-    }
-
     public virtual void DoAIInterval()
     {
-		if(!IsUsingCustomBehaviour(Enemy)) return; // TODO: rework using switch-case
+		if(Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex) return;
 
 	    if (Enemy.openDoorSpeedMultiplier > 0f)
 	    {
@@ -231,7 +216,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 		var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
 		if (customBehaviour <= 0) return;
 
-        switch((CustomBehaviour) customBehaviour)
+        LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
+
+        OnUpdate();
+
+        switch ((CustomBehaviour) customBehaviour)
         {
             case CustomBehaviour.TamedFollowing:
                 OnTamedFollowing();
@@ -244,113 +233,35 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 break;
 			default: break;
         }
-		// todo: return here
+    }
 
-        if (Enemy.stunnedIndefinitely <= 0)
-		{
-			if (Enemy.stunNormalizedTimer >= 0f)
-			{
-                Enemy.stunNormalizedTimer -= Time.deltaTime / Enemy.enemyType.stunTimeMultiplier;
-			}
-			else
-			{
-                Enemy.stunnedByPlayer = null;
-				if (Enemy.postStunInvincibilityTimer >= 0f)
-				{
-                    Enemy.postStunInvincibilityTimer -= Time.deltaTime * 5f;
-				}
-			}
-		}
-		if (!Enemy.ventAnimationFinished)
-		{
-			Enemy.ventAnimationFinished = true;
-			if (Enemy.creatureAnimator != null)
-			{
-				Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
-			}
-		}
-		if (!base.IsOwner)
-		{
-            Enemy.SetClientCalculatingAI(enable: false);
-			if (!Enemy.inSpecialAnimation)
-			{
-				base.transform.position = Vector3.SmoothDamp(base.transform.position, Enemy.serverPosition, ref Enemy.tempVelocity, Enemy.syncMovementSpeed);
-				base.transform.eulerAngles = new Vector3(base.transform.eulerAngles.x, Mathf.LerpAngle(base.transform.eulerAngles.y, Enemy.targetYRotation, 15f * Time.deltaTime), base.transform.eulerAngles.z);
-			}
-            Enemy.timeSinceSpawn += Time.deltaTime;
-			return;
-		}
-		if (Enemy.isEnemyDead)
-		{
-            Enemy.SetClientCalculatingAI(enable: false);
-			return;
-		}
-		if (!Enemy.inSpecialAnimation)
-		{
-			Enemy.SetClientCalculatingAI(enable: true);
-		}
-		if (Enemy.movingTowardsTargetPlayer && Enemy.targetPlayer != null)
-		{
-			if (Enemy.setDestinationToPlayerInterval <= 0f)
-			{
-                Enemy.setDestinationToPlayerInterval = 0.25f;
-                Enemy.destination = RoundManager.Instance.GetNavMeshPosition(Enemy.targetPlayer.transform.position, RoundManager.Instance.navHit, 2.7f);
-				Debug.Log("Set destination to target player A");
-			}
-			else
-			{
-                Enemy.destination = new Vector3(Enemy.targetPlayer.transform.position.x, Enemy.destination.y, Enemy.targetPlayer.transform.position.z);
-				Debug.Log("Set destination to target player B");
-                Enemy.setDestinationToPlayerInterval -= Time.deltaTime;
-			}
-			if (Enemy.addPlayerVelocityToDestination > 0f)
-			{
-				if (Enemy.targetPlayer == GameNetworkManager.Instance.localPlayerController)
-				{
-                    Enemy.destination += Vector3.Normalize(Enemy.targetPlayer.thisController.velocity * 100f) * Enemy.addPlayerVelocityToDestination;
-				}
-				else if (Enemy.targetPlayer.timeSincePlayerMoving < 0.25f)
-				{
-                    Enemy.destination += Vector3.Normalize((Enemy.targetPlayer.serverPlayerPosition - Enemy.targetPlayer.oldPlayerPosition) * 100f) * Enemy.addPlayerVelocityToDestination;
-				}
-			}
-		}
-		if (Enemy.inSpecialAnimation)
-		{
-			return;
-		}
-		if (Enemy.updateDestinationInterval >= 0f)
-		{
+    public virtual void OnUpdate() // override this if you don't want the original Update() to be called
+    {
+        //Enemy.Update();
+        if (Enemy.updateDestinationInterval >= 0f)
+        {
             Enemy.updateDestinationInterval -= Time.deltaTime;
-		}
-		else
-		{
-			DoAIInterval();
-			Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
-		}
-		if (Mathf.Abs(Enemy.previousYRotation - base.transform.eulerAngles.y) > 6f)
-		{
-			Enemy.previousYRotation = base.transform.eulerAngles.y;
-            Enemy.targetYRotation = Enemy.previousYRotation;
-			if (base.IsServer)
-			{
-                Enemy.UpdateEnemyRotationClientRpc((short)Enemy.previousYRotation);
-			}
-			else
-			{
-                Enemy.UpdateEnemyRotationServerRpc((short)Enemy.previousYRotation);
-			}
-		}
+        }
+        else
+        {
+            DoAIInterval();
+            Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
+        }
     }
 
     public virtual void Start()
     {
+        LastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
+        LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
+
         try
         {
             LethalMon.Logger.LogInfo("Set enemy variables for " + GetType().Name);
 
             LastDefaultBehaviourIndex = LastDefaultBehaviourIndices[Enemy.GetType()];
             Enemy.agent = base.gameObject.GetComponentInChildren<NavMeshAgent>();
+
+            // todo: check if all these are needed
             Enemy.skinnedMeshRenderers = base.gameObject.GetComponentsInChildren<SkinnedMeshRenderer>();
             Enemy.meshRenderers = base.gameObject.GetComponentsInChildren<MeshRenderer>();
             Enemy.creatureAnimator = base.gameObject.GetComponentInChildren<Animator>();
@@ -377,7 +288,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         catch (Exception arg)
         {
             Debug.LogError($"Error when initializing enemy variables for {base.gameObject.name} : {arg}");
-			Destroy(this);
+            Destroy(this);
         }
     }
 
@@ -387,16 +298,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 	    switch (ballType)
 	    {
 		    case BallType.GREAT_BALL:
-			    ball = Object.Instantiate(LethalMon.greatBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+			    ball = Instantiate(LethalMon.greatBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 			    break;
 		    case BallType.ULTRA_BALL:
-			    ball = Object.Instantiate(LethalMon.ultraBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+			    ball = Instantiate(LethalMon.ultraBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 			    break;
 		    case BallType.MASTER_BALL:
-			    ball = Object.Instantiate(LethalMon.masterBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+			    ball = Instantiate(LethalMon.masterBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 			    break;
 		    default:
-			    ball = Object.Instantiate(LethalMon.pokeballSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+			    ball = Instantiate(LethalMon.pokeballSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 			    break;
 	    }
 
@@ -410,6 +321,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
 		Enemy.GetComponent<NetworkObject>().Despawn(true);
 
-	    return pokeballItem;
+        isOutsideOfBall = false;
+
+        return pokeballItem;
     }
 }

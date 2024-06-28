@@ -145,7 +145,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         
         Debug.Log("Follow owner");
         
-        this.FollowOwner();
+        this.OnTamedFollowing();
     }
 
     public override void Update()
