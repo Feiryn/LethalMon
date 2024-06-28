@@ -10,8 +10,6 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     internal RedLocustBees bees { get; private set; }
 
     public bool angry = false;
-    
-    public EnemyAI? targetEnemyAI = null;
 
     public override void Update()
     {
@@ -27,13 +25,14 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         bees = (Enemy as RedLocustBees)!;
 
         LethalMon.Logger.LogWarning("RedLocustBeesCustomAI.Start: " + (bees == null).ToString());
-        if(bees != null )
+        if(bees?.agent != null )
             bees.agent.speed = 10.3f;
     }
 
-    public override void DoAIInterval()
+    internal override void OnTamedDefending()
     {
-        base.DoAIInterval();
+        if (!angry)
+            ChangeAngryMode(true);
 
         if (bees.targetPlayer != null)
         {
@@ -49,7 +48,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
                 Debug.Log("Target player collided");
 
                 BeeDamagePacket(bees.targetPlayer.GetComponent<NetworkObject>());
-            
+
                 ChangeAngryMode(false);
                 bees.targetPlayer = null;
             }
@@ -60,56 +59,42 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
                 return;
             }
         }
-        else if (targetEnemyAI != null)
+        else if (targetEnemy != null)
         {
-            float distance = Vector3.Distance(targetEnemyAI.transform.position, bees.transform.position);
+            float distance = Vector3.Distance(targetEnemy.transform.position, bees.transform.position);
             Debug.Log("Distance to enemy: " + distance);
-            if (targetEnemyAI.isEnemyDead || distance > 25f)
+            if (targetEnemy.isEnemyDead || distance > 25f)
             {
                 Debug.Log("Stop targeting enemy");
-                targetEnemyAI = null;
+                targetEnemy = null;
             }
             else if (distance < 2.5f)
             {
                 Debug.Log("Target enemy collided");
-            
-                targetEnemyAI.SetEnemyStunned(true, 5f);
-            
+
+                targetEnemy.SetEnemyStunned(true, 5f);
+
                 ChangeAngryMode(false);
-                targetEnemyAI = null;
+                targetEnemy = null;
             }
             else
             {
                 Debug.Log("Follow enemy");
-                bees.SetDestinationToPosition(targetEnemyAI.transform.position);  
+                bees.SetDestinationToPosition(targetEnemy.transform.position);
                 return;
             }
         }
-        
-        Debug.Log("Follow owner");
-        FollowOwner();
-    }
-
-    public void AttackPlayer(PlayerControllerB player)
-    {
-        Debug.Log($"Bees of {ownerPlayer?.playerUsername} attack {player.playerUsername}");
-
-        ChangeAngryMode(true);
-        bees.targetPlayer = player;
-    }
-    
-    public void AttackEnemyAI(EnemyAI enemyAI)
-    {
-        Debug.Log($"Bees of {ownerPlayer?.playerUsername} attack {enemyAI.enemyType.name}");
-
-        ChangeAngryMode(true);
-        targetEnemyAI = enemyAI;
+        else
+            SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
     }
     
     private void BeesZapOnTimer()
     {
         if (!angry)
             return;
+
+        if (bees.beeZapRandom == null)
+            bees.beeZapRandom = new System.Random();
 
         if (bees.beesZapCurrentTimer > bees.beesZapTimer)
         {
@@ -127,6 +112,9 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         if (bees.beeParticles.GetBool("Alive"))
         {
+            if (bees.beeZapRandom == null)
+                bees.beeZapRandom = new System.Random();
+
             for (int i = 0; i < bees.lightningPoints.Length; i++)
             {
                 bees.lightningPoints[i].transform.position = RoundManager.Instance.GetRandomPositionInBoxPredictable(bees.beeParticlesTarget.transform.position, 4f, bees.beeZapRandom);
@@ -138,11 +126,24 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[Random.Range(0, bees.enemyType.audioClips.Length)], Random.Range(0.6f, 1f));
     }
 
-    public void ChangeAngryMode(bool angry)
+    public void ChangeAngryMode(bool angry, bool syncRpc = true)
     {
+        if(angry && targetEnemy == null && targetPlayer == null)
+        {
+            LethalMon.Logger.LogWarning("Attempting to make bees angry, but no target was defined.");
+            return;
+        }
+
         this.angry = angry;
+        if(!angry)
+        {
+            targetEnemy = null;
+            targetPlayer = null;
+        }
+
         ResetBeeZapTimer();
-        AngryPacket(bees.GetComponent<NetworkObject>(), angry);
+        if(syncRpc)
+            AngryPacket(bees.GetComponent<NetworkObject>(), angry);
     }
     
     private void ResetBeeZapTimer()

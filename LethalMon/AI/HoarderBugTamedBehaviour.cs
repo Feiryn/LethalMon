@@ -84,7 +84,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
                     }
 
                     Debug.Log("HoarderBugAI follows the owner");
-                    FollowOwner();
+                    OnTamedFollowing();
                 }
             }
         }

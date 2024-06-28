@@ -325,16 +325,12 @@ public abstract class PokeballItem : ThrowableItem
             }
             else
             {
-                LethalMon.Logger.LogInfo("1");
                 EnemyType typeToSpawn = this.enemyType!;
 
-                LethalMon.Logger.LogInfo("2");
-                GameObject gameObject = Object.Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
+                GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
                     Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
-                LethalMon.Logger.LogInfo("3");
                 EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
-                LethalMon.Logger.LogInfo("4");
                 if (gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
                 {
                     LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
@@ -344,6 +340,7 @@ public abstract class PokeballItem : ThrowableItem
                     tamedBehaviour.ballValue = this.scrapValue;
                     tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
                     tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+                    tamedBehaviour.isOutsideOfBall = true;
                     tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
 
                     LethalMon.Logger.LogInfo("5");

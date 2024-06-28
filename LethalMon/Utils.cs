@@ -13,7 +13,7 @@ public class Utils
 {
     public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
-        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownClientId == player.playerClientId && tamedBehaviour.Enemy.IsSpawned);
+        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownClientId == player.playerClientId && tamedBehaviour.isOutsideOfBall);
     }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)

@@ -172,13 +172,14 @@ public class PlayerControllerBPatch
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (tamedBehaviour != null && tamedBehaviour.GetType() == typeof(RedLocustBeesTamedBehaviour))
+        if (tamedBehaviour != null)
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
 
             if (enemyAI != null)
             {
-                ((RedLocustBeesTamedBehaviour)tamedBehaviour).AttackEnemyAI(enemyAI);
+                tamedBehaviour.targetEnemy = enemyAI;
+                tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedDefending);
             }
         }
     }
@@ -194,7 +195,7 @@ public class PlayerControllerBPatch
 
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (tamedBehaviour != null && tamedBehaviour.GetType() == typeof(RedLocustBeesTamedBehaviour) && (__instance.IsServer || __instance.IsHost))
+        if (tamedBehaviour != null && (__instance.IsServer || __instance.IsHost))
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
             Debug.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
@@ -202,7 +203,8 @@ public class PlayerControllerBPatch
             if (__instance != playerWhoHitControllerB &&
                 Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)
             {
-                ((RedLocustBeesTamedBehaviour)tamedBehaviour).AttackPlayer(playerWhoHitControllerB);
+                tamedBehaviour.targetPlayer = playerWhoHitControllerB;
+                tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedDefending);
             }
         }
     }
