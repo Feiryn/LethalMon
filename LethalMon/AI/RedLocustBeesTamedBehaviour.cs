@@ -11,7 +11,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
     public bool angry = false;
 
-    public override void Update()
+    public override void OnUpdate()
     {
         base.Update();
 
