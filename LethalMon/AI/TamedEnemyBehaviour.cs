@@ -11,27 +11,27 @@ namespace LethalMon.AI;
 
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
-	internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
+    internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
     {
-        { typeof(FlowermanAI),		typeof(FlowermanTamedBehaviour) },
-        { typeof(RedLocustBees),	typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),		typeof(HoarderBugTamedBehaviour) }
+        { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
+        { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
+        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) }
     };
 
-	private EnemyAI? _enemy = null;
-	public EnemyAI Enemy
-	{
-		get
-		{
-			if (_enemy == null && !gameObject.TryGetComponent(out _enemy))
-			{
-				LethalMon.Logger.LogError("Unable to get EnemyAI for TamedEnemyBehaviour.");
-				_enemy = gameObject.AddComponent<EnemyAI>();
-			}
+    private EnemyAI? _enemy = null;
+    public EnemyAI Enemy
+    {
+        get
+        {
+            if (_enemy == null && !gameObject.TryGetComponent(out _enemy))
+            {
+                LethalMon.Logger.LogError("Unable to get EnemyAI for TamedEnemyBehaviour.");
+                _enemy = gameObject.AddComponent<EnemyAI>();
+            }
 
-			return _enemy!;
-		}
-	}
+            return _enemy!;
+        }
+    }
 
     public PlayerControllerB? ownerPlayer = null;
 
@@ -42,7 +42,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public ulong ownClientId;
 
     public BallType ballType;
-    
+
     protected Vector3 previousPosition;
 
     public int ballValue;
@@ -51,16 +51,28 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
-	private int LastDefaultBehaviourIndex = 0;
+    private int LastDefaultBehaviourIndex = 0;
 
     public bool isOutsideOfBall = false;
 
-	#region CustomBehaviour
-	public enum CustomBehaviour
-	{
-		TamedFollowing = 1,
-		TamedDefending = 2,
-		EscapedFromBall = 3
+    #region CustomBehaviour
+    public enum CustomBehaviour
+    {
+        DefaultBehaviour = 0,
+        TamedFollowing = 1,
+        TamedDefending = 2,
+        EscapedFromBall = 3
+    }
+
+    public CustomBehaviour currentCustomBehaviour
+    {
+        get
+        {
+            if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex)
+                return CustomBehaviour.DefaultBehaviour;
+            else
+                return (CustomBehaviour)(Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex);
+        }
     }
 
     public void SwitchToCustomBehaviour(CustomBehaviour behaviour)
@@ -80,11 +92,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
     public static void AddCustomBehaviours()
     {
-		int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
-		foreach(var enemyType in Utils.EnemyTypes)
-		{
-			enemyCount++;
-			if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI)) continue;
+        int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
+        foreach (var enemyType in Utils.EnemyTypes)
+        {
+            enemyCount++;
+            if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI)) continue;
 
             LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
 
@@ -105,9 +117,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 return;
             }
 
-			addedBehaviours++;
-			if (aiType == typeof(TamedEnemyBehaviour))
-				addedDefaultCustomBehaviours++;
+            addedBehaviours++;
+            if (aiType == typeof(TamedEnemyBehaviour))
+                addedDefaultCustomBehaviours++;
             else
                 LethalMon.Logger.LogInfo($"Added {aiType.Name} for {enemyType.enemyName}");
         }
@@ -115,8 +127,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
     }
 
-    internal virtual void OnTamedFollowing()
-	{
+    public void FollowOwner()
+    {
         if (ownerPlayer == null) return;
 
         LethalMon.Logger.LogInfo("Following");
@@ -151,76 +163,34 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         // todo else turn in the direction of the owner
     }
+
+    internal virtual void OnTamedFollowing()
+    {
+        FollowOwner();
+    }
+
     internal virtual void OnTamedDefending() {
-        if(targetEnemy == null && targetEnemy == null) // lost target
+        if (targetEnemy == null && targetEnemy == null) // lost target
             SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
     }
+
     internal virtual void OnEscapedFromBall() { }
+
+    internal virtual void OnLateTamedFollowing() { }
+    internal virtual void OnLateTamedDefending() { }
+    internal virtual void OnLateEscapedFromBall() { }
     #endregion
 
-    private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
+    public void Update()
     {
-        intersection1 = Vector3.zero;
-        intersection2 = Vector3.zero;
-
-        Vector3 oc = rayOrigin - sphereCenter;
-        float a = Vector3.Dot(rayDirection, rayDirection);
-        float b = 2.0f * Vector3.Dot(oc, rayDirection);
-        float c = Vector3.Dot(oc, oc) - sphereRadius * sphereRadius;
-        float discriminant = b * b - 4 * a * c;
-
-        if (discriminant < 0)
-        {
-            return false; // No intersection
-        }
-        else
-        {
-            float sqrtDiscriminant = Mathf.Sqrt(discriminant);
-            float t1 = (-b - sqrtDiscriminant) / (2.0f * a);
-            float t2 = (-b + sqrtDiscriminant) / (2.0f * a);
-
-            intersection1 = rayOrigin + t1 * rayDirection;
-            intersection2 = rayOrigin + t2 * rayDirection;
-
-            return true;
-        }
-    }
-
-    public virtual void DoAIInterval()
-    {
-		if(Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex) return;
-
-	    if (Enemy.openDoorSpeedMultiplier > 0f)
-	    {
-		    Collider[] colliders = Physics.OverlapSphere(Enemy.transform.position, 0.5f);
-		    foreach (Collider collider in colliders)
-		    {
-			    DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
-			    if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
-			    {
-				    Debug.Log("Tamed enemy opens door");
-				    if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
-				    {
-					    trigger.TriggerAnimationNonPlayer(false, true, false);
-				    }
-				    doorLock.OpenDoorAsEnemyServerRpc();
-			    }
-		    }
-	    }
-	    
-	    Enemy.DoAIInterval();
-    }
-
-    public virtual void Update()
-    {
-		var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
-		if (customBehaviour <= 0) return;
+        var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
+        if (customBehaviour <= 0) return;
 
         LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
 
         OnUpdate();
 
-        switch ((CustomBehaviour) customBehaviour)
+        switch ((CustomBehaviour)customBehaviour)
         {
             case CustomBehaviour.TamedFollowing:
                 OnTamedFollowing();
@@ -231,10 +201,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             case CustomBehaviour.EscapedFromBall:
                 OnEscapedFromBall();
                 break;
-			default: break;
+            default: break;
         }
     }
-
     public virtual void OnUpdate() // override this if you don't want the original Update() to be called
     {
         //Enemy.Update();
@@ -248,6 +217,32 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
         }
     }
+
+    public void LateUpdate()
+    {
+        var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
+        if (customBehaviour <= 0) return;
+
+        LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
+
+        OnLateUpdate();
+
+        switch ((CustomBehaviour)customBehaviour)
+        {
+            case CustomBehaviour.TamedFollowing:
+                OnLateTamedFollowing();
+                break;
+            case CustomBehaviour.TamedDefending:
+                OnLateTamedDefending();
+                break;
+            case CustomBehaviour.EscapedFromBall:
+                OnLateEscapedFromBall();
+                break;
+            default: break;
+        }
+    }
+
+    public virtual void OnLateUpdate() { } // override this if you don't want the original LateUpdate() to be called
 
     public virtual void Start()
     {
@@ -289,6 +284,59 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             Debug.LogError($"Error when initializing enemy variables for {base.gameObject.name} : {arg}");
             Destroy(this);
+        }
+    }
+
+    public virtual void DoAIInterval()
+    {
+        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex) return;
+
+        if (Enemy.openDoorSpeedMultiplier > 0f)
+        {
+            Collider[] colliders = Physics.OverlapSphere(Enemy.transform.position, 0.5f);
+            foreach (Collider collider in colliders)
+            {
+                DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
+                if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
+                {
+                    Debug.Log("Tamed enemy opens door");
+                    if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
+                    {
+                        trigger.TriggerAnimationNonPlayer(false, true, false);
+                    }
+                    doorLock.OpenDoorAsEnemyServerRpc();
+                }
+            }
+        }
+
+        Enemy.DoAIInterval();
+    }
+
+    private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
+    {
+        intersection1 = Vector3.zero;
+        intersection2 = Vector3.zero;
+
+        Vector3 oc = rayOrigin - sphereCenter;
+        float a = Vector3.Dot(rayDirection, rayDirection);
+        float b = 2.0f * Vector3.Dot(oc, rayDirection);
+        float c = Vector3.Dot(oc, oc) - sphereRadius * sphereRadius;
+        float discriminant = b * b - 4 * a * c;
+
+        if (discriminant < 0)
+        {
+            return false; // No intersection
+        }
+        else
+        {
+            float sqrtDiscriminant = Mathf.Sqrt(discriminant);
+            float t1 = (-b - sqrtDiscriminant) / (2.0f * a);
+            float t2 = (-b + sqrtDiscriminant) / (2.0f * a);
+
+            intersection1 = rayOrigin + t1 * rayDirection;
+            intersection2 = rayOrigin + t2 * rayDirection;
+
+            return true;
         }
     }
 

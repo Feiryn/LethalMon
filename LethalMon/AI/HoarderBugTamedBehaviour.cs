@@ -24,92 +24,88 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         hoarderBug.creatureAnimator.Play("Base Layer.Walking");
     }
 
+    internal override void OnTamedFollowing()
+    {
+        base.OnTamedFollowing();
+    }
+
+    internal override void OnTamedDefending()
+    {
+        base.OnTamedDefending();
+    }
+
     public override void DoAIInterval()
     {
         base.DoAIInterval();
 
         // Grab an item if one is close
-        if (!GrabTargetItemIfClose())
+        if (GrabTargetItemIfClose())
         {
-            // We currently have an item to give to the owner
-            if (hoarderBug.heldItem != null && ownerPlayer != null)
+            Debug.Log("HoarderBugAI grabbed close item");
+            return;
+        }
+
+        // We currently have an item to give to the owner
+        if (hoarderBug.heldItem != null && ownerPlayer != null)
+        {
+            if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
             {
-                if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
-                {
-                    Debug.Log("HoarderBugAI drops held item to the owner");
-                    DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
-                }
-                else
-                {
-                    Debug.Log("HoarderBugAI move held item to the owner");
-                    hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);   
-                }
+                Debug.Log("HoarderBugAI drops held item to the owner");
+                DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
             }
             else
             {
-                if (hoarderBug?.targetItem != null)
-                {
-                    Debug.Log("HoarderBugAI found an object and move towards it");
-                    SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
-                }
-                else if(ownerPlayer != null)
-                {
-                    // Do not search too often
-                    currentTimer++;
-                    if (currentTimer >= HoarderBugTamedBehaviour.searchTimer)
-                    {
-                        Debug.Log("HoarderBugAI searches for items");
-                        currentTimer = 0;
-                        Collider[] colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
-                        Debug.Log("HoarderBugAI found " + colliders.Length + " colliders");
-                        
-                        foreach (Collider collider in colliders)
-                        {
-                            GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
-                            if (grabbable != null)
-                            {
-                                Debug.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
-                                if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) > 8f)
-                                {
-                                    // Check LOS
-                                    if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-                                    {
-                                        Debug.Log("HoarderBugAI found item: " + grabbable.name);
-                                        hoarderBug.targetItem = grabbable;
-                                        return;   
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Debug.Log("HoarderBugAI follows the owner");
-                    OnTamedFollowing();
-                }
+                Debug.Log("HoarderBugAI move held item to the owner");
+                hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);
             }
         }
         else
         {
-            Debug.Log("HoarderBugAI grabbed close item");
+            if (hoarderBug?.targetItem != null)
+            {
+                Debug.Log("HoarderBugAI found an object and move towards it");
+                hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
+            }
+            else if (ownerPlayer != null)
+            {
+                // Do not search too often
+                currentTimer++;
+                if (currentTimer >= HoarderBugTamedBehaviour.searchTimer)
+                {
+                    Debug.Log("HoarderBugAI searches for items");
+                    currentTimer = 0;
+                    Collider[] colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
+                    Debug.Log("HoarderBugAI found " + colliders.Length + " colliders");
+
+                    foreach (Collider collider in colliders)
+                    {
+                        GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
+                        if (grabbable != null)
+                        {
+                            Debug.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
+                            if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) > 8f)
+                            {
+                                // Check LOS
+                                if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                                {
+                                    Debug.Log("HoarderBugAI found item: " + grabbable.name);
+                                    hoarderBug.targetItem = grabbable;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
-    public override void Update()
+    public override void OnUpdate()
     {
-        base.Update();
+        base.OnUpdate();
 
-        CalculateAnimationDirection();
-    }
-    
-    private void CalculateAnimationDirection(float maxSpeed = 1f)
-    {
-        hoarderBug.agentLocalVelocity = hoarderBug.animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(hoarderBug.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
-        hoarderBug.velX = Mathf.Lerp(hoarderBug.velX, hoarderBug.agentLocalVelocity.x, 10f * Time.deltaTime);
-        hoarderBug.creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(hoarderBug.velX, 0f - maxSpeed, maxSpeed));
-        hoarderBug.velZ = Mathf.Lerp(hoarderBug.velZ, 0f - hoarderBug.agentLocalVelocity.y, 10f * Time.deltaTime);
-        hoarderBug.creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(hoarderBug.velZ, 0f - maxSpeed, maxSpeed));
-        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
-        previousPosition = hoarderBug.transform.position;
+        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - hoarderBug.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
+        hoarderBug.CalculateAnimationDirection();
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)
@@ -123,7 +119,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         return base.RetrieveInBall(position);
     }
     
-    private void SetGoTowardsTargetObject(GameObject foundObject)
+    /*private void SetGoTowardsTargetObject(GameObject foundObject)
     {
         if (hoarderBug.SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
         {
@@ -135,7 +131,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             hoarderBug.targetItem = null;
             Debug.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
         }
-    }
+    }*/
     
     private bool GrabTargetItemIfClose()
     {
@@ -169,6 +165,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         component.hasHitGround = false;
         component.GrabItemFromEnemy(Enemy);
         component.EnablePhysics(enable: false);
+
+        // todo: maybe original one is re-useable till here
         
         hoarderBug.creatureAnimator.SetBool("Chase", true);
         hoarderBug.creatureSFX.clip = hoarderBug.bugFlySFX;
@@ -198,7 +196,9 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         itemGrabbableObject.floorYRot = -1;
         itemGrabbableObject.DiscardItemFromEnemy();
         hoarderBug.heldItem = null;
-        
+
+        // todo: maybe original one is re-useable till here
+
         hoarderBug.SetDestinationToPosition(hoarderBug.transform.position);
         hoarderBug.creatureAnimator.SetBool("Chase", false);
         hoarderBug.creatureSFX.Stop();
