@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Items;
@@ -51,33 +52,32 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
-    private int LastDefaultBehaviourIndex = 0;
+    internal int LastDefaultBehaviourIndex = 0;
 
     public bool isOutsideOfBall = false;
 
     #region CustomBehaviour
-    public enum CustomBehaviour
+    public enum TamingBehaviour
     {
-        DefaultBehaviour = 0,
         TamedFollowing = 1,
         TamedDefending = 2,
         EscapedFromBall = 3
     }
+    private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length - 1;
 
-    public CustomBehaviour currentCustomBehaviour
+    internal Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>();
+
+    internal virtual List<Tuple<string, Action>>? CustomBehaviourHandler => null;
+
+    public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
-        get
-        {
-            if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex)
-                return CustomBehaviour.DefaultBehaviour;
-            else
-                return (CustomBehaviour)(Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex);
-        }
+        Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
+        Enemy.enabled = false;
     }
 
-    public void SwitchToCustomBehaviour(CustomBehaviour behaviour)
+    public void SwitchToCustomBehaviour(int behaviour)
     {
-        Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndices[Enemy.GetType()] + (int)behaviour);
+        Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
     }
 
@@ -98,16 +98,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             enemyCount++;
             if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI)) continue;
 
-            LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
-
-            // Behaviour states
-            enemyAI.enemyBehaviourStates = new List<EnemyBehaviourState>(enemyAI.enemyBehaviourStates)
-            {
-                new EnemyBehaviourState() { name = "TamedFollowing" },
-                new EnemyBehaviourState() { name = "TamedDefending" },
-                new EnemyBehaviourState() { name = "EscapedFromBall" }
-            }.ToArray();
-
             // Behaviour controller
             var aiType = BehaviourClassMapping.GetValueOrDefault(enemyAI.GetType(), typeof(TamedEnemyBehaviour));
             var tamedBehaviour = enemyType.enemyPrefab.gameObject.AddComponent(aiType) as TamedEnemyBehaviour;
@@ -122,6 +112,27 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 addedDefaultCustomBehaviours++;
             else
                 LethalMon.Logger.LogInfo($"Added {aiType.Name} for {enemyType.enemyName}");
+
+            // Behaviour states
+            LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
+
+            var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
+
+            // Add tamed behaviours
+            foreach(var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
+                behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
+
+            // Add custom behaviours
+            if (tamedBehaviour.CustomBehaviourHandler != null)
+            {
+                foreach (var customBehaviour in tamedBehaviour.CustomBehaviourHandler)
+                {
+                    behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
+                    tamedBehaviour.CustomBehaviours.Add(behaviourStateList.Count - 1, customBehaviour.Item2);
+                }
+            }
+
+            enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
         }
 
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
@@ -131,7 +142,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (ownerPlayer == null) return;
 
-        LethalMon.Logger.LogInfo("Following");
+        LethalMon.Logger.LogInfo("Follow owner");
         if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
         {
             Enemy.agent.enabled = false;
@@ -171,14 +182,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnTamedDefending() {
         if (targetEnemy == null && targetEnemy == null) // lost target
-            SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     internal virtual void OnEscapedFromBall() { }
-
-    internal virtual void OnLateTamedFollowing() { }
-    internal virtual void OnLateTamedDefending() { }
-    internal virtual void OnLateEscapedFromBall() { }
     #endregion
 
     public void Update()
@@ -187,18 +194,27 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (customBehaviour <= 0) return;
 
         LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
-
         OnUpdate();
 
-        switch ((CustomBehaviour)customBehaviour)
+        if (customBehaviour > tamedBehaviourCount)
         {
-            case CustomBehaviour.TamedFollowing:
+            customBehaviour -= tamedBehaviourCount;
+            if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
+                CustomBehaviours[customBehaviour]();
+            else
+                LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
+            return;
+        }
+
+        switch ((TamingBehaviour)customBehaviour)
+        {
+            case TamingBehaviour.TamedFollowing:
                 OnTamedFollowing();
                 break;
-            case CustomBehaviour.TamedDefending:
+            case TamingBehaviour.TamedDefending:
                 OnTamedDefending();
                 break;
-            case CustomBehaviour.EscapedFromBall:
+            case TamingBehaviour.EscapedFromBall:
                 OnEscapedFromBall();
                 break;
             default: break;
@@ -217,32 +233,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
         }
     }
-
-    public void LateUpdate()
-    {
-        var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
-        if (customBehaviour <= 0) return;
-
-        LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
-
-        OnLateUpdate();
-
-        switch ((CustomBehaviour)customBehaviour)
-        {
-            case CustomBehaviour.TamedFollowing:
-                OnLateTamedFollowing();
-                break;
-            case CustomBehaviour.TamedDefending:
-                OnLateTamedDefending();
-                break;
-            case CustomBehaviour.EscapedFromBall:
-                OnLateEscapedFromBall();
-                break;
-            default: break;
-        }
-    }
-
-    public virtual void OnLateUpdate() { } // override this if you don't want the original LateUpdate() to be called
 
     public virtual void Start()
     {

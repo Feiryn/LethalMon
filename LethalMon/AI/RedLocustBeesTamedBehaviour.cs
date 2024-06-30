@@ -85,7 +85,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             }
         }
         else
-            SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
     
     private void BeesZapOnTimer()
@@ -122,8 +122,8 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             bees.lightningComponent.Trigger(0.1f);
         }
 
-        bees.beeZapAudio.pitch = Random.Range(0.8f, 1.1f);
-        bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[Random.Range(0, bees.enemyType.audioClips.Length)], Random.Range(0.6f, 1f));
+        bees.beeZapAudio.pitch = UnityEngine.Random.Range(0.8f, 1.1f);
+        bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[UnityEngine.Random.Range(0, bees.enemyType.audioClips.Length)], UnityEngine.Random.Range(0.6f, 1f));
     }
 
     public void ChangeAngryMode(bool angry, bool syncRpc = true)

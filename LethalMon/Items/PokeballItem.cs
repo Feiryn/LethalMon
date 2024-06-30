@@ -237,7 +237,7 @@ public abstract class PokeballItem : ThrowableItem
             {
                 if (networkObject.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
                 {
-                    tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
+                    tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
                     tamedBehaviour.ownClientId = ownerClientId;
                 }
             }
@@ -341,7 +341,7 @@ public abstract class PokeballItem : ThrowableItem
                     tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
                     tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
                     tamedBehaviour.isOutsideOfBall = true;
-                    tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedFollowing);
+                    tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
 
                     LethalMon.Logger.LogInfo("5");
                     gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
