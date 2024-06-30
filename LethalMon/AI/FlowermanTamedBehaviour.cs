@@ -166,7 +166,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     public void DefendOwner()
     {
         StandUp();
-        SwitchToCustomBehaviour(CustomBehaviour.TamedDefending);
+        SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
     }
 
     public void StandUp()
@@ -180,7 +180,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     public void CalmDownAndFollow()
     {
         CalmDown();
-        SwitchToCustomBehaviour(CustomBehaviour.TamedFollowing);
+        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     public void CalmDown()
@@ -244,20 +244,21 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         return base.RetrieveInBall(position);
     }
 
-    internal override void OnLateTamedDefending()
+    internal void LateUpdate()
     {
-        base.OnLateTamedDefending();
+        if (Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex == (int)TamingBehaviour.TamedDefending)
+        {
+            if (this.grabbedEnemyAi == null) return;
 
-        if (this.grabbedEnemyAi == null) return;
+            if (arm1L != null) arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
+            if (arm2L != null) arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
+            if (arm3L != null) arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
+            if (hand1L != null) hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
 
-        if (arm1L != null)  arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
-        if (arm2L != null)  arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
-        if (arm3L != null)  arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
-        if (hand1L != null) hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
-
-        if (arm1R != null)  arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
-        if (arm2R != null)  arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
-        if (arm3R != null)  arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
-        if (hand1R != null) hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
+            if (arm1R != null) arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
+            if (arm2R != null) arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
+            if (arm3R != null) arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
+            if (hand1R != null) hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
+        }
     }
 }

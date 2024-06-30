@@ -1,5 +1,7 @@
 using HarmonyLib;
 using LethalMon.Items;
+using System.Collections.Generic;
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -12,6 +14,22 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     public int currentTimer = 0;
 
     public const int searchTimer = 10;
+
+    internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
+    {
+        { new Tuple<string, Action>("GettingItem", OnGettingItem) },
+        { new Tuple<string, Action>("BringBackItem", OnBringBackItem) }
+    };
+
+    public void OnGettingItem()
+    {
+
+    }
+
+    public void OnBringBackItem()
+    {
+
+    }
 
     public override void Start()
     {

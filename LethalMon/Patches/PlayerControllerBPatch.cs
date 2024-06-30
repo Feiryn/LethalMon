@@ -179,7 +179,7 @@ public class PlayerControllerBPatch
             if (enemyAI != null)
             {
                 tamedBehaviour.targetEnemy = enemyAI;
-                tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedDefending);
+                tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);
             }
         }
     }
@@ -204,7 +204,7 @@ public class PlayerControllerBPatch
                 Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)
             {
                 tamedBehaviour.targetPlayer = playerWhoHitControllerB;
-                tamedBehaviour.SwitchToCustomBehaviour(TamedEnemyBehaviour.CustomBehaviour.TamedDefending);
+                tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);
             }
         }
     }
