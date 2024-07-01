@@ -354,24 +354,33 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public virtual PokeballItem RetrieveInBall(Vector3 position)
     {
-	    GameObject ball;
-	    switch (ballType)
-	    {
-		    case BallType.GREAT_BALL:
-			    ball = Instantiate(LethalMon.greatBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
-		    case BallType.ULTRA_BALL:
-			    ball = Instantiate(LethalMon.ultraBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
-		    case BallType.MASTER_BALL:
-			    ball = Instantiate(LethalMon.masterBallSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
-		    default:
-			    ball = Instantiate(LethalMon.pokeballSpawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-			    break;
-	    }
+        GameObject? spawnPrefab = null;
+        LethalMon.Log("balltype: " + ballType.ToString());
+        switch (this.ballType)
+        {
+            case BallType.GREAT_BALL:
+                spawnPrefab = Greatball.spawnPrefab;
+                break;
+            case BallType.ULTRA_BALL:
+                spawnPrefab = Ultraball.spawnPrefab;
+                break;
+            case BallType.MASTER_BALL:
+                spawnPrefab = Masterball.spawnPrefab;
+                break;
+            default:
+                spawnPrefab = Pokeball.spawnPrefab;
+                break;
+        }
 
-	    PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+        if (spawnPrefab == null)
+        {
+            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
+            return null;
+        }
+
+        var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+
+        PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
 	    pokeballItem.fallTime = 0f;
 	    pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(ballValue);
