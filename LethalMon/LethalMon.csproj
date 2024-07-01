@@ -53,15 +53,14 @@
     <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
     </ItemGroup>
-	
+
     <ItemGroup>
       <Reference Include="LethalLib">
         <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\LethalLib\plugins\LethalLib\LethalLib.dll</HintPath>
       </Reference>
       <Reference Include="InputUtils">
-        <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\LethalMon_SoftDependencies\InputUtils\LethalCompanyInputUtils.dll</HintPath>
+        <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\InputUtils\LethalCompanyInputUtils.dll</HintPath>
       </Reference>
-
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
