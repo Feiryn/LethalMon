@@ -45,7 +45,7 @@ public class PlayerControllerBPatch
                 rpcParams,
                 RpcDelivery.Reliable
             });
-        Debug.Log("Send pet retrieve server rpc send finished");
+        LethalMon.Log("Send pet retrieve server rpc send finished");
     }
     
     private static void __rpc_handler_346187524u(NetworkBehaviour target, FastBufferReader reader,
@@ -54,7 +54,7 @@ public class PlayerControllerBPatch
         NetworkManager networkManager = target.NetworkManager;
         if (networkManager != null && networkManager.IsListening)
         {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
+            LethalMon.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             
             PlayerControllerB player = (PlayerControllerB) target;
             TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(player);
@@ -65,7 +65,7 @@ public class PlayerControllerBPatch
             }
             else
             {
-                Debug.Log("No tamed enemy found for " + player + " but they sent a retrieve ball RPC");
+                LethalMon.Log("No tamed enemy found for " + player + " but they sent a retrieve ball RPC");
             }
         }
     }
@@ -87,7 +87,7 @@ public class PlayerControllerBPatch
         {
             if (Keyboard.current[Key.P].IsPressed())
             {
-                Debug.Log("P pressed");
+                LethalMon.Log("P pressed");
                 TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(__instance);
 
                 if (tamedEnemyBehaviour != null)
@@ -145,7 +145,7 @@ public class PlayerControllerBPatch
 
         if (tamedBehaviour != null)
         {
-            Debug.Log("Teleport tamed enemy to " + pos);
+            LethalMon.Log("Teleport tamed enemy to " + pos);
             tamedBehaviour.Enemy.agent.enabled = false;
             tamedBehaviour.Enemy.transform.position = pos;
             tamedBehaviour.Enemy.agent.enabled = true;
@@ -161,7 +161,7 @@ public class PlayerControllerBPatch
         
         if (tamedBehaviour != null)
         {
-            Debug.Log("Owner is dead, go back to the ball");
+            LethalMon.Log("Owner is dead, go back to the ball");
             tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
         }
     }
@@ -198,7 +198,7 @@ public class PlayerControllerBPatch
         if (tamedBehaviour != null && (__instance.IsServer || __instance.IsHost))
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
-            Debug.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
+            LethalMon.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");
 
             if (__instance != playerWhoHitControllerB &&
                 Vector3.Distance(__instance.transform.position, playerWhoHitControllerB.transform.position) < 5f)

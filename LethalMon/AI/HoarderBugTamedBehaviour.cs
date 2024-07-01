@@ -59,7 +59,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         // Grab an item if one is close
         if (GrabTargetItemIfClose())
         {
-            Debug.Log("HoarderBugAI grabbed close item");
+            LethalMon.Log("HoarderBugAI grabbed close item");
             return;
         }
 
@@ -68,12 +68,12 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         {
             if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
             {
-                Debug.Log("HoarderBugAI drops held item to the owner");
+                LethalMon.Log("HoarderBugAI drops held item to the owner");
                 DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
             }
             else
             {
-                Debug.Log("HoarderBugAI move held item to the owner");
+                LethalMon.Log("HoarderBugAI move held item to the owner");
                 hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);
             }
         }
@@ -81,7 +81,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         {
             if (hoarderBug?.targetItem != null)
             {
-                Debug.Log("HoarderBugAI found an object and move towards it");
+                LethalMon.Log("HoarderBugAI found an object and move towards it");
                 hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
             }
             else if (ownerPlayer != null)
@@ -90,23 +90,23 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
                 currentTimer++;
                 if (currentTimer >= HoarderBugTamedBehaviour.searchTimer)
                 {
-                    Debug.Log("HoarderBugAI searches for items");
+                    LethalMon.Log("HoarderBugAI searches for items");
                     currentTimer = 0;
                     Collider[] colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
-                    Debug.Log("HoarderBugAI found " + colliders.Length + " colliders");
+                    LethalMon.Log("HoarderBugAI found " + colliders.Length + " colliders");
 
                     foreach (Collider collider in colliders)
                     {
                         GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
                         if (grabbable != null)
                         {
-                            Debug.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
+                            LethalMon.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
                             if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) > 8f)
                             {
                                 // Check LOS
                                 if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                                 {
-                                    Debug.Log("HoarderBugAI found item: " + grabbable.name);
+                                    LethalMon.Log("HoarderBugAI found item: " + grabbable.name);
                                     hoarderBug.targetItem = grabbable;
                                     return;
                                 }
@@ -141,13 +141,13 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         if (hoarderBug.SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
         {
-            Debug.Log(base.gameObject.name + ": Setting target object and going towards it.");
+            LethalMon.Log(base.gameObject.name + ": Setting target object and going towards it.");
             hoarderBug.targetItem = foundObject.GetComponent<GrabbableObject>();
         }
         else
         {
             hoarderBug.targetItem = null;
-            Debug.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
+            LethalMon.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
         }
     }*/
     
@@ -173,7 +173,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
         if (hoarderBug.heldItem != null)
         {
-            Debug.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + hoarderBug.heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
+            LethalMon.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + hoarderBug.heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
             DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
         }
         hoarderBug.targetItem = null;
@@ -201,7 +201,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
         if (hoarderBug.heldItem == null)
         {
-            Debug.LogError("Hoarder bug: my held item is null when attempting to drop it!!");
+            LethalMon.Log("Hoarder bug: my held item is null when attempting to drop it!!", LethalMon.LogType.Error);
             return;
         }
         GrabbableObject itemGrabbableObject = hoarderBug.heldItem.itemGrabbableObject;
@@ -243,7 +243,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 	{
 		if (!objectRef.TryGet(out var networkObject))
         {
-            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)");
+            LethalMon.Log(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)", LethalMon.LogType.Error);
             return;
 		}
 
@@ -262,7 +262,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         // SwitchToBehaviourStateOnLocalClient(1);
         if (!objectRef.TryGet(out var networkObject))
         {
-            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)");
+            LethalMon.Log(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)", LethalMon.LogType.Error);
             return;
         }
 

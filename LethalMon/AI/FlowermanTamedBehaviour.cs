@@ -101,7 +101,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             {
                 targetEnemy = spawnedEnemy;
                 this.DefendOwner();
-                Debug.Log("Targeting " + spawnedEnemy.enemyType.name);
+                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
                 return;
             }
         }
@@ -114,20 +114,20 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             var distanceTowardsOwner = DistanceTowardsOwner;
             if (distanceTowardsOwner > MinimumDistanceTowardsOwner && (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner))
             {
-                Debug.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
+                LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
 
                 ReleaseEnemy();
 
                 this.CalmDownAndFollow();
             }
 
-            //Debug.Log("Enemy already grabbed and moving, skip AI interval");
+            //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
         }
         else if (targetEnemy != null)
         {
             if (targetEnemy.isEnemyDead)
             {
-                Debug.Log("Target is dead, stop targeting it");
+                LethalMon.Log("Target is dead, stop targeting it");
                 targetEnemy = null;
                 this.CalmDownAndFollow();
 
@@ -136,13 +136,13 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
             if (targetEnemy.meshRenderers.Any(meshRendererTarget => bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
             {
-                Debug.Log("Collided with target, grab it");
+                LethalMon.Log("Collided with target, grab it");
 
                 GrabEnemy(targetEnemy);
             }
             else
             {
-                Debug.Log("Moving to target");
+                LethalMon.Log("Moving to target");
 
                 bracken.SetDestinationToPosition(targetEnemy.transform.position);
             }
@@ -227,7 +227,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
         var farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
         bracken.SetDestinationToPosition(farthestPosition);
-        Debug.Log("Moving to " + farthestPosition);
+        LethalMon.Log("Moving to " + farthestPosition);
     }
 
     public void ReleaseEnemy()
@@ -245,7 +245,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         grabbedEnemyAi.agent.enabled = true;
         grabbedEnemyAi = null;
             
-        Debug.Log("Enemy release");
+        LethalMon.Log("Enemy release");
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)

@@ -23,7 +23,7 @@ public class RedLocustBeesPatch
             }
 
             __result = false;
-            Debug.Log("ANGRY BEES!!!!");
+            LethalMon.Log("ANGRY BEES!!!!");
             return false; // Skip base
         }
 

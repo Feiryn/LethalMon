@@ -37,15 +37,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         if (bees.targetPlayer != null)
         {
             float distance = Vector3.Distance(bees.targetPlayer.transform.position, bees.transform.position);
-            Debug.Log("Distance to player: " + distance);
+            LethalMon.Log("Distance to player: " + distance);
             if (bees.targetPlayer.isPlayerDead || !bees.targetPlayer.isPlayerControlled || distance > 25f)
             {
-                Debug.Log("Stop targeting player");
+                LethalMon.Log("Stop targeting player");
                 bees.targetPlayer = null;
             }
             else if (distance < 2.5f)
             {
-                Debug.Log("Target player collided");
+                LethalMon.Log("Target player collided");
 
                 BeeDamageServerRPC(bees.targetPlayer.GetComponent<NetworkObject>());
 
@@ -54,7 +54,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             }
             else
             {
-                Debug.Log("Follow player");
+                LethalMon.Log("Follow player");
                 bees.SetDestinationToPosition(bees.targetPlayer.transform.position);
                 return;
             }
@@ -62,15 +62,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         else if (targetEnemy != null)
         {
             float distance = Vector3.Distance(targetEnemy.transform.position, bees.transform.position);
-            Debug.Log("Distance to enemy: " + distance);
+            LethalMon.Log("Distance to enemy: " + distance);
             if (targetEnemy.isEnemyDead || distance > 25f)
             {
-                Debug.Log("Stop targeting enemy");
+                LethalMon.Log("Stop targeting enemy");
                 targetEnemy = null;
             }
             else if (distance < 2.5f)
             {
-                Debug.Log("Target enemy collided");
+                LethalMon.Log("Target enemy collided");
 
                 targetEnemy.SetEnemyStunned(true, 5f);
 
@@ -79,7 +79,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             }
             else
             {
-                Debug.Log("Follow enemy");
+                LethalMon.Log("Follow enemy");
                 bees.SetDestinationToPosition(targetEnemy.transform.position);
                 return;
             }
@@ -177,16 +177,16 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     [ClientRpc]
     public void BeeDamageClientRpc(NetworkObjectReference networkObjectReference)
     {
-        Debug.Log("BeeDamage client rpc received");
+        LethalMon.Log("BeeDamage client rpc received");
         if (!networkObjectReference.TryGet(out NetworkObject networkObject))
         {
-            Debug.LogError(bees.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)");
+            LethalMon.Log(bees.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)", LethalMon.LogType.Error);
             return;
         }
 
         if(!networkObject.TryGetComponent( out PlayerControllerB player))
         {
-            Debug.LogError(bees.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)");
+            LethalMon.Log(bees.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)", LethalMon.LogType.Error  );
             return;
         }
 

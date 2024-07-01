@@ -13,13 +13,13 @@ public class StartOfRoundPatch
     private static void OnShipHasLeftPreFix(StartOfRound __instance)
     {
         TamedEnemyBehaviour[] tamedBehaviours = GameObject.FindObjectsOfType<TamedEnemyBehaviour>();
-        Debug.Log($"End of game, processing {tamedBehaviours.Length} tamed enemies");
+        LethalMon.Log($"End of game, processing {tamedBehaviours.Length} tamed enemies");
         
         foreach (TamedEnemyBehaviour tamedBehaviour in tamedBehaviours)
         {
             if(tamedBehaviour.ownerPlayer == null) continue;
 
-            Debug.Log("Player is in hangar ship room: " + tamedBehaviour.ownerPlayer.isInHangarShipRoom);
+            LethalMon.Log("Player is in hangar ship room: " + tamedBehaviour.ownerPlayer.isInHangarShipRoom);
             if (tamedBehaviour.ownerPlayer.isInHangarShipRoom)
             {
                 PokeballItem pokeballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
@@ -33,7 +33,7 @@ public class StartOfRoundPatch
     [HarmonyPrefix]
     private static void OnPlayerDCPrefix(StartOfRound __instance, int playerObjectNumber, ulong clientId)
     {
-        Debug.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
+        LethalMon.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
 
         TamedEnemyBehaviour[] tamedBehaviours = GameObject.FindObjectsOfType<TamedEnemyBehaviour>();
 
@@ -41,7 +41,7 @@ public class StartOfRoundPatch
         {
             if (tamedBehaviour.ownClientId == clientId)
             {
-                Debug.Log($"Found {tamedBehaviour.Enemy.enemyType.name}, retrieving in ball");
+                LethalMon.Log($"Found {tamedBehaviour.Enemy.enemyType.name}, retrieving in ball");
 
                 tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
             }
