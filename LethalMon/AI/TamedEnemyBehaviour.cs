@@ -294,7 +294,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
         catch (Exception arg)
         {
-            Debug.LogError($"Error when initializing enemy variables for {base.gameObject.name} : {arg}");
+            LethalMon.Log($"Error when initializing enemy variables for {base.gameObject.name} : {arg}", LethalMon.LogType.Error);
             Destroy(this);
         }
     }
@@ -311,7 +311,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
                 if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
                 {
-                    Debug.Log("Tamed enemy opens door");
+                    LethalMon.Log("Tamed enemy opens door");
                     if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
                     {
                         trigger.TriggerAnimationNonPlayer(false, true, false);

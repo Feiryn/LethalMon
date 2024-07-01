@@ -18,10 +18,10 @@ namespace LethalMon.Throw
         [ClientRpc]
         public void ThrowClientRpc(NetworkObjectReference playerThrownByReference)
         {
-            Debug.Log("SendThrowRpc server rpc received");
+            LethalMon.Log("SendThrowRpc server rpc received");
             if (!playerThrownByReference.TryGet(out NetworkObject playerNetworkObject))
             {
-                Debug.LogError(this.gameObject.name + ": Failed to get player component (SendThrowRpc)");
+                LethalMon.Log(this.gameObject.name + ": Failed to get player component (SendThrowRpc)", LethalMon.LogType.Error);
                 return;
             }
 
