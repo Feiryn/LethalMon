@@ -12,6 +12,7 @@ namespace LethalMon.AI;
 
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
+    // Add your custom behaviour classes here
     internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
     {
         { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
@@ -56,7 +57,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool isOutsideOfBall = false;
 
-    #region CustomBehaviour
+    #region Behaviours
     public enum TamingBehaviour
     {
         TamedFollowing = 1,
@@ -65,12 +66,23 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length - 1;
 
-    internal Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>();
+    private Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>(); // List of behaviour state indices and their custom handler
 
+    // Override this to add more custom behaviours to your tamed enemy
     internal virtual List<Tuple<string, Action>>? CustomBehaviourHandler => null;
 
+    public TamingBehaviour? CurrentTamingBehaviour
+    {
+        get
+        {
+            var index = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
+            return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
+        }
+    }
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
+        if (CurrentTamingBehaviour == behaviour) return;
+
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
     }
@@ -87,8 +99,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.enabled = behaviour > LastDefaultBehaviourIndex;
     }
 
+    // The last vanilla behaviour index for each enemy type
     public static Dictionary<Type, int> LastDefaultBehaviourIndices = new Dictionary<Type, int>();
 
+    // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
     [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
     public static void AddCustomBehaviours()
     {
@@ -185,7 +199,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnEscapedFromBall() { }
+    internal virtual void OnEscapedFromBall() { } // wip / unused yet
     #endregion
 
     public void Update()
