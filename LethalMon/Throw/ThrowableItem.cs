@@ -9,58 +9,25 @@ namespace LethalMon.Throw
     {
         #region ThrowRpc
 
-        internal static void InitializeRPCS()
+        [ServerRpc(RequireOwnership = false)]
+        public void ThrowServerRpc(NetworkObjectReference playerThrownByReference)
         {
-            NetworkManager.__rpc_func_table.Add(2055230283u, __rpc_handler_2055230283);
-        }
-        
-        public void SendThrowPacket(NetworkObjectReference throwableItemNetworkObjectReference, NetworkObjectReference playerNetworkObjectReference)
-        {
-            ServerRpcParams rpcParams = default(ServerRpcParams);
-            FastBufferWriter writer = this.__beginSendServerRpc(2055230283u, rpcParams, RpcDelivery.Reliable);
-            writer.WriteValueSafe(in throwableItemNetworkObjectReference);
-            writer.WriteValueSafe(in playerNetworkObjectReference);
-            this.__endSendServerRpc(ref writer, 2055230283u, rpcParams, RpcDelivery.Reliable);
-            Debug.Log("SendThrowPacket server rpc send finished");
+            ThrowClientRpc(playerThrownByReference);
         }
     
-        [ServerRpc]
-        public void SendThrowRpc(NetworkObjectReference throwableItemNetworkObjectReference, NetworkObjectReference playerNetworkObjectReference)
+        [ClientRpc]
+        public void ThrowClientRpc(NetworkObjectReference playerThrownByReference)
         {
             Debug.Log("SendThrowRpc server rpc received");
-            if (throwableItemNetworkObjectReference.TryGet(out NetworkObject grabbableNetworkObject) && playerNetworkObjectReference.TryGet(out NetworkObject playerNetworkObject))
+            if (!playerThrownByReference.TryGet(out NetworkObject playerNetworkObject))
             {
-                ThrowableItem throwableItem = grabbableNetworkObject.GetComponent<ThrowableItem>();
-                PlayerControllerB player = playerNetworkObject.GetComponent<PlayerControllerB>();
+                Debug.LogError(this.gameObject.name + ": Failed to get player component (SendThrowRpc)");
+                return;
+            }
 
-                if (throwableItem != null && player != null)
-                {
-                    throwableItem.playerThrownBy = player;
-                }
-                else
-                {
-                    Debug.LogError(this.gameObject.name + ": Failed to get throwable item or player component (SendThrowRpc)");
-                }
-            }
-            else
-            {
-                Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (SendThrowRpc)");
-            }
+            if(playerNetworkObject.TryGetComponent( out PlayerControllerB player))
+                playerThrownBy = player;
         }
-
-        private static void __rpc_handler_2055230283(NetworkBehaviour target, FastBufferReader reader,
-            __RpcParams rpcParams)
-        {
-            NetworkManager networkManager = target.NetworkManager;
-            if (networkManager != null && networkManager.IsListening)
-            {
-                Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-                reader.ReadValueSafe(out NetworkObjectReference throwableItemNetworkObjectReference);
-                reader.ReadValueSafe(out NetworkObjectReference playerNetworkObjectReference);
-                ((ThrowableItem) target).SendThrowRpc(throwableItemNetworkObjectReference, playerNetworkObjectReference);
-            }
-        }
-        
         #endregion
         
         public override void ItemActivate(bool used, bool buttonDown = true)
@@ -70,7 +37,7 @@ namespace LethalMon.Throw
             {
                 playerThrownBy = playerHeldBy;
                 playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination());
-                this.SendThrowPacket(this.GetComponent<NetworkObject>(), playerThrownBy.GetComponent<NetworkObject>());
+                this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>());
             }
         }
 

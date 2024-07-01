@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -8,7 +7,6 @@ using LethalLib.Modules;
 using LethalMon.AI;
 using LethalMon.Items;
 using LethalMon.Patches;
-using LethalMon.Throw;
 using UnityEngine;
 
 namespace LethalMon;
@@ -20,102 +18,59 @@ public class LethalMon : BaseUnityPlugin
     internal new static ManualLogSource Logger { get; private set; } = null!;
     internal static Harmony? Harmony { get; set; }
 
-    public static GameObject pokeballSpawnPrefab;
-    
-    public static GameObject greatBallSpawnPrefab;
-    
-    public static GameObject ultraBallSpawnPrefab;
-    
-    public static GameObject masterBallSpawnPrefab;
-    
     private void Awake()
     {
         Logger = base.Logger;
         Instance = this;
-        
-        AssetBundle assetBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "lethalmon"));
 
-        this.SetupPokeball(assetBundle);
-        this.SetupGreatball(assetBundle);
-        this.SetupUltraball(assetBundle);
-        this.SetupMasterball(assetBundle);
-
-        Harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-        Harmony.PatchAll(typeof(PlayerControllerBPatch));
-        Harmony.PatchAll(typeof(RedLocustBeesPatch));
-        Harmony.PatchAll(typeof(StartOfRoundPatch));
-        Harmony.PatchAll(typeof(DebugPatches));
-        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
-        PokeballItem.InitializeRPCS();
-        HoarderBugTamedBehaviour.InitializeRPCS();
-        PlayerControllerBPatch.InitializeRPCS();
-        ThrowableItem.InitializeRPCS();
-        RedLocustBeesTamedBehaviour.InitializeRPCS();
+        LoadAssetBundle();
+        NetcodePatching();
+        ApplyHarmonyPatches();
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }
 
-    private void SetupPokeball(AssetBundle assetBundle)
+    private void NetcodePatching()
     {
-        Item pokeballItem = assetBundle.LoadAsset<Item>("Assets/Balls/Pokeball/Pokeball.asset");
-        
-        Pokeball script = pokeballItem.spawnPrefab.AddComponent<Pokeball>();
-        script.itemProperties = pokeballItem;
-        script.grabbable = true;
-        script.grabbableToEnemies = true;
-        NetworkPrefabs.RegisterNetworkPrefab(pokeballItem.spawnPrefab);
-        
-        LethalLib.Modules.Items.RegisterScrap(pokeballItem, 20, Levels.LevelTypes.All);
+        var types = Assembly.GetExecutingAssembly().GetTypes();
+        foreach (var type in types)
+        {
+            var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+            foreach (var method in methods)
+            {
+                var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                if (attributes.Length > 0)
+                {
+                    method.Invoke(null, null);
+                }
+            }
+        }
+    }
 
-        LethalMon.pokeballSpawnPrefab = pokeballItem.spawnPrefab;
-    }
-    
-    private void SetupGreatball(AssetBundle assetBundle)
+    private void LoadAssetBundle()
     {
-        Item greatballItem = assetBundle.LoadAsset<Item>("Assets/Balls/Greatball/Greatball.asset");
-        
-        Greatball script = greatballItem.spawnPrefab.AddComponent<Greatball>();
-        script.itemProperties = greatballItem;
-        script.grabbable = true;
-        script.grabbableToEnemies = true;
-        NetworkPrefabs.RegisterNetworkPrefab(greatballItem.spawnPrefab);
-        
-        LethalLib.Modules.Items.RegisterScrap(greatballItem, 10, Levels.LevelTypes.All);
+        AssetBundle assetBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "lethalmon"));
 
-        LethalMon.greatBallSpawnPrefab = greatballItem.spawnPrefab;
+        Pokeball.Setup(assetBundle);
+        Greatball.Setup(assetBundle);
+        Ultraball.Setup(assetBundle);
+        Masterball.Setup(assetBundle);
     }
-    
-    private void SetupUltraball(AssetBundle assetBundle)
-    {
-        Item ultraballItem = assetBundle.LoadAsset<Item>("Assets/Balls/Ultraball/Ultraball.asset");
-        
-        Ultraball script = ultraballItem.spawnPrefab.AddComponent<Ultraball>();
-        script.itemProperties = ultraballItem;
-        script.grabbable = true;
-        script.grabbableToEnemies = true;
-        NetworkPrefabs.RegisterNetworkPrefab(ultraballItem.spawnPrefab);
-        
-        LethalLib.Modules.Items.RegisterScrap(ultraballItem, 6, Levels.LevelTypes.All);
 
-        LethalMon.ultraBallSpawnPrefab = ultraballItem.spawnPrefab;
-    }
-    
-    private void SetupMasterball(AssetBundle assetBundle)
+    private void ApplyHarmonyPatches()
     {
-        Item masterballItem = assetBundle.LoadAsset<Item>("Assets/Balls/Masterball/Masterball.asset");
-        
-        Masterball script = masterballItem.spawnPrefab.AddComponent<Masterball>();
-        script.itemProperties = masterballItem;
-        script.grabbable = true;
-        script.grabbableToEnemies = true;
-        NetworkPrefabs.RegisterNetworkPrefab(masterballItem.spawnPrefab);
-        
-        LethalLib.Modules.Items.RegisterScrap(masterballItem, 2, Levels.LevelTypes.All);
-        
-        LethalMon.masterBallSpawnPrefab = masterballItem.spawnPrefab;
+        Harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
+
+        Harmony.PatchAll(typeof(PlayerControllerBPatch));
+        Harmony.PatchAll(typeof(RedLocustBeesPatch));
+        Harmony.PatchAll(typeof(StartOfRoundPatch));
+        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
+
+        // Static RPCs
+        PlayerControllerBPatch.InitializeRPCS();
     }
-    
-    internal static void Unpatch()
+
+    private static void Unpatch()
     {
         Logger.LogDebug("Unpatching...");
 
@@ -123,4 +78,31 @@ public class LethalMon : BaseUnityPlugin
 
         Logger.LogDebug("Finished unpatching!");
     }
+
+    #region Logging
+    public enum LogType
+    {
+        Message,
+        Warning,
+        Error,
+        Fatal,
+        Debug
+    }
+
+    internal static void Log(string message, LogType type = LogType.Debug)
+    {
+#if !DEBUG
+            if (type == LogType.Debug /*&& !ModConfig.DebugLog*/)
+                return;
+#endif
+
+        switch (type)
+        {
+            case LogType.Warning: Logger.LogWarning(message); break;
+            case LogType.Error: Logger.LogError(message); break;
+            case LogType.Fatal: Logger.LogFatal(message); break;
+            default: Logger.LogMessage(message); break;
+        }
+    }
+    #endregion
 }

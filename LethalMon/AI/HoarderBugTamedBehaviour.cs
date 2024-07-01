@@ -230,203 +230,43 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         hoarderBug.sendingGrabOrDropRPC = true;
         DropItemServerRpc(dropItemNetworkObject, targetFloorPosition);
     }
-    
-    internal static void InitializeRPCS()
-    {
-        NetworkManager.__rpc_func_table.Add(1120862648u, __rpc_handler_1120862648);
-        NetworkManager.__rpc_func_table.Add(1650981814u, __rpc_handler_1650981814);
-        NetworkManager.__rpc_func_table.Add(2688306109u, __rpc_handler_2688306109);
-        NetworkManager.__rpc_func_table.Add(713145915u, __rpc_handler_713145915);
-    }
-    
-    [ServerRpc]
+
+    #region RPCs
+    [ServerRpc(RequireOwnership = false)]
 	public void DropItemServerRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
-	{
-		NetworkManager networkManager = base.NetworkManager;
-		if ((object)networkManager == null || !networkManager.IsListening)
-		{
-			return;
-		}
-		if (__rpc_exec_stage != __RpcExecStage.Server && (networkManager.IsClient || networkManager.IsHost))
-		{
-			if (base.OwnerClientId != networkManager.LocalClientId)
-			{
-				if (networkManager.LogLevel <= LogLevel.Normal)
-				{
-					Debug.LogError("Only the owner can invoke a ServerRpc that requires ownership!");
-				}
-				return;
-			}
-			ServerRpcParams serverRpcParams = default(ServerRpcParams);
-			FastBufferWriter bufferWriter = __beginSendServerRpc(2688306109u, serverRpcParams, RpcDelivery.Reliable);
-			bufferWriter.WriteValueSafe(in objectRef);
-			bufferWriter.WriteValueSafe(in targetFloorPosition);
-			__endSendServerRpc(ref bufferWriter, 2688306109u, serverRpcParams, RpcDelivery.Reliable);
-		}
-		if (__rpc_exec_stage == __RpcExecStage.Server && (networkManager.IsServer || networkManager.IsHost))
-		{
-			DropItemClientRpc(objectRef, targetFloorPosition);
-		}
+    {  
+		DropItemClientRpc(objectRef, targetFloorPosition);
 	}
 
 	[ClientRpc]
 	public void DropItemClientRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
 	{
-		NetworkManager networkManager = base.NetworkManager;
-		if ((object)networkManager == null || !networkManager.IsListening)
-		{
-			return;
-		}
-		if (__rpc_exec_stage != __RpcExecStage.Client && (networkManager.IsServer || networkManager.IsHost))
-		{
-			ClientRpcParams clientRpcParams = default(ClientRpcParams);
-			FastBufferWriter bufferWriter = __beginSendClientRpc(713145915u, clientRpcParams, RpcDelivery.Reliable);
-			bufferWriter.WriteValueSafe(in objectRef);
-			bufferWriter.WriteValueSafe(in targetFloorPosition);
-			__endSendClientRpc(ref bufferWriter, 713145915u, clientRpcParams, RpcDelivery.Reliable);
-		}
-		if (__rpc_exec_stage == __RpcExecStage.Client && (networkManager.IsClient || networkManager.IsHost))
-		{
-			if (objectRef.TryGet(out var networkObject))
-			{
-				DropItem(networkObject, targetFloorPosition);
-			}
-			else
-			{
-				Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)");
-			}
-		}
-	}
-    
-    private static void __rpc_handler_2688306109(NetworkBehaviour target, FastBufferReader reader, __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if ((object)networkManager == null || !networkManager.IsListening)
+		if (!objectRef.TryGet(out var networkObject))
         {
+            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)");
             return;
-        }
-        if (rpcParams.Server.Receive.SenderClientId != target.OwnerClientId)
-        {
-            if (networkManager.LogLevel <= LogLevel.Normal)
-            {
-                Debug.LogError("Only the owner can invoke a ServerRpc that requires ownership!");
-            }
-            return;
-        }
-        reader.ReadValueSafe(out NetworkObjectReference value);
-        reader.ReadValueSafe(out Vector3 value2);
-        Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
-        rpcExecStageField.SetValue(__RpcExecStage.Server);
-        ((HoarderBugTamedBehaviour)target).DropItemServerRpc(value, value2);
-        rpcExecStageField.SetValue(__RpcExecStage.None);
+		}
+
+        DropItem(networkObject, targetFloorPosition);
     }
     
-    private static void __rpc_handler_713145915(NetworkBehaviour target, FastBufferReader reader, __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if ((object)networkManager != null && networkManager.IsListening)
-        {
-            reader.ReadValueSafe(out NetworkObjectReference value);
-            reader.ReadValueSafe(out Vector3 value2);
-            Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
-            rpcExecStageField.SetValue(__RpcExecStage.Client);
-            ((HoarderBugTamedBehaviour)target).DropItemClientRpc(value, value2);
-            rpcExecStageField.SetValue(__RpcExecStage.None);
-        }
-    }
-    
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     public void GrabItemServerRpc(NetworkObjectReference objectRef)
     {
-        NetworkManager networkManager = base.NetworkManager;
-        if (networkManager == null || !networkManager.IsListening)
-        {
-            return;
-        }
-        if (__rpc_exec_stage != __RpcExecStage.Server && (networkManager.IsClient || networkManager.IsHost))
-        {
-            if (base.OwnerClientId != networkManager.LocalClientId)
-            {
-                if (networkManager.LogLevel <= LogLevel.Normal)
-                {
-                    Debug.LogError("Only the owner can invoke a ServerRpc that requires ownership!");
-                }
-                return;
-            }
-            ServerRpcParams serverRpcParams = default(ServerRpcParams);
-            FastBufferWriter bufferWriter = __beginSendServerRpc(1120862648u, serverRpcParams, RpcDelivery.Reliable);
-            bufferWriter.WriteValueSafe(in objectRef, default(FastBufferWriter.ForNetworkSerializable));
-            __endSendServerRpc(ref bufferWriter, 1120862648u, serverRpcParams, RpcDelivery.Reliable);
-        }
-        if (__rpc_exec_stage == __RpcExecStage.Server && (networkManager.IsServer || networkManager.IsHost))
-        {
-            GrabItemClientRpc(objectRef);
-        }
+        GrabItemClientRpc(objectRef);
     }
     
     [ClientRpc]
     public void GrabItemClientRpc(NetworkObjectReference objectRef)
     {
-        NetworkManager networkManager = base.NetworkManager;
-        if (networkManager == null || !networkManager.IsListening)
+        // SwitchToBehaviourStateOnLocalClient(1);
+        if (!objectRef.TryGet(out var networkObject))
         {
+            Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)");
             return;
         }
-        if (__rpc_exec_stage != __RpcExecStage.Client && (networkManager.IsServer || networkManager.IsHost))
-        {
-            ClientRpcParams clientRpcParams = default(ClientRpcParams);
-            FastBufferWriter bufferWriter = __beginSendClientRpc(1650981814u, clientRpcParams, RpcDelivery.Reliable);
-            bufferWriter.WriteValueSafe(in objectRef, default(FastBufferWriter.ForNetworkSerializable));
-            __endSendClientRpc(ref bufferWriter, 1650981814u, clientRpcParams, RpcDelivery.Reliable);
-        }
-        if (__rpc_exec_stage == __RpcExecStage.Client && (networkManager.IsClient || networkManager.IsHost))
-        {
-            // SwitchToBehaviourStateOnLocalClient(1);
-            if (objectRef.TryGet(out var networkObject))
-            {
-                GrabItem(networkObject);
-            }
-            else
-            {
-                Debug.LogError(base.gameObject.name + ": Failed to get network object from network object reference (Grab item RPC)");
-            }
-        }
+
+        GrabItem(networkObject);
     }
-    
-    private static void __rpc_handler_1120862648(NetworkBehaviour target, FastBufferReader reader, __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager == null || !networkManager.IsListening)
-        {
-            return;
-        }
-        if (rpcParams.Server.Receive.SenderClientId != target.OwnerClientId)
-        {
-            if (networkManager.LogLevel <= LogLevel.Normal)
-            {
-                Debug.LogError("Only the owner can invoke a ServerRpc that requires ownership!");
-            }
-        }
-        else
-        {
-            reader.ReadValueSafe(out NetworkObjectReference value);
-            Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
-            rpcExecStageField.SetValue(__RpcExecStage.Server);
-            ((HoarderBugTamedBehaviour)target).GrabItemServerRpc(value);
-            rpcExecStageField.SetValue(__RpcExecStage.None);
-        }
-    }
-    
-    private static void __rpc_handler_1650981814(NetworkBehaviour target, FastBufferReader reader, __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening)
-        {
-            reader.ReadValueSafe(out NetworkObjectReference value);
-            Traverse rpcExecStageField = Traverse.Create(target).Field("__rpc_exec_stage");
-            rpcExecStageField.SetValue(__RpcExecStage.Client);
-            ((HoarderBugTamedBehaviour)target).GrabItemClientRpc(value);
-            rpcExecStageField.SetValue(__RpcExecStage.None);
-        }
-    }
+    #endregion
 }
