@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using LethalMon.Items;
 using UnityEngine;
+using static UnityEngine.InputSystem.OnScreen.OnScreenStick;
 using Random = UnityEngine.Random;
 
 namespace LethalMon.AI;
@@ -47,7 +48,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         { "ButlerEnemyAI", new Tuple<float, float, Quaternion>(0.5f, 0.5f, Quaternion.Euler(15, 0, 0)) }
     };
 
-    private readonly float MaximumDistanceTowardsOwner = 25f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
+    private readonly float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
+    private readonly float MinimumDistanceTowardsOwner = 15f; // Distance, in which the bracken shouldn't drop the enemy again
     internal float DistanceTowardsOwner => ownerPlayer != null ? Vector3.Distance(ownerPlayer.transform.position, bracken.transform.position) : 0f;
     
     public override void Start()
@@ -95,7 +97,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         // Check if enemy in sight
         foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
         {
-            if (spawnedEnemy != null && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
+            if (spawnedEnemy != null && spawnedEnemy != bracken && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
             {
                 targetEnemy = spawnedEnemy;
                 this.DefendOwner();
@@ -109,16 +111,17 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         if (grabbedEnemyAi != null)
         {
-            if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner)
+            var distanceTowardsOwner = DistanceTowardsOwner;
+            if (distanceTowardsOwner > MinimumDistanceTowardsOwner && (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner))
             {
-                Debug.Log("Enemy brought to destination or far enough away from owner, release it");
+                Debug.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
 
                 ReleaseEnemy();
 
                 this.CalmDownAndFollow();
             }
 
-            Debug.Log("Enemy already grabbed and moving, skip AI interval");
+            //Debug.Log("Enemy already grabbed and moving, skip AI interval");
         }
         else if (targetEnemy != null)
         {
@@ -222,7 +225,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         grabbedEnemyAi = enemyAI;
         targetEnemy = null;
 
-        Vector3 farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
+        var farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAiTransform.position).position;
         bracken.SetDestinationToPosition(farthestPosition);
         Debug.Log("Moving to " + farthestPosition);
     }

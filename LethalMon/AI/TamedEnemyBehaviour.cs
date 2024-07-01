@@ -53,7 +53,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
-    internal int LastDefaultBehaviourIndex = 0;
+    private int _lastDefaultBehaviourIndex = -1;
+    internal int LastDefaultBehaviourIndex
+    {
+        get
+        {
+            if(_lastDefaultBehaviourIndex < 0)
+                _lastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
+            return _lastDefaultBehaviourIndex;
+        }
+    }
 
     public bool isOutsideOfBall = false;
 
@@ -83,12 +92,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (CurrentTamingBehaviour == behaviour) return;
 
+        LethalMon.Logger.LogInfo("Switch to taming state: " + behaviour.ToString());
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
     }
 
     public void SwitchToCustomBehaviour(int behaviour)
     {
+        LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
     }
@@ -207,7 +218,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
         if (customBehaviour <= 0) return;
 
-        LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
+        //LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
         OnUpdate();
 
         if (customBehaviour > tamedBehaviourCount)
@@ -250,14 +261,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public virtual void Start()
     {
-        LastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
 
         try
         {
             LethalMon.Logger.LogInfo("Set enemy variables for " + GetType().Name);
-
-            LastDefaultBehaviourIndex = LastDefaultBehaviourIndices[Enemy.GetType()];
             Enemy.agent = base.gameObject.GetComponentInChildren<NavMeshAgent>();
 
             // todo: check if all these are needed
