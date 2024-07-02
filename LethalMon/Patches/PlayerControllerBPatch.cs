@@ -96,17 +96,17 @@ public class PlayerControllerBPatch
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
     {
         LethalMon.Logger.LogInfo("RetrieveBallKeyPressed");
-        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(GameNetworkManager.Instance.localPlayerController);
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
 
         if (tamedEnemyBehaviour != null)
         {
-            if (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)
+            if (Utils.IsHost)
             {
-                PetRetrieve(GameNetworkManager.Instance.localPlayerController, tamedEnemyBehaviour);
+                PetRetrieve(Utils.CurrentPlayer, tamedEnemyBehaviour);
             }
             else
             {
-                SendPetRetrievePacket(GameNetworkManager.Instance.localPlayerController);
+                SendPetRetrievePacket(Utils.CurrentPlayer);
             }
         }
     }

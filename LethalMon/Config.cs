@@ -67,7 +67,7 @@ namespace LethalMon
             [HarmonyPostfix]
             public static void Initialize()
             {
-                if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
+                if (Utils.IsHost)
                 {
                     Debug.Log("Current player is the host.");
                     NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(REQUEST_MESSAGE, new HandleNamedMessageDelegate(HostConfigRequested));
@@ -82,7 +82,7 @@ namespace LethalMon
 
             public static void RequestHostConfig()
             {
-                if (NetworkManager.Singleton.IsClient)
+                if (!Utils.IsHost)
                 {
                     Debug.Log("Sending config request to host.");
                     NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(REQUEST_MESSAGE, 0uL, new FastBufferWriter(0, Allocator.Temp), NetworkDelivery.ReliableSequenced);
@@ -93,7 +93,7 @@ namespace LethalMon
 
             public static void HostConfigRequested(ulong clientId, FastBufferReader reader)
             {
-                if (!NetworkManager.Singleton.IsHost && !NetworkManager.Singleton.IsServer) // Current player is not the host and therefor not the one who should react
+                if (!Utils.IsHost) // Current player is not the host and therefor not the one who should react
                     return;
 
                 string json = JsonConvert.SerializeObject(Instance.values);

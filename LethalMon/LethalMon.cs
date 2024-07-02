@@ -67,7 +67,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(RedLocustBeesPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
-        Harmony.PatchAll(typeof(DebugPatches));
+        //Harmony.PatchAll(typeof(DebugPatches));
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
 
         // Static RPCs
