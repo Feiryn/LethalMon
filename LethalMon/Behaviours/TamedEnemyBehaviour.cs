@@ -116,7 +116,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
     [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
-    public static void AddCustomBehaviours()
+    public static void AddTamingBehaviours()
     {
         int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
         foreach (var enemyType in Utils.EnemyTypes)
@@ -125,8 +125,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI)) continue;
 
             // Behaviour controller
-            var aiType = BehaviourClassMapping.GetValueOrDefault(enemyAI.GetType(), typeof(TamedEnemyBehaviour));
-            var tamedBehaviour = enemyType.enemyPrefab.gameObject.AddComponent(aiType) as TamedEnemyBehaviour;
+            var tamedBehaviourType = BehaviourClassMapping.GetValueOrDefault(enemyAI.GetType(), typeof(TamedEnemyBehaviour));
+            var tamedBehaviour = enemyType.enemyPrefab.gameObject.AddComponent(tamedBehaviourType) as TamedEnemyBehaviour;
             if (tamedBehaviour == null)
             {
                 LethalMon.Logger.LogWarning($"TamedEnemyBehaviour-Initialization failed for {enemyType.enemyName}");
@@ -134,10 +134,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             }
 
             addedBehaviours++;
-            if (aiType == typeof(TamedEnemyBehaviour))
+            if (tamedBehaviourType == typeof(TamedEnemyBehaviour))
                 addedDefaultCustomBehaviours++;
             else
-                LethalMon.Logger.LogInfo($"Added {aiType.Name} for {enemyType.enemyName}");
+                LethalMon.Logger.LogInfo($"Added {tamedBehaviourType.Name} for {enemyType.enemyName}");
 
             // Behaviour states
             LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
@@ -148,22 +148,24 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             foreach(var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
                 behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
 
-            // Add custom behaviours
-            if (tamedBehaviour.CustomBehaviourHandler != null)
-            {
-
-                foreach (var customBehaviour in tamedBehaviour.CustomBehaviourHandler)
-                {
-                    behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
-                    tamedBehaviour.CustomBehaviours.Add(tamedBehaviour.CustomBehaviours.Count + 1, customBehaviour.Item2);
-                    LethalMon.Log($"Added custom behaviour {tamedBehaviour.CustomBehaviours.Count} with handler {customBehaviour.Item2.Method.Name}");
-                }
-            }
-
             enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
         }
 
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
+    }
+
+    internal void AddCustomBehaviours()
+    {
+        if (CustomBehaviourHandler == null || CustomBehaviourHandler.Count == 0) return;
+
+        var behaviourStateList = Enemy.enemyBehaviourStates.ToList();
+        foreach (var customBehaviour in CustomBehaviourHandler)
+        {
+            behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
+            CustomBehaviours.Add(CustomBehaviours.Count + 1, customBehaviour.Item2);
+            LethalMon.Log($"Added custom behaviour {CustomBehaviours.Count} with handler {customBehaviour.Item2.Method.Name}");
+        }
+        Enemy.enemyBehaviourStates = behaviourStateList.ToArray();
     }
 
     internal virtual void OnTamedFollowing()
@@ -241,6 +243,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual void Start()
     {
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
+        AddCustomBehaviours();
 
         try
         {

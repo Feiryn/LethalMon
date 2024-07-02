@@ -65,7 +65,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         else
         {
             LethalMon.Log("HoarderBugAI move held item to the owner");
-            hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);
+            hoarderBug.SetDestinationToPosition(ownerPlayer.transform.position);
         }
     }
 
