@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static LethalMon.Behaviours.TamedEnemyBehaviour;
 
 namespace LethalMon.Behaviours
 {
@@ -17,6 +18,23 @@ namespace LethalMon.Behaviours
         internal InteractTrigger? ridingTrigger = null;
 
         internal float previousJumpForce = Utils.DefaultJumpForce;
+        #endregion
+
+        #region Action Keys
+        private List<ActionKey> _actionKeys = new List<ActionKey>()
+        {
+            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Stop riding" }
+        };
+        internal override List<ActionKey> ActionKeys => _actionKeys;
+
+        internal override void ActionKey1Pressed()
+        {
+            LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
+            base.ActionKey1Pressed();
+
+            if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding)
+                StopRiding();
+        }
         #endregion
 
         #region Custom behaviours
@@ -51,15 +69,6 @@ namespace LethalMon.Behaviours
             SetRidingTriggerVisible();
             isOutsideOfBall = true;
 #endif
-        }
-
-        internal override void ActionKey1Pressed()
-        {
-            LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
-            base.ActionKey1Pressed();
-
-            if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding)
-                StopRiding();
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -156,6 +165,7 @@ namespace LethalMon.Behaviours
 
             SetRidingTriggerVisible(false);
             SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
         }
 
         private void StopRiding()
@@ -173,6 +183,7 @@ namespace LethalMon.Behaviours
                 Physics.IgnoreCollision(collider, ownerPlayer!.playerCollider, false);
 
             SetRidingTriggerVisible();
+            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
         #endregion

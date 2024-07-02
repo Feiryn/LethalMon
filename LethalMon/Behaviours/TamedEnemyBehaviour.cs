@@ -61,7 +61,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         get
         {
-            if(_lastDefaultBehaviourIndex < 0)
+            if (_lastDefaultBehaviourIndex < 0)
                 _lastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
             return _lastDefaultBehaviourIndex;
         }
@@ -149,7 +149,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
 
             // Add tamed behaviours
-            foreach(var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
+            foreach (var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
                 behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
 
             enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
@@ -187,6 +187,45 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     #region ActionKeys
     internal virtual void ActionKey1Pressed() { }
+
+    internal class ActionKey
+    {
+        internal InputAction? actionKey { get; set; } = null;
+        internal string description { get; set; } = "";
+        internal bool visible { get; set; } = false;
+
+        internal string Control => actionKey == null ? "" : actionKey.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
+        internal string ControlTip => $"{description}: [{Control}]";
+    }
+
+    /* TEMPLATE
+    private List<ActionKey> _actionKeys = new List<ActionKey>()
+    {
+        new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Event one" }
+    };
+    internal override List<ActionKey> ActionKeys => _actionKeys;*/
+    internal virtual List<ActionKey> ActionKeys => [];
+
+    internal void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
+    {
+        var keys = ActionKeys.Where((ak) => ak.actionKey == actionKey);
+        if (keys.Any())
+        {
+            keys.First().visible = enable;
+            ShowVisibleActionKeyControlTips();
+        }
+    }
+
+    internal void ShowVisibleActionKeyControlTips()
+    {
+        // StartOfRound.Instance.localPlayerUsingController
+        LethalMon.Log("ShowVisibleActionKeyControlTips");
+        var controlTips = ActionKeys.Where((ak) => ak.visible).Select((ak) => ak.ControlTip).ToArray();
+        HUDManager.Instance.ChangeControlTipMultiple(
+                controlTips,
+                holdingItem: Utils.CurrentPlayer.currentlyHeldObjectServer != null,
+                Utils.CurrentPlayer.currentlyHeldObjectServer?.itemProperties);
+    }
     #endregion
 
     #region Base Methods
