@@ -1,5 +1,5 @@
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using UnityEngine;
 
 namespace LethalMon.CatchableEnemy;

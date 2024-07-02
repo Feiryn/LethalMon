@@ -4,7 +4,7 @@ using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using LethalLib.Modules;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using LethalMon.Items;
 using LethalMon.Patches;
 using UnityEngine;
@@ -67,7 +67,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(RedLocustBeesPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
-        //Harmony.PatchAll(typeof(DebugPatches));
+        Harmony.PatchAll(typeof(DebugPatches));
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
 
         // Static RPCs

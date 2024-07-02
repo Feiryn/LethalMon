@@ -1,6 +1,6 @@
 using GameNetcodeStuff;
 using HarmonyLib;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using LethalMon.Items;
 using UnityEngine;
 

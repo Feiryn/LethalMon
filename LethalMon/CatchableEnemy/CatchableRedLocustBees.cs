@@ -1,6 +1,6 @@
 using System;
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using LethalMon.Patches;
 using UnityEngine;
 

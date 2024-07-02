@@ -3,22 +3,25 @@ using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace LethalMon.AI;
+namespace LethalMon.Behaviours;
 
 public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 {
+    #region Properties
     internal RedLocustBees bees { get; private set; }
 
     public bool angry = false;
+    #endregion
 
-    public override void OnUpdate()
+    #region Base Methods
+    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        base.Update();
+        base.OnUpdate(update, doAIInterval);
 
         BeesZapOnTimer();
     }
 
-    public override void Start()
+    internal override void Start()
     {
         base.Start();
 
@@ -87,7 +90,9 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         else
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
-    
+    #endregion
+
+    #region Methods
     private void BeesZapOnTimer()
     {
         if (!angry)
@@ -126,7 +131,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[UnityEngine.Random.Range(0, bees.enemyType.audioClips.Length)], UnityEngine.Random.Range(0.6f, 1f));
     }
 
-    public void ChangeAngryMode(bool angry, bool syncRpc = true)
+    public void ChangeAngryMode(bool angry)
     {
         if(angry && targetEnemy == null && targetPlayer == null)
         {
@@ -142,8 +147,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
 
         ResetBeeZapTimer();
-        if(syncRpc)
-            AngryServerRpc(bees.GetComponent<NetworkObject>(), angry);
+        AngryServerRpc(bees.GetComponent<NetworkObject>(), angry);
     }
     
     private void ResetBeeZapTimer()
@@ -151,6 +155,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         bees.beesZapCurrentTimer = 0f;
         bees.beeZapAudio.Stop();
     }
+    #endregion
 
     #region RPCs
 
@@ -164,7 +169,6 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     public void AngryClientRpc(bool angry)
     {
         this.angry = angry;
-        //ChangeAngryMode(angry, false);
         ResetBeeZapTimer();
     }
 

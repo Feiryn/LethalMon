@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
+using LethalLib;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace LethalMon.AI;
+namespace LethalMon.Behaviours;
 
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
@@ -150,10 +151,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             // Add custom behaviours
             if (tamedBehaviour.CustomBehaviourHandler != null)
             {
+
                 foreach (var customBehaviour in tamedBehaviour.CustomBehaviourHandler)
                 {
                     behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
-                    tamedBehaviour.CustomBehaviours.Add(behaviourStateList.Count - 1, customBehaviour.Item2);
+                    tamedBehaviour.CustomBehaviours.Add(tamedBehaviour.CustomBehaviours.Count + 1, customBehaviour.Item2);
+                    LethalMon.Log($"Added custom behaviour {tamedBehaviour.CustomBehaviours.Count} with handler {customBehaviour.Item2.Method.Name}");
                 }
             }
 
@@ -163,56 +166,20 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
     }
 
-    public void FollowOwner()
-    {
-        if (ownerPlayer == null) return;
-
-        LethalMon.Logger.LogInfo("Follow owner");
-        if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
-        {
-            Enemy.agent.enabled = false;
-            Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
-            Enemy.agent.enabled = true;
-        }
-        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
-                out Vector3 potentialPosition1,
-                out Vector3 potentialPosition2))
-        {
-            var position = Enemy.transform.position;
-            float distance1 = Vector3.Distance(position, potentialPosition1);
-            float distance2 = Vector3.Distance(position, potentialPosition2);
-
-            if (distance1 > 4f && distance2 > 4f)
-            {
-                LethalMon.Logger.LogInfo("Following to destination");
-                previousPosition = Enemy.transform.position;
-                Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
-
-
-                if (Enemy.moveTowardsDestination)
-                {
-                    Enemy.agent.SetDestination(Enemy.destination);
-                }
-                Enemy.SyncPositionToClients();
-            }
-        }
-
-        // todo else turn in the direction of the owner
-    }
-
     internal virtual void OnTamedFollowing()
     {
         FollowOwner();
     }
 
     internal virtual void OnTamedDefending() {
-        if (targetEnemy == null && targetEnemy == null) // lost target
+        if (targetEnemy == null && targetPlayer == null) // lost target
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     internal virtual void OnEscapedFromBall() { } // wip / unused yet
     #endregion
 
+    #region Base Methods
     public void Update()
     {
         var customBehaviour = Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex;
@@ -227,7 +194,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
                 CustomBehaviours[customBehaviour]();
             else
+            {
                 LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
+                foreach (var b in CustomBehaviours)
+                    LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Method.Name}");
+            }
             return;
         }
 
@@ -245,21 +216,29 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             default: break;
         }
     }
-    public virtual void OnUpdate() // override this if you don't want the original Update() to be called
+
+    internal virtual void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        //Enemy.Update();
-        if (Enemy.updateDestinationInterval >= 0f)
+        if (update)
+            Enemy.Update();
+
+        if (doAIInterval)
         {
-            Enemy.updateDestinationInterval -= Time.deltaTime;
-        }
-        else
-        {
-            DoAIInterval();
-            Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
+            if (Enemy.updateDestinationInterval >= 0f)
+            {
+                Enemy.updateDestinationInterval -= Time.deltaTime;
+            }
+            else
+            {
+                DoAIInterval();
+                Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
+            }
         }
     }
 
-    public virtual void Start()
+    internal virtual void LateUpdate() { }
+
+    internal virtual void Start()
     {
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
 
@@ -299,7 +278,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public virtual void DoAIInterval()
+    internal virtual void DoAIInterval()
     {
         if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex) return;
 
@@ -322,6 +301,52 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         Enemy.DoAIInterval();
+    }
+    #endregion
+
+    #region Methods
+    public void FollowOwner()
+    {
+        if (ownerPlayer == null) return;
+
+        if (Vector3.Distance(Enemy.destination, ownerPlayer.transform.position) < 2f) return;
+
+        //LethalMon.Logger.LogInfo("Follow owner");
+        if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
+            TeleportBehindOwner();
+
+        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
+                out Vector3 potentialPosition1,
+                out Vector3 potentialPosition2))
+        {
+            var position = Enemy.transform.position;
+            float distance1 = Vector3.Distance(position, potentialPosition1);
+            float distance2 = Vector3.Distance(position, potentialPosition2);
+
+            if (distance1 > 4f && distance2 > 4f)
+            {
+                //LethalMon.Logger.LogInfo("Following to destination");
+                previousPosition = Enemy.transform.position;
+                Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
+
+                /*if (Enemy.moveTowardsDestination)
+                {
+                    Enemy.agent.SetDestination(Enemy.destination);
+                }*/
+                Enemy.SyncPositionToClients();
+            }
+        }
+
+        // todo else turn in the direction of the owner
+    }
+
+    private void TeleportBehindOwner()
+    {
+        if (ownerPlayer == null) return;
+
+        Enemy.agent.enabled = false;
+        Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
+        Enemy.agent.enabled = true;
     }
 
     private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
@@ -394,4 +419,5 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         return pokeballItem;
     }
+    #endregion
 }

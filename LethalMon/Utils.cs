@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
 using Debug = UnityEngine.Debug;

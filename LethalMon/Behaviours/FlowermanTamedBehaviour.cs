@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using LethalMon.Items;
 using UnityEngine;
-using static UnityEngine.InputSystem.OnScreen.OnScreenStick;
 using Random = UnityEngine.Random;
 
-namespace LethalMon.AI;
+namespace LethalMon.Behaviours;
 
 public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 {
+    #region Properties
     internal FlowermanAI bracken { get; private set; }
 
     private EnemyAI? grabbedEnemyAi;
@@ -51,8 +51,10 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     private readonly float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
     private readonly float MinimumDistanceTowardsOwner = 15f; // Distance, in which the bracken shouldn't drop the enemy again
     internal float DistanceTowardsOwner => ownerPlayer != null ? Vector3.Distance(ownerPlayer.transform.position, bracken.transform.position) : 0f;
-    
-    public override void Start()
+    #endregion
+
+    #region Base Methods
+    internal override void Start()
     {
         base.Start();
 
@@ -85,26 +87,19 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
+    internal override void LateUpdate()
+    {
+        base.LateUpdate();
+
+        if (grabbedEnemyAi != null)
+            SetArmsInHoldPosition();
+    }
+
     internal override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
         DefendOwnerFromClosestEnemy();
-    }
-
-    internal void DefendOwnerFromClosestEnemy()
-    {
-        // Check if enemy in sight
-        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-        {
-            if (spawnedEnemy != null && spawnedEnemy != bracken && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
-            {
-                targetEnemy = spawnedEnemy;
-                this.DefendOwner();
-                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
-                return;
-            }
-        }
     }
 
     internal override void OnTamedDefending()
@@ -151,27 +146,41 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             this.CalmDownAndFollow();
     }
 
-    public override void DoAIInterval()
+    internal override void DoAIInterval()
     {
         base.DoAIInterval();
     }
 
-    public override void OnUpdate()
+    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        base.OnUpdate();
-        
-        CalculateAnimationDirection();
+        base.OnUpdate(update, doAIInterval);
+
+        bracken.CalculateAnimationDirection();
+        bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
     }
 
-    private void CalculateAnimationDirection(float maxSpeed = 1f)
+    public override PokeballItem RetrieveInBall(Vector3 position)
     {
-        bracken.agentLocalVelocity = bracken.animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f) / (Time.deltaTime * 2f));
-        bracken.velX = Mathf.Lerp(bracken.velX, bracken.agentLocalVelocity.x, 10f * Time.deltaTime);
-        bracken.creatureAnimator.SetFloat("VelocityX", Mathf.Clamp(bracken.velX, 0f - maxSpeed, maxSpeed));
-        bracken.velZ = Mathf.Lerp(bracken.velZ, 0f - bracken.agentLocalVelocity.y, 10f * Time.deltaTime);
-        bracken.creatureAnimator.SetFloat("VelocityZ", Mathf.Clamp(bracken.velZ, 0f - maxSpeed, maxSpeed));
-        bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(base.transform.position - previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
-        previousPosition = base.transform.position;
+        this.ReleaseEnemy();
+
+        return base.RetrieveInBall(position);
+    }
+    #endregion
+
+    #region Methods
+    internal void DefendOwnerFromClosestEnemy()
+    {
+        // Check if enemy in sight
+        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
+        {
+            if (spawnedEnemy != null && spawnedEnemy != bracken && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
+            {
+                targetEnemy = spawnedEnemy;
+                this.DefendOwner();
+                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
+                return;
+            }
+        }
     }
 
     public void DefendOwner()
@@ -248,28 +257,17 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         LethalMon.Log("Enemy release");
     }
 
-    public override PokeballItem RetrieveInBall(Vector3 position)
+    private void SetArmsInHoldPosition()
     {
-        this.ReleaseEnemy();
-        
-        return base.RetrieveInBall(position);
+        if (arm1L != null) arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
+        if (arm2L != null) arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
+        if (arm3L != null) arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
+        if (hand1L != null) hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
+
+        if (arm1R != null) arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
+        if (arm2R != null) arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
+        if (arm3R != null) arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
+        if (hand1R != null) hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
     }
-
-    internal void LateUpdate()
-    {
-        if (Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex == (int)TamingBehaviour.TamedDefending)
-        {
-            if (this.grabbedEnemyAi == null) return;
-
-            if (arm1L != null) arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
-            if (arm2L != null) arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
-            if (arm3L != null) arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
-            if (hand1L != null) hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
-
-            if (arm1R != null) arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
-            if (arm2R != null) arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
-            if (arm3R != null) arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
-            if (hand1R != null) hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
-        }
-    }
+    #endregion
 }

@@ -5,33 +5,72 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace LethalMon.AI;
+namespace LethalMon.Behaviours;
 
 public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 {
+    #region Properties
     internal HoarderBugAI hoarderBug { get; private set; }
 
-    public int currentTimer = 0;
+    public float currentTimer = 0f;
 
-    public const int searchTimer = 10;
+    public const float searchTimer = 5f; // in seconds
 
+    private enum CustomBehaviour
+    {
+        GettingItem = 1,
+        BringBackItem
+    }
     internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
     {
-        { new Tuple<string, Action>("GettingItem", OnGettingItem) },
-        { new Tuple<string, Action>("BringBackItem", OnBringBackItem) }
+        { new Tuple<string, Action>(CustomBehaviour.GettingItem.ToString(), OnGettingItem) },
+        { new Tuple<string, Action>(CustomBehaviour.BringBackItem.ToString(), OnBringBackItem) }
     };
+    #endregion
 
     public void OnGettingItem()
     {
+        if(hoarderBug.heldItem != null)
+        {
+            SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
+            return;
+        }
 
+        if (GrabTargetItemIfClose())
+        {
+            LethalMon.Log("HoarderBugAI grabbed close item");
+            return;
+        }
+
+        if (hoarderBug?.targetItem != null)
+        {
+            LethalMon.Log("HoarderBugAI found an object and move towards it");
+            hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
+        }
     }
 
     public void OnBringBackItem()
     {
+        if (hoarderBug.heldItem == null || ownerPlayer == null)
+        {
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            return;
+        }
 
+        if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
+        {
+            LethalMon.Log("HoarderBugAI drops held item to the owner");
+            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+        }
+        else
+        {
+            LethalMon.Log("HoarderBugAI move held item to the owner");
+            hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);
+        }
     }
 
-    public override void Start()
+    #region Base Methods
+    internal override void Start()
     {
         base.Start();
 
@@ -45,6 +84,32 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     internal override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
+
+        if (ownerPlayer == null) return;
+
+        currentTimer += Time.deltaTime;
+        if (currentTimer > searchTimer)
+        {
+            // Do not search too often
+            //LethalMon.Log("HoarderBugAI searches for items");
+            currentTimer = 0f;
+            var colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
+
+            foreach (Collider collider in colliders)
+            {
+                GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
+                if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) < 8f) continue;
+
+                // Check LOS
+                if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                {
+                    LethalMon.Log("HoarderBugAI found item: " + grabbable.name);
+                    hoarderBug.targetItem = grabbable;
+                    SwitchToCustomBehaviour((int)CustomBehaviour.GettingItem);
+                    return;
+                }
+            }
+        }
     }
 
     internal override void OnTamedDefending()
@@ -52,78 +117,17 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         base.OnTamedDefending();
     }
 
-    public override void DoAIInterval()
+    internal override void DoAIInterval()
     {
         base.DoAIInterval();
-
-        // Grab an item if one is close
-        if (GrabTargetItemIfClose())
-        {
-            LethalMon.Log("HoarderBugAI grabbed close item");
-            return;
-        }
-
-        // We currently have an item to give to the owner
-        if (hoarderBug.heldItem != null && ownerPlayer != null)
-        {
-            if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
-            {
-                LethalMon.Log("HoarderBugAI drops held item to the owner");
-                DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
-            }
-            else
-            {
-                LethalMon.Log("HoarderBugAI move held item to the owner");
-                hoarderBug.SetMovingTowardsTargetPlayer(ownerPlayer);
-            }
-        }
-        else
-        {
-            if (hoarderBug?.targetItem != null)
-            {
-                LethalMon.Log("HoarderBugAI found an object and move towards it");
-                hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
-            }
-            else if (ownerPlayer != null)
-            {
-                // Do not search too often
-                currentTimer++;
-                if (currentTimer >= HoarderBugTamedBehaviour.searchTimer)
-                {
-                    LethalMon.Log("HoarderBugAI searches for items");
-                    currentTimer = 0;
-                    Collider[] colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
-                    LethalMon.Log("HoarderBugAI found " + colliders.Length + " colliders");
-
-                    foreach (Collider collider in colliders)
-                    {
-                        GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
-                        if (grabbable != null)
-                        {
-                            LethalMon.Log("HoarderBugAI grabbable item (isInShipRoom: " + grabbable.isInShipRoom + ", isHeld: " + grabbable.isHeld + "): " + grabbable.name);
-                            if (grabbable is { isInShipRoom: false, isHeld: false } && Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) > 8f)
-                            {
-                                // Check LOS
-                                if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-                                {
-                                    LethalMon.Log("HoarderBugAI found item: " + grabbable.name);
-                                    hoarderBug.targetItem = grabbable;
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
-    public override void OnUpdate()
+    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        base.OnUpdate();
+        base.OnUpdate(update, doAIInterval);
 
-        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - hoarderBug.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
         hoarderBug.CalculateAnimationDirection();
+        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - hoarderBug.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)
@@ -136,21 +140,9 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         
         return base.RetrieveInBall(position);
     }
-    
-    /*private void SetGoTowardsTargetObject(GameObject foundObject)
-    {
-        if (hoarderBug.SetDestinationToPosition(foundObject.transform.position, checkForPath: true))
-        {
-            LethalMon.Log(base.gameObject.name + ": Setting target object and going towards it.");
-            hoarderBug.targetItem = foundObject.GetComponent<GrabbableObject>();
-        }
-        else
-        {
-            hoarderBug.targetItem = null;
-            LethalMon.Log(base.gameObject.name + ": i found an object but cannot reach it (or it has been taken by another bug): " + foundObject.name);
-        }
-    }*/
-    
+    #endregion
+
+    #region Methods
     private bool GrabTargetItemIfClose()
     {
         if (hoarderBug.targetItem != null && hoarderBug.heldItem == null && Vector3.Distance(hoarderBug.transform.position, hoarderBug.targetItem.transform.position) < 0.75f)
@@ -230,12 +222,14 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         hoarderBug.sendingGrabOrDropRPC = true;
         DropItemServerRpc(dropItemNetworkObject, targetFloorPosition);
     }
+    #endregion
 
     #region RPCs
     [ServerRpc(RequireOwnership = false)]
 	public void DropItemServerRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
     {  
 		DropItemClientRpc(objectRef, targetFloorPosition);
+        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 	}
 
 	[ClientRpc]
@@ -254,6 +248,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     public void GrabItemServerRpc(NetworkObjectReference objectRef)
     {
         GrabItemClientRpc(objectRef);
+        SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
     }
     
     [ClientRpc]
