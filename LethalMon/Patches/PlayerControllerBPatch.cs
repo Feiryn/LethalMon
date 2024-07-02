@@ -84,6 +84,7 @@ public class PlayerControllerBPatch
     public static void ConnectPlayerPostfix(PlayerControllerB __instance)
     {
         ModConfig.Instance.RetrieveBallKey.performed += RetrieveBallKeyPressed;
+        ModConfig.Instance.ActionKey1.performed += ActionKey1Pressed;
     }
 
     [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Disconnect))]
@@ -91,11 +92,12 @@ public class PlayerControllerBPatch
     public static void DisconnectPlayerPrefix()
     {
         ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
+        ModConfig.Instance.ActionKey1.performed -= ActionKey1Pressed;
     }
 
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
     {
-        LethalMon.Logger.LogInfo("RetrieveBallKeyPressed");
+        LethalMon.Log("RetrieveBallKeyPressed");
         TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
 
         if (tamedEnemyBehaviour != null)
@@ -110,7 +112,15 @@ public class PlayerControllerBPatch
             }
         }
     }
-    
+    internal static void ActionKey1Pressed(InputAction.CallbackContext dashContext)
+    {
+        LethalMon.Log("ActionKey1Pressed");
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
+        if (tamedEnemyBehaviour != null)
+            tamedEnemyBehaviour.ActionKey1Pressed();
+    }
+
+
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.Update))]
     [HarmonyPostfix]
     private static void UpdatePostfix(PlayerControllerB __instance)
