@@ -85,9 +85,43 @@ public class Utils
             return false;
         }
     }
+
+    public static readonly float DefaultJumpForce = 13f;
+    public static float DefaultPlayerSpeed => CurrentPlayer.isSprinting ? 2.25f : 1f;
     #endregion
 
     #region Enemy
     public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
+
+    public enum Enemy // EnemyType.name
+    {
+        BaboonHawk,
+        Blob,
+        BushWolf,
+        Butler,
+        ButlerBees,
+        Centipede,
+        ClaySurgeon,
+        Crawler,
+        DocileLocustBees,
+        Doublewing,
+        FlowerSnake,
+        RedLocustBees,
+        DressGirl,
+        Flowerman,
+        ForestGiant,
+        HoarderBug,
+        Jester,
+        LassoMan,
+        MaskedPlayerEnemy,
+        MouthDog,
+        Nutcracker,
+        Puffer,
+        RadMech,
+        RedPillEnemyType,
+        SandSpider,
+        SandWorm,
+        SpringMan
+    }
     #endregion
 }

@@ -56,22 +56,22 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Hoarding bug");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.HoarderBug.ToString());
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Spring");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Puffer.ToString());
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Red Locust Bees");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.RedLocustBees.ToString());
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Flowerman");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Flowerman.ToString());
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
@@ -140,16 +140,17 @@ namespace LethalMon.Patches
         {
             foreach (EnemyType enemyType in Utils.EnemyTypes)
             {
-                if (enemyName == enemyType.enemyName)
-                {
-                    var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
-                    LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
-                    GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
-                    gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                    var enemyAI = gameObject.GetComponent<EnemyAI>();
-                    RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
-                    return;
-                }
+                if (enemyName != enemyType.name) continue;
+
+                var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
+                LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
+                GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
+                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+                var enemyAI = gameObject.GetComponent<EnemyAI>();
+                RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
+                enemyAI.enabled = !StartOfRound.Instance.inShipPhase;
+
+                return;
             }
 
             LethalMon.Logger.LogInfo("No enemy found..");
