@@ -1,4 +1,5 @@
 using GameNetcodeStuff;
+using LethalMon.Behaviours;
 
 namespace LethalMon.CatchableEnemy;
 
@@ -45,5 +46,9 @@ public abstract class CatchableEnemy
     /// </summary>
     /// <param name="enemyAI">Enemy that was captured</param>
     /// <param name="player">The player that threw the ball</param>
-    public abstract void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player);
+    public void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player)
+    {
+        if (enemyAI.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
+            tamedEnemyBehaviour.OnEscapedFromBall(player);
+    }
 }

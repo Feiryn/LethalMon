@@ -1,9 +1,9 @@
-using HarmonyLib;
 using LethalMon.Items;
 using System.Collections.Generic;
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using GameNetcodeStuff;
 
 namespace LethalMon.Behaviours;
 
@@ -15,7 +15,9 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     public float currentTimer = 0f;
 
     public const float searchTimer = 5f; // in seconds
+    #endregion
 
+    #region Custom behaviours
     private enum CustomBehaviour
     {
         GettingItem = 1,
@@ -26,7 +28,6 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         { new Tuple<string, Action>(CustomBehaviour.GettingItem.ToString(), OnGettingItem) },
         { new Tuple<string, Action>(CustomBehaviour.BringBackItem.ToString(), OnBringBackItem) }
     };
-    #endregion
 
     public void OnGettingItem()
     {
@@ -68,6 +69,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             hoarderBug.SetDestinationToPosition(ownerPlayer.transform.position);
         }
     }
+    #endregion
 
     #region Base Methods
     internal override void Start()
@@ -115,6 +117,14 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     internal override void OnTamedDefending()
     {
         base.OnTamedDefending();
+    }
+
+    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    {
+        base.OnEscapedFromBall(playerWhoThrewBall);
+
+        hoarderBug.angryTimer = 10f;
+        hoarderBug.angryAtPlayer = playerWhoThrewBall;
     }
 
     internal override void DoAIInterval()

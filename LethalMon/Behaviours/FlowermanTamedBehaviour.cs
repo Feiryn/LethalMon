@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GameNetcodeStuff;
 using LethalMon.Items;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -144,6 +145,13 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
         else
             this.CalmDownAndFollow();
+    }
+
+    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    {
+        base.OnEscapedFromBall(playerWhoThrewBall);
+
+        bracken.AddToAngerMeter(float.MaxValue);
     }
 
     internal override void DoAIInterval()

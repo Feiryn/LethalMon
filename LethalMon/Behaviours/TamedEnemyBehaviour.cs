@@ -18,7 +18,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
         { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) }
+        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
+        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -71,8 +72,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public enum TamingBehaviour
     {
         TamedFollowing = 1,
-        TamedDefending = 2,
-        EscapedFromBall = 3
+        TamedDefending = 2
     }
     private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length - 1;
 
@@ -178,7 +178,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnEscapedFromBall() { } // wip / unused yet
+    internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
     #endregion
 
     #region Base Methods
@@ -211,9 +211,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 break;
             case TamingBehaviour.TamedDefending:
                 OnTamedDefending();
-                break;
-            case TamingBehaviour.EscapedFromBall:
-                OnEscapedFromBall();
                 break;
             default: break;
         }
@@ -318,7 +315,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
             TeleportBehindOwner();
 
-        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
+        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 5f,
                 out Vector3 potentialPosition1,
                 out Vector3 potentialPosition2))
         {
@@ -332,10 +329,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 previousPosition = Enemy.transform.position;
                 Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
 
-                /*if (Enemy.moveTowardsDestination)
-                {
+                if (Enemy.moveTowardsDestination)
                     Enemy.agent.SetDestination(Enemy.destination);
-                }*/
+
                 Enemy.SyncPositionToClients();
             }
         }

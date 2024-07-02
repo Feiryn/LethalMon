@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using LethalMon.CatchableEnemy;
+using static LethalMon.Utils;
 
 namespace LethalMon;
 
@@ -25,8 +26,9 @@ public static class Data
 
     public static readonly Dictionary<string, CatchableEnemy.CatchableEnemy> CatchableMonsters = new()
     {
-        { "Flowerman", new CatchableFlowerman() },
-        { "HoarderBug", new CatchableHoarderBug() },
-        { "RedLocustBees", new CatchableRedLocustBees() }
+        { Enemy.Flowerman.ToString(), new CatchableFlowerman() },
+        { Enemy.HoarderBug.ToString(), new CatchableHoarderBug() },
+        { Enemy.RedLocustBees.ToString(), new CatchableRedLocustBees() },
+        { Enemy.Puffer.ToString(), new CatchableSporeLizard() }
     };
 }
