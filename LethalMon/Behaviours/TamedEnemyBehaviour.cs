@@ -8,6 +8,7 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.InputSystem;
 
 namespace LethalMon.Behaviours;
 
@@ -89,6 +90,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
+    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - tamedBehaviourCount;
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -100,6 +102,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public void SwitchToCustomBehaviour(int behaviour)
     {
+        if (CurrentCustomBehaviour == behaviour) return;
+
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
@@ -181,6 +185,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
     #endregion
 
+    #region ActionKeys
+    internal virtual void ActionKey1Pressed() { }
+    #endregion
+
     #region Base Methods
     public void Update()
     {
@@ -218,6 +226,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnUpdate(bool update = false, bool doAIInterval = true)
     {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         if (update)
             Enemy.Update();
 
