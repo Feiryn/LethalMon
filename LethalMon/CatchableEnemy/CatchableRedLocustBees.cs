@@ -1,6 +1,6 @@
 using System;
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using LethalMon.Patches;
 using UnityEngine;
 
@@ -18,10 +18,5 @@ public class CatchableRedLocustBees : CatchableEnemy
         ai.SetMovingTowardsTargetPlayer(player);
         ai.SwitchToBehaviourState(2);
         RedLocustBeesPatch.AngryUntil.Add(ai.GetInstanceID(), DateTime.Now.AddSeconds(10));
-    }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<RedLocustBeesCustomAI>();
     }
 }

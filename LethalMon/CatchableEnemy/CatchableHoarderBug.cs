@@ -1,5 +1,5 @@
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using UnityEngine;
 
 namespace LethalMon.CatchableEnemy;
@@ -15,10 +15,5 @@ public class CatchableHoarderBug : CatchableEnemy
         HoarderBugAI ai = (HoarderBugAI) enemyAI;
         ai.angryTimer = 10f;
         ai.angryAtPlayer = player;
-    }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<HoarderBugCustomAI>();
     }
 }

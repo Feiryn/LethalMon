@@ -1,19 +1,17 @@
-using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Reflection;
-using GameNetcodeStuff;
-using HarmonyLib;
-using LethalMon.AI;
+using LethalLib.Modules;
+using LethalMon.Behaviours;
 using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace LethalMon.Items;
 
 public abstract class PokeballItem : ThrowableItem
 {
+    #region Properties
     private EnemyAI? enemyAI = null;
     
     private EnemyType? enemyType = null;
@@ -31,13 +29,39 @@ public abstract class PokeballItem : ThrowableItem
     private int captureStrength;
 
     private BallType ballType;
-    
+    #endregion
+
+    #region Initialization
     public PokeballItem(BallType ballType, int captureStrength)
     {
         this.ballType = ballType;
         this.captureStrength = captureStrength;
     }
 
+    internal static GameObject? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : PokeballItem
+    {
+        if (assetBundle == null) return null;
+
+        var ballItem = assetBundle.LoadAsset<Item>(Path.Combine("Assets/Balls", assetPath));
+        if (ballItem == null)
+        {
+            LethalMon.Log($"{assetPath} not found.", LethalMon.LogType.Error);
+            return null;
+        }
+
+        T script = ballItem.spawnPrefab.AddComponent<T>();
+        script.itemProperties = ballItem;
+        script.grabbable = true;
+        script.grabbableToEnemies = true;
+        LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(ballItem.spawnPrefab);
+
+        LethalLib.Modules.Items.RegisterScrap(ballItem, scrapRarity, Levels.LevelTypes.All);
+
+        return ballItem.spawnPrefab;
+    }
+    #endregion
+
+    #region Base Methods
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
@@ -48,10 +72,10 @@ public abstract class PokeballItem : ThrowableItem
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Collided with " + other.gameObject.name);
+        LethalMon.Log("Collided with " + other.gameObject.name);
 
-        Debug.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
-        Debug.Log("Pokeball was thrown by: " + this.playerThrownBy);
+        LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
+        LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
         
         if ((this.NetworkManager.IsHost || this.NetworkManager.IsServer) && !this.enemyCaptured && this.playerThrownBy != null)
         {
@@ -65,50 +89,144 @@ public abstract class PokeballItem : ThrowableItem
                 }
                 else
                 {
-                    Debug.Log(enemyToCapture.enemyType.name + " is not catchable");
+                    LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
                 }
             }
         }
     }
-    
-    internal static void InitializeRPCS()
+
+    public override void OnDestroy()
     {
-        NetworkManager.__rpc_func_table.Add(1173420115u, __rpc_handler_1173420115);
-        NetworkManager.__rpc_func_table.Add(291057008u, __rpc_handler_291057008);
-        NetworkManager.__rpc_func_table.Add(626404720u, __rpc_handler_626404720);
+        if (!this.captureSuccess && !this.enemyCaptured)
+        {
+            if (this.enemyAI != null)
+            {
+                this.enemyAI.gameObject.SetActive(true); // Show enemy
+
+                if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
+                {
+                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.playerThrownBy);
+                }
+            }
+        }
+
+        base.OnDestroy();
     }
+
+    public override void TouchGround()
+    {
+        LethalMon.Log("Touch ground");
+
+        if (base.IsHost && this.playerThrownBy != null && this.enemyCaptured)
+        {
+            LethalMon.Logger.LogInfo("Getting pet..");
+            if (Utils.GetPlayerPet(this.playerThrownBy) != null)
+            {
+                LethalMon.Logger.LogInfo("You already have a monster out!");
+                HUDManager.Instance.AddTextMessageClientRpc("You already have a monster out!");
+            }
+            else
+            {
+                EnemyType typeToSpawn = this.enemyType!;
+
+                GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
+                    Quaternion.Euler(new Vector3(0, 0f, 0f)));
+
+                EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
+                if (!gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+                {
+                    LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
+                    return;
+                }
+
+                LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
+                tamedBehaviour.ownerPlayer = this.playerThrownBy;
+                tamedBehaviour.ownClientId = this.playerThrownBy.playerClientId;
+                tamedBehaviour.ballType = this.ballType;
+                tamedBehaviour.ballValue = this.scrapValue;
+                tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+                tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+                tamedBehaviour.isOutsideOfBall = true;
+                tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+
+                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+                CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, tamedBehaviour.ownClientId);
+                Destroy(this.gameObject);
+            }
+        }
+    }
+
+    public override void SetControlTipsForItem()
+    {
+        string[] toolTips = itemProperties.toolTips;
+        if (toolTips.Length < 1)
+        {
+            LethalMon.Log("Pokeball control tips array length is too short to set tips!", LethalMon.LogType.Error);
+            return;
+        }
+        if (this.enemyCaptured && this.enemyType != null)
+        {
+            toolTips[0] = "Enemy captured: " + this.enemyType.name;
+        }
+        else
+        {
+            toolTips[0] = "";
+        }
+        HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
+    }
+
+    public override int GetItemDataToSave()
+    {
+        base.GetItemDataToSave();
+
+        if (!this.enemyCaptured || this.catchableEnemy == null)
+        {
+            return -1;
+        }
+        else
+        {
+            return this.catchableEnemy.Id;
+        }
+    }
+
+    public override void LoadItemSaveData(int saveData)
+    {
+        base.LoadItemSaveData(saveData);
+
+        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        {
+            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
+            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
+            this.SetCaughtEnemy(type);
+        }
+    }
+    #endregion
 
     #region CaptureAnimation
 
-    public void SendPlayCaptureAnimationPacket(NetworkObjectReference enemy, int roundsNumber, bool catchSuccess)
+    [ServerRpc(RequireOwnership = false)]
+    public void PlayCaptureAnimationServerRpc(NetworkObjectReference enemy, int roundsNumber, bool catchSuccess)
     {
-        ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(1173420115u, rpcParams, RpcDelivery.Reliable);
-        writer.WriteValueSafe(in enemy);
-        writer.WriteValueSafe(roundsNumber);
-        writer.WriteValueSafe(catchSuccess ? 1 : 0);
-        this.__endSendClientRpc(ref writer, 1173420115u, rpcParams, RpcDelivery.Reliable);
-        Debug.Log("Play capture animation client rpc send finished");
+        PlayCaptureAnimationClientRpc(enemy, roundsNumber, catchSuccess);
     }
     
     [ClientRpc]
     public void PlayCaptureAnimationClientRpc(NetworkObjectReference enemy, int roundsNumber, bool catchSuccess)
     {
-        Debug.Log("Play capture animation client rpc received");
-        
-        if (enemy.TryGet(out NetworkObject enemyAINetworkObject))
+        LethalMon.Log("Play capture animation client rpc received");
+
+        if (!enemy.TryGet(out NetworkObject enemyAINetworkObject))
         {
-            this.enemyAI = enemyAINetworkObject.gameObject.GetComponent<EnemyAI>();
-            this.enemyType = this.enemyAI.enemyType;
-            this.captureSuccess = catchSuccess;
-            this.captureRounds = roundsNumber;
-            this.currentCaptureRound = 0;
-            this.PlayCaptureAnimation();
+            LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
+            return;
         }
-        else
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)");
-        }
+
+        this.enemyAI = enemyAINetworkObject.gameObject.GetComponent<EnemyAI>();
+        this.enemyType = this.enemyAI.enemyType;
+        this.captureSuccess = catchSuccess;
+        this.captureRounds = roundsNumber;
+        this.currentCaptureRound = 0;
+        this.PlayCaptureAnimation();
     }
 
     public void PlayCaptureAnimation()
@@ -131,7 +249,7 @@ public abstract class PokeballItem : ThrowableItem
     
     private void CaptureEnemy(EnemyAI enemyAI, CatchableEnemy.CatchableEnemy catchable)
     {
-        Debug.Log("Start to capture " + enemyAI.name);
+        LethalMon.Log("Start to capture " + enemyAI.name);
         this.playerThrownBy = null;
         this.catchableEnemy = catchable;
         this.enemyAI = enemyAI;
@@ -140,24 +258,24 @@ public abstract class PokeballItem : ThrowableItem
         this.captureSuccess = Data.Random.NextDouble() < captureProbability;
         this.captureRounds = this.captureSuccess ? 3 : Data.Random.Next(1, 4);
         
-        SendPlayCaptureAnimationPacket(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
+        PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }
 
     public void CaptureEnd(string message)
     {
-        Debug.Log("Capture animation end");
+        LethalMon.Log("Capture animation end");
 
         // Test if we need to play the animation more times
         if (this.currentCaptureRound + 1 < this.captureRounds)
         {
-            Debug.Log("Play the animation again");
+            LethalMon.Log("Play the animation again");
             
             this.currentCaptureRound++;
             PlayCaptureAnimationAnimator();
         }
         else if (this.captureSuccess)
         {
-            Debug.Log("Capture success");
+            LethalMon.Log("Capture success");
 
             this.SetCaughtEnemy(this.enemyType);
             
@@ -168,7 +286,7 @@ public abstract class PokeballItem : ThrowableItem
         }
         else
         {
-            Debug.Log("Capture failed");
+            LethalMon.Log("Capture failed");
 
             if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
             {
@@ -176,226 +294,18 @@ public abstract class PokeballItem : ThrowableItem
             }
         }
     }
-
-    public override void OnDestroy()
-    {
-        if (!this.captureSuccess && !this.enemyCaptured)
-        {
-            if (this.enemyAI != null)
-            {
-                this.enemyAI.gameObject.SetActive(true); // Show enemy
-
-                if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
-                {
-                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.playerThrownBy);
-                }
-            }
-        }
-        
-        base.OnDestroy();
-    }
-
-    private static void __rpc_handler_1173420115(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening)
-        {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            Traverse rpcExecStage = Traverse.Create(target).Field("__rpc_exec_stage");
-            reader.ReadValueSafe(out NetworkObjectReference enemy);
-            reader.ReadValueSafe(out int roundsNumber);
-            reader.ReadValueSafe(out int captureSuccess);
-            rpcExecStage.SetValue(__RpcExecStage.Client);
-            ((PokeballItem) target).PlayCaptureAnimationClientRpc(enemy, roundsNumber, captureSuccess == 1);
-            rpcExecStage.SetValue(__RpcExecStage.None);
-        }
-    }
-    
-    #endregion
-    
-    #region CustomAiSpawning
-
-    public void SendReplaceWithCustomAiPacket(NetworkObjectReference networkObjectReference, string customAiName, ulong ownerClientId)
-    {
-        ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(291057008u, rpcParams, RpcDelivery.Reliable);
-        writer.WriteValueSafe(in networkObjectReference);
-        writer.WriteValueSafe(customAiName);
-        writer.WriteValueSafe(ownerClientId);
-        this.__endSendClientRpc(ref writer, 291057008u, rpcParams, RpcDelivery.Reliable);
-        Debug.Log("ReplaceWithCustomAi client rpc send finished");
-    }
-    
-    [ClientRpc]
-    public void ReplaceWithCustomAiClientRpc(NetworkObjectReference networkObjectReference, string customAiName, ulong ownerClientId)
-    {
-        Debug.Log("ReplaceWithCustomAi client rpc received");
-        if (networkObjectReference.TryGet(out NetworkObject networkObject))
-        {
-            EnemyAI enemyAi = networkObject.GetComponent<EnemyAI>();
-            if (Data.CatchableMonsters.TryGetValue(customAiName, out CatchableEnemy.CatchableEnemy catchableEnemy))
-            {
-                CustomAI newAi = catchableEnemy.AddAiComponent(networkObject.gameObject);
-                // Dirty, but we need to add the CustomAi in order to be able to process the RPCs
-                ((List<NetworkBehaviour>) networkObject.GetType()
-                    .GetField("m_ChildNetworkBehaviours", BindingFlags.NonPublic | BindingFlags.Instance)
-                    .GetValue(networkObject))
-                    .Add(newAi);
-                CopyProperties(enemyAi, newAi);
-                newAi.CopyProperties(enemyAi);
-                newAi.ownClientId = ownerClientId;
-                enemyAi.enabled = false;
-                Destroy(this.gameObject);
-            }
-            else
-            {
-                Debug.Log("Custom AI name not found (maybe mod version mismatch)");
-            }
-        }
-        else
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)");
-        }
-    }
-
-    private static void __rpc_handler_291057008(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening && !(networkManager.IsServer || networkManager.IsHost))
-        {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
-            reader.ReadValueSafe(out string customAiName);
-            reader.ReadValueSafe(out ulong ownerClientId);
-            ((PokeballItem) target).ReplaceWithCustomAiClientRpc(networkObjectReference, customAiName, ownerClientId);
-        }
-    }
-    
     #endregion
 
-    #region SyncContent
-
-    public void SyncContentPacket(NetworkObjectReference networkObjectReference, string enemyTypeName)
+    #region Methods
+    public void SetCaughtEnemy(EnemyType enemyType, bool sync = true)
     {
-        ClientRpcParams rpcParams = default(ClientRpcParams);
-        FastBufferWriter writer = this.__beginSendClientRpc(626404720u, rpcParams, RpcDelivery.Reliable);
-        writer.WriteValueSafe(in networkObjectReference);
-        writer.WriteValueSafe(enemyTypeName);
-        this.__endSendClientRpc(ref writer, 626404720u, rpcParams, RpcDelivery.Reliable);
-        Debug.Log("SyncContentPacket client rpc send finished");
-    }
-    
-    [ClientRpc]
-    public void SyncContentClientRpc(NetworkObjectReference networkObjectReference, string enemyTypeName)
-    {
-        Debug.Log("SyncContentPacket client rpc received");
-        if (networkObjectReference.TryGet(out NetworkObject networkObject))
-        {
-            PokeballItem pokeballItem = networkObject.GetComponent<PokeballItem>();
-            EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
-            pokeballItem.SetCaughtEnemy(enemyType);
-        }
-        else
-        {
-            Debug.LogError(this.gameObject.name + ": Failed to get network object from network object reference (SyncContentPacket RPC)");
-        }
-    }
+        this.enemyType = enemyType;
+        this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
+        this.enemyCaptured = true;
+        this.ChangeName();
 
-    private static void __rpc_handler_626404720(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening && !(networkManager.IsServer || networkManager.IsHost))
-        {
-            Debug.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            reader.ReadValueSafe(out NetworkObjectReference networkObjectReference);
-            reader.ReadValueSafe(out string enemyTypeName);
-            ((PokeballItem) target).SyncContentClientRpc(networkObjectReference, enemyTypeName);
-        }
-    }
-    
-    #endregion
-    
-    public override void TouchGround()
-    {
-        Debug.Log("Touch ground");
-
-        if (base.IsHost && this.playerThrownBy != null && this.enemyCaptured)
-        {
-            if (Utils.GetPlayerPet(this.playerThrownBy) != null)
-            {
-                HUDManager.Instance.AddTextMessageClientRpc("You already have a monster out!");
-            }
-            else
-            {
-                EnemyType typeToSpawn = this.enemyType!;
-
-                GameObject gameObject = Object.Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
-                    Quaternion.Euler(new Vector3(0, 0f, 0f)));
-
-                EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
-                CustomAI newAi = this.catchableEnemy!.AddAiComponent(gameObject);
-                CopyProperties(enemyAi, newAi);
-                newAi.CopyProperties(enemyAi);
-                newAi.ownerPlayer = this.playerThrownBy;
-                newAi.ownClientId = this.playerThrownBy.playerClientId;
-                newAi.ballType = this.ballType;
-                newAi.ballValue = this.scrapValue;
-                newAi.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-                newAi.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
-                
-                enemyAi.enabled = false;
-                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                SendReplaceWithCustomAiPacket(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, newAi.ownClientId);
-                Destroy(this.gameObject);
-            }
-        }
-    }
-    
-    public static void CopyProperties(object source, object destination)
-    {
-        // If any this null throw an exception
-        if (source == null || destination == null)
-            throw new Exception("Source or/and Destination Objects are null");
-        // Getting the Types of the objects
-        Type typeDest = destination.GetType();
-        Type typeSrc = source.GetType();
-
-        // Iterate the Properties of the source instance and  
-        // populate them from their desination counterparts  
-        PropertyInfo[] srcProps = typeSrc.GetProperties();
-        foreach (PropertyInfo srcProp in srcProps)
-        {
-            if (!srcProp.CanRead)
-            {
-                continue;
-            }
-            PropertyInfo targetProperty = typeDest.GetProperty(srcProp.Name);
-            if (targetProperty == null)
-            {
-                continue;
-            }
-            if (!targetProperty.CanWrite)
-            {
-                continue;
-            }
-            if (targetProperty.GetSetMethod(true) != null && targetProperty.GetSetMethod(true).IsPrivate)
-            {
-                continue;
-            }
-            if (targetProperty.GetSetMethod() != null && (targetProperty.GetSetMethod().Attributes & MethodAttributes.Static) != 0)
-            {
-                continue;
-            }
-            if (!targetProperty.PropertyType.IsAssignableFrom(srcProp.PropertyType))
-            {
-                continue;
-            }
-            // Passed all tests, lets set the value
-            targetProperty.SetValue(destination, srcProp.GetValue(source, null), null);
-        }
+        if (sync)
+            SetCaughtEnemyServerRpc(this.enemyType.name);
     }
 
     private void ChangeName()
@@ -403,67 +313,59 @@ public abstract class PokeballItem : ThrowableItem
         string name = this.GetName();
         this.GetComponentInChildren<ScanNodeProperties>().headerText = name;
     }
-    
+
     private string GetName()
     {
-        return this.itemProperties.itemName + " (" + this.catchableEnemy.DisplayName + ")";
+        return this.itemProperties.itemName + " (" + this.catchableEnemy?.DisplayName + ")";
+    }
+    #endregion
+
+    #region RPCs
+
+    [ServerRpc(RequireOwnership = false)]
+    public void CallTamedEnemyServerRpc(NetworkObjectReference networkObjectReference, string enemyName, ulong ownerClientId)
+    {
+        CallTamedEnemyClientRpc(networkObjectReference, enemyName, ownerClientId);
     }
 
-    public override void SetControlTipsForItem()
+    [ClientRpc]
+    public void CallTamedEnemyClientRpc(NetworkObjectReference networkObjectReference, string enemyName, ulong ownerClientId)
     {
-        string[] toolTips = itemProperties.toolTips;
-        if (toolTips.Length < 1)
+        LethalMon.Log("ReplaceWithCustomAi client rpc received");
+        if (!networkObjectReference.TryGet(out NetworkObject networkObject))
         {
-            Debug.LogError("Pokeball control tips array length is too short to set tips!");
+            LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
-        if (this.enemyCaptured && this.enemyType != null)
+
+        if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy catchableEnemy))
         {
-            toolTips[0] = "Enemy captured: " + this.enemyType.name;
+            LethalMon.Log("Custom AI name not found (maybe mod version mismatch)");
+            return;
         }
-        else
+
+        if (!networkObject.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
         {
-            toolTips[0] = "";
+            LethalMon.Log("CallTamedEnemy: No tamed enemy behaviour found.");
+            return;
         }
-        HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
+
+        tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+        tamedBehaviour.ownClientId = ownerClientId;
     }
 
-    public void SetCaughtEnemy(EnemyType enemyType)
+    public void SetCaughtEnemyServerRpc(string enemyTypeName)
     {
-        this.enemyType = enemyType;
-        this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
-        this.enemyCaptured = true;
-        this.ChangeName();
-
-        if (this.IsHost || this.IsServer)
-        {
-            this.SyncContentPacket(this.GetComponent<NetworkObject>(), this.enemyType.name);
-        }
+        SetCaughtEnemyClientRpc(enemyTypeName);
     }
 
-    public override int GetItemDataToSave()
+    [ClientRpc]
+    public void SetCaughtEnemyClientRpc(string enemyTypeName)
     {
-        base.GetItemDataToSave();
+        LethalMon.Log("SyncContentPacket client rpc received");
 
-        if (!this.enemyCaptured || this.catchableEnemy == null)
-        {
-            return -1;
-        }
-        else
-        {
-            return this.catchableEnemy.Id;
-        }
+        EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
+        SetCaughtEnemy(enemyType, false);
     }
-
-    public override void LoadItemSaveData(int saveData)
-    {
-        base.LoadItemSaveData(saveData);
-        
-        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
-        {
-            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
-            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            this.SetCaughtEnemy(type);
-        }
-    }
+    #endregion
 }

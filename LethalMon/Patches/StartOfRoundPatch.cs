@@ -1,6 +1,6 @@
 using GameNetcodeStuff;
 using HarmonyLib;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using LethalMon.Items;
 using UnityEngine;
 
@@ -12,17 +12,18 @@ public class StartOfRoundPatch
     [HarmonyPrefix]
     private static void OnShipHasLeftPreFix(StartOfRound __instance)
     {
-        CustomAI[] customAis = GameObject.FindObjectsOfType<CustomAI>();
-        Debug.Log($"End of game, processing {customAis.Length} custom AIs");
+        TamedEnemyBehaviour[] tamedBehaviours = GameObject.FindObjectsOfType<TamedEnemyBehaviour>();
+        LethalMon.Log($"End of game, processing {tamedBehaviours.Length} tamed enemies");
         
-        foreach (CustomAI customAi in customAis)
+        foreach (TamedEnemyBehaviour tamedBehaviour in tamedBehaviours)
         {
-            PlayerControllerB player = customAi.ownerPlayer;
-            Debug.Log("Player is in hangar ship room: " + player.isInHangarShipRoom);
-            if (player.isInHangarShipRoom)
+            if(tamedBehaviour.ownerPlayer == null) continue;
+
+            LethalMon.Log("Player is in hangar ship room: " + tamedBehaviour.ownerPlayer.isInHangarShipRoom);
+            if (tamedBehaviour.ownerPlayer.isInHangarShipRoom)
             {
-                PokeballItem pokeballItem = customAi.RetrieveInBall(player.transform.position);
-                player.SetItemInElevator(true, true, pokeballItem);
+                PokeballItem pokeballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
+                tamedBehaviour.ownerPlayer.SetItemInElevator(true, true, pokeballItem);
                 pokeballItem.transform.SetParent(__instance.elevatorTransform, worldPositionStays: true);
             }
         }
@@ -32,17 +33,17 @@ public class StartOfRoundPatch
     [HarmonyPrefix]
     private static void OnPlayerDCPrefix(StartOfRound __instance, int playerObjectNumber, ulong clientId)
     {
-        Debug.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
-        
-        CustomAI[] customAis = GameObject.FindObjectsOfType<CustomAI>();
+        LethalMon.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
 
-        foreach (CustomAI customAi in customAis)
+        TamedEnemyBehaviour[] tamedBehaviours = GameObject.FindObjectsOfType<TamedEnemyBehaviour>();
+
+        foreach (TamedEnemyBehaviour tamedBehaviour in tamedBehaviours)
         {
-            if (customAi.ownClientId == clientId)
+            if (tamedBehaviour.ownClientId == clientId)
             {
-                Debug.Log($"Found {customAi.enemyType.name}, retrieving in ball");
-                
-                customAi.RetrieveInBall(customAi.transform.position);
+                LethalMon.Log($"Found {tamedBehaviour.Enemy.enemyType.name}, retrieving in ball");
+
+                tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
             }
         }
     }

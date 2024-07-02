@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
+using Unity.Netcode;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -11,9 +12,9 @@ namespace LethalMon;
 
 public class Utils
 {
-    public static CustomAI? GetPlayerPet(PlayerControllerB player)
+    public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
-        return GameObject.FindObjectsOfType<CustomAI>().FirstOrDefault(customAi => customAi.ownClientId == player.playerClientId);
+        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownClientId == player.playerClientId && tamedBehaviour.isOutsideOfBall);
     }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)
@@ -33,11 +34,11 @@ public class Utils
         foreach (StackFrame stackFrame in stackFrames[1..])
         {
             Type classType = stackFrame.GetMethod().DeclaringType;
-            Debug.Log("Stackframe type: " + classType);
+            LethalMon.Log("Stackframe type: " + classType);
 
             if (classType.IsSubclassOf(typeof(EnemyAI)))
             {
-                Debug.Log("Class is assignable from EnemyAI");
+                LethalMon.Log("Class is assignable from EnemyAI");
                 EnemyAI? closestEnemy = null;
                 float? closestEnemyDistance = float.MaxValue;
                 
@@ -65,4 +66,28 @@ public class Utils
         
         return null;
     }
+
+    #region Player
+    public static PlayerControllerB CurrentPlayer => GameNetworkManager.Instance.localPlayerController;
+
+    public static ulong? CurrentPlayerID => CurrentPlayer?.playerClientId;
+
+    public static bool IsHost
+    {
+        get
+        {
+            if (NetworkManager.Singleton != null)
+                return NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer;
+
+            if (CurrentPlayerID.HasValue)
+                return CurrentPlayerID.Value == 0ul;
+
+            return false;
+        }
+    }
+    #endregion
+
+    #region Enemy
+    public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
+    #endregion
 }

@@ -1,5 +1,5 @@
 using GameNetcodeStuff;
-using LethalMon.AI;
+using LethalMon.Behaviours;
 using UnityEngine;
 
 namespace LethalMon.CatchableEnemy;
@@ -13,10 +13,5 @@ public class CatchableFlowerman : CatchableEnemy
     public override void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player)
     {
         (enemyAI as FlowermanAI)!.AddToAngerMeter(float.MaxValue);
-    }
-
-    public override CustomAI AddAiComponent(GameObject gameObject)
-    {
-        return gameObject.AddComponent<FlowermanCustomAI>();
     }
 }
