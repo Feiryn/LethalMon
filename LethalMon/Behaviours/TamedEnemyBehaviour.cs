@@ -218,8 +218,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal void ShowVisibleActionKeyControlTips()
     {
-        // StartOfRound.Instance.localPlayerUsingController
-        LethalMon.Log("ShowVisibleActionKeyControlTips");
+        HUDManager.Instance.ClearControlTips();
+
         var controlTips = ActionKeys.Where((ak) => ak.visible).Select((ak) => ak.ControlTip).ToArray();
         HUDManager.Instance.ChangeControlTipMultiple(
                 controlTips,

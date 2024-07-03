@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static LethalMon.Behaviours.TamedEnemyBehaviour;
 
 namespace LethalMon.Behaviours
 {
@@ -13,11 +12,16 @@ namespace LethalMon.Behaviours
         // Multiplier compared to default player movement
         internal readonly float RidingSpeedMultiplier = 2.2f;
         internal readonly float RidingJumpForceMultiplier = 1.7f;
+        internal readonly float RidingTriggerHoldTime = 1f;
+
         internal PufferAI sporeLizard { get; private set; }
 
         internal InteractTrigger? ridingTrigger = null;
 
         internal float previousJumpForce = Utils.DefaultJumpForce;
+        internal bool usingModifiedValues = false;
+
+        internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
         #endregion
 
         #region Action Keys
@@ -49,6 +53,7 @@ namespace LethalMon.Behaviours
 
         void WhileRiding()
         {
+            usingModifiedValues = true;
             ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed * RidingSpeedMultiplier;
             ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
             ownerPlayer!.takingFallDamage = false;
@@ -73,8 +78,15 @@ namespace LethalMon.Behaviours
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            var shouldDoAIInterval = CurrentCustomBehaviour != (int)CustomBehaviour.Riding; // Don't attempt to SetDestination in Riding mode
-            base.OnUpdate(update, shouldDoAIInterval);
+            if(!IsRiding && usingModifiedValues)
+            {
+                // Reset to default
+                ownerPlayer!.jumpForce = previousJumpForce;
+                ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed;
+                usingModifiedValues = false;
+            }
+
+            base.OnUpdate(update, !IsRiding); // Don't attempt to SetDestination in Riding mode
         }
 
         internal override void OnTamedFollowing()
@@ -125,7 +137,8 @@ namespace LethalMon.Behaviours
             ridingTrigger.oneHandedItemAllowed = true;
             ridingTrigger.twoHandedItemAllowed = true;
             ridingTrigger.holdInteraction = true;
-            ridingTrigger.timeToHold = 1f;
+            ridingTrigger.touchTrigger = false;
+            ridingTrigger.timeToHold = RidingTriggerHoldTime;
             ridingTrigger.timeToHoldSpeedMultiplier = 1f;
 
             ridingTrigger.holdingInteractEvent = new InteractEventFloat();
@@ -135,6 +148,7 @@ namespace LethalMon.Behaviours
             ridingTrigger.onCancelAnimation = new InteractEvent();
 
             ridingTrigger.onInteract.AddListener((player) => StartRiding());
+
             ridingTrigger.enabled = true;
         }
 
@@ -142,7 +156,6 @@ namespace LethalMon.Behaviours
         {
             if (ridingTrigger == null) return;
 
-            ridingTrigger.touchTrigger = visible;
             ridingTrigger.holdInteraction = visible;
             ridingTrigger.isPlayingSpecialAnimation = !visible;
         }
@@ -150,37 +163,32 @@ namespace LethalMon.Behaviours
         private void StartRiding()
         {
             LethalMon.Log("SporeLizard.StartRiding");
-            previousJumpForce = ownerPlayer!.jumpForce;
-            ownerPlayer!.playerBodyAnimator.enabled = false;
 
-            //sporeLizard.enabled = false;
-            //sporeLizard.agent.enabled = false;
+            sporeLizard.agent.enabled = false;
 
             sporeLizard.transform.position = ownerPlayer!.transform.position;
             sporeLizard.transform.rotation = ownerPlayer!.transform.rotation;
             sporeLizard.transform.SetParent(ownerPlayer!.transform);
 
-            if (sporeLizard.TryGetComponent(out Collider collider))
-                Physics.IgnoreCollision(collider, ownerPlayer!.playerCollider);
-
             SetRidingTriggerVisible(false);
-            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+
+            previousJumpForce = ownerPlayer!.jumpForce;
+            ownerPlayer!.playerBodyAnimator.enabled = false;
         }
 
         private void StopRiding()
         {
             LethalMon.Log("SporeLizard.StopRiding");
-            ownerPlayer!.jumpForce = previousJumpForce;
             ownerPlayer!.playerBodyAnimator.enabled = true;
 
             sporeLizard.transform.SetParent(null);
 
-            //sporeLizard.enabled = true;
-            //sporeLizard.agent.enabled = true;
+            sporeLizard.agent.enabled = true;
 
-            if (sporeLizard.TryGetComponent(out Collider collider))
-                Physics.IgnoreCollision(collider, ownerPlayer!.playerCollider, false);
+            sporeLizard.agentLocalVelocity = Vector3.zero;
+            sporeLizard.CalculateAnimationDirection(0f);
 
             SetRidingTriggerVisible();
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
