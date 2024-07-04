@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -22,6 +23,7 @@ namespace LethalMon.Behaviours
         internal bool usingModifiedValues = false;
 
         internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
+        internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
         #endregion
 
         #region Action Keys
@@ -37,7 +39,7 @@ namespace LethalMon.Behaviours
             base.ActionKey1Pressed();
 
             if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding)
-                StopRiding();
+                StopRidingServerRpc();
         }
         #endregion
 
@@ -53,10 +55,14 @@ namespace LethalMon.Behaviours
 
         void WhileRiding()
         {
-            usingModifiedValues = true;
-            ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed * RidingSpeedMultiplier;
-            ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
-            ownerPlayer!.takingFallDamage = false;
+            if (IsOwnerPlayer)
+            {
+                usingModifiedValues = true;
+                ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed * RidingSpeedMultiplier;
+                ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
+                ownerPlayer!.takingFallDamage = false;
+            }
+
             sporeLizard.CalculateAnimationDirection();
         }
         #endregion
@@ -147,7 +153,7 @@ namespace LethalMon.Behaviours
             ridingTrigger.onStopInteract = new InteractEvent();
             ridingTrigger.onCancelAnimation = new InteractEvent();
 
-            ridingTrigger.onInteract.AddListener((player) => StartRiding());
+            ridingTrigger.onInteract.AddListener((player) => StartRidingServerRpc());
 
             ridingTrigger.enabled = true;
         }
@@ -160,7 +166,14 @@ namespace LethalMon.Behaviours
             ridingTrigger.isPlayingSpecialAnimation = !visible;
         }
 
-        private void StartRiding()
+        [ServerRpc(RequireOwnership = false)]
+        public void StartRidingServerRpc()
+        {
+            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+        }
+
+        [ClientRpc]
+        public void StartRidingClientRpc()
         {
             LethalMon.Log("SporeLizard.StartRiding");
 
@@ -170,15 +183,25 @@ namespace LethalMon.Behaviours
             sporeLizard.transform.rotation = ownerPlayer!.transform.rotation;
             sporeLizard.transform.SetParent(ownerPlayer!.transform);
 
-            SetRidingTriggerVisible(false);
-            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
-
             previousJumpForce = ownerPlayer!.jumpForce;
             ownerPlayer!.playerBodyAnimator.enabled = false;
+
+            if (IsOwnerPlayer)
+            {
+                SetRidingTriggerVisible(false);
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+            }
         }
 
-        private void StopRiding()
+        [ServerRpc(RequireOwnership = false)]
+        public void StopRidingServerRpc()
+        {
+            StopRidingClientRpc();
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        }
+
+        [ClientRpc]
+        public void StopRidingClientRpc()
         {
             LethalMon.Log("SporeLizard.StopRiding");
             ownerPlayer!.playerBodyAnimator.enabled = true;
@@ -190,9 +213,11 @@ namespace LethalMon.Behaviours
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);
 
-            SetRidingTriggerVisible();
-            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            if (IsOwnerPlayer)
+            {
+                SetRidingTriggerVisible();
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+            }
         }
         #endregion
     }

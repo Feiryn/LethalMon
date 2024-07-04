@@ -68,6 +68,9 @@ public class Utils
     }
 
     #region Player
+    public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();
+    public static List<PlayerControllerB>? AlivePlayers => AllPlayers?.Where(pcb => !pcb.isPlayerDead).ToList();
+
     public static PlayerControllerB CurrentPlayer => GameNetworkManager.Instance.localPlayerController;
 
     public static ulong? CurrentPlayerID => CurrentPlayer?.playerClientId;

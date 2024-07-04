@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
-using LethalLib;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
@@ -386,6 +385,24 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         // todo else turn in the direction of the owner
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SyncOwnerServerRpc(NetworkObjectReference ownerNetworkReference)
+    {
+        SyncOwnerClientRpc(ownerNetworkReference);
+    }
+
+    [ClientRpc]
+    public void SyncOwnerClientRpc(NetworkObjectReference ownerNetworkReference)
+    {
+        LethalMon.Log("SyncOwnerClientRpc");
+        if (!ownerNetworkReference.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out PlayerControllerB player))
+        {
+            LethalMon.Log("Failed to get player object (SyncOwnerClientRpc)", LethalMon.LogType.Error);
+            return;
+        }
+        ownerPlayer = player;
     }
 
     private void TeleportBehindOwner()
