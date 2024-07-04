@@ -11,6 +11,7 @@ using UnityEngine.InputSystem;
 
 namespace LethalMon.Behaviours;
 
+[DisallowMultipleComponent]
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
     // Add your custom behaviour classes here
@@ -385,24 +386,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         // todo else turn in the direction of the owner
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void SyncOwnerServerRpc(NetworkObjectReference ownerNetworkReference)
-    {
-        SyncOwnerClientRpc(ownerNetworkReference);
-    }
-
-    [ClientRpc]
-    public void SyncOwnerClientRpc(NetworkObjectReference ownerNetworkReference)
-    {
-        LethalMon.Log("SyncOwnerClientRpc");
-        if (!ownerNetworkReference.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out PlayerControllerB player))
-        {
-            LethalMon.Log("Failed to get player object (SyncOwnerClientRpc)", LethalMon.LogType.Error);
-            return;
-        }
-        ownerPlayer = player;
     }
 
     private void TeleportBehindOwner()
