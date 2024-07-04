@@ -169,6 +169,8 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         public void StartRidingServerRpc()
         {
+            LethalMon.Log("StartRidingServerRpc");
+            StartRidingClientRpc();
             SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
         }
 
@@ -181,7 +183,9 @@ namespace LethalMon.Behaviours
 
             sporeLizard.transform.position = ownerPlayer!.transform.position;
             sporeLizard.transform.rotation = ownerPlayer!.transform.rotation;
-            sporeLizard.transform.SetParent(ownerPlayer!.transform);
+
+            if(Utils.IsHost)
+                sporeLizard.transform.SetParent(ownerPlayer!.transform);
 
             previousJumpForce = ownerPlayer!.jumpForce;
             ownerPlayer!.playerBodyAnimator.enabled = false;
@@ -196,6 +200,7 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         public void StopRidingServerRpc()
         {
+            LethalMon.Log("StopRidingServerRpc");
             StopRidingClientRpc();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
