@@ -63,6 +63,12 @@ public abstract class PokeballItem : ThrowableItem
     #endregion
 
     #region Base Methods
+    public override void Start()
+    {
+        base.Start();
+        for (int i = 0; i < propColliders.Length; i++)
+            propColliders[i].excludeLayers = 0; // 0 = nothing, -1 = everything (default since v55)
+    }
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
@@ -77,22 +83,20 @@ public abstract class PokeballItem : ThrowableItem
 
         LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
         LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
-        
-        if ((this.NetworkManager.IsHost || this.NetworkManager.IsServer) && !this.enemyCaptured && this.playerThrownBy != null)
+
+        if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
+
+        EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
+        if (enemyToCapture == null) return;
+
+        if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
+                out CatchableEnemy.CatchableEnemy catchable))
         {
-            EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
-            if (enemyToCapture != null)
-            {
-                if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
-                        out CatchableEnemy.CatchableEnemy catchable))
-                {
-                    this.CaptureEnemy(enemyToCapture, catchable);   
-                }
-                else
-                {
-                    LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
-                }
-            }
+            this.CaptureEnemy(enemyToCapture, catchable);   
+        }
+        else
+        {
+            LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
         }
     }
 
