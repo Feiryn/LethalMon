@@ -63,10 +63,13 @@ namespace LethalMon.Behaviours
                 ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
                 ownerPlayer!.takingFallDamage = false;
             }
-            else if(!Utils.IsHost && ownerPlayer != null)
+            else if(ownerPlayer != null)
             {
-                sporeLizard.transform.rotation = ownerPlayer.transform.rotation;
-                sporeLizard.transform.position = ownerPlayer.transform.position;
+                if (!Utils.IsHost) // transform parenting not working on enemies. manually for now..
+                {
+                    sporeLizard.transform.rotation = ownerPlayer.transform.rotation;
+                    sporeLizard.transform.position = ownerPlayer.transform.position;
+                }
             }
 
             sporeLizard.CalculateAnimationDirection();
@@ -190,11 +193,12 @@ namespace LethalMon.Behaviours
             sporeLizard.transform.position = ownerPlayer!.transform.position;
             sporeLizard.transform.rotation = ownerPlayer!.transform.rotation;
 
-            if(Utils.IsHost)
+            if (Utils.IsHost)
                 sporeLizard.transform.SetParent(ownerPlayer!.transform);
 
             previousJumpForce = ownerPlayer!.jumpForce;
             ownerPlayer!.playerBodyAnimator.enabled = false;
+            ownerPlayer!.disableInteract = true;
 
             if (IsOwnerPlayer)
             {
@@ -215,19 +219,21 @@ namespace LethalMon.Behaviours
         public void StopRidingClientRpc()
         {
             LethalMon.Log("SporeLizard.StopRiding");
-            ownerPlayer!.playerBodyAnimator.enabled = true;
+
+            sporeLizard.agent.enabled = true;
 
             if (Utils.IsHost)
                 sporeLizard.transform.SetParent(null);
 
-            sporeLizard.agent.enabled = true;
+            ownerPlayer!.playerBodyAnimator.enabled = true;
+            ownerPlayer!.disableInteract = false;
 
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);
 
             if (IsOwnerPlayer)
             {
-                SetRidingTriggerVisible();
+                SetRidingTriggerVisible(true);
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
             }
         }
