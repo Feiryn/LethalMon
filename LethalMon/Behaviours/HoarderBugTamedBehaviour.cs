@@ -21,10 +21,10 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         GettingItem = 1,
         BringBackItem
     }
-    internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
+    internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
     {
-        { new Tuple<string, Action>(CustomBehaviour.GettingItem.ToString(), OnGettingItem) },
-        { new Tuple<string, Action>(CustomBehaviour.BringBackItem.ToString(), OnBringBackItem) }
+        { new (CustomBehaviour.GettingItem.ToString(), OnGettingItem) },
+        { new (CustomBehaviour.BringBackItem.ToString(), OnBringBackItem) }
     };
     #endregion
 
@@ -127,7 +127,6 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         base.OnUpdate(update, doAIInterval);
 
         hoarderBug.CalculateAnimationDirection();
-        hoarderBug.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(hoarderBug.transform.position - hoarderBug.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
     }
 
     public override PokeballItem RetrieveInBall(Vector3 position)

@@ -6,7 +6,6 @@ using GameNetcodeStuff;
 using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 namespace LethalMon;
 
@@ -89,5 +88,23 @@ public class Utils
 
     #region Enemy
     public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
+
+    public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
+    {
+        Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
+        foreach (Collider collider in colliders)
+        {
+            DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
+            if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
+            {
+                LethalMon.Log("Door opened at " + position);
+                if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
+                {
+                    trigger.TriggerAnimationNonPlayer(false, true, false);
+                }
+                doorLock.OpenDoorAsEnemyServerRpc();
+            }
+        }
+    }
     #endregion
 }

@@ -46,8 +46,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public BallType ballType;
 
-    protected Vector3 previousPosition;
-
     public int ballValue;
 
     public bool scrapPersistedThroughRounds;
@@ -224,17 +222,35 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (update)
             Enemy.Update();
 
-        if (doAIInterval)
+        if (Enemy.updateDestinationInterval >= 0f)
         {
-            if (Enemy.updateDestinationInterval >= 0f)
+            Enemy.updateDestinationInterval -= Time.deltaTime;
+        }
+        else
+        {
+            if (Enemy.currentBehaviourStateIndex > LastDefaultBehaviourIndex)
             {
-                Enemy.updateDestinationInterval -= Time.deltaTime;
+                if (base.IsOwner)
+                {
+                    if (Enemy.openDoorSpeedMultiplier > 0f)
+                    {
+                        Utils.OpenDoorsAsEnemyAroundPosition(Enemy.transform.position);
+                    }
+
+                    if (Enemy.moveTowardsDestination)
+                    {
+                        Enemy.agent.SetDestination(Enemy.destination);
+                    }
+
+                    Enemy.SyncPositionToClients();
+                }
             }
-            else
+            else if (doAIInterval)
             {
                 DoAIInterval();
-                Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
             }
+            
+            Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
         }
     }
 
@@ -259,7 +275,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.path1 = new NavMeshPath();
             Enemy.openDoorSpeedMultiplier = Enemy.enemyType.doorSpeedMultiplier;
             Enemy.serverPosition = base.transform.position;
-            previousPosition = base.transform.position;
             if (base.IsOwner)
             {
                 Enemy.SyncPositionToClients();
@@ -283,26 +298,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void DoAIInterval()
     {
-        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex) return;
-
-        if (Enemy.openDoorSpeedMultiplier > 0f)
-        {
-            Collider[] colliders = Physics.OverlapSphere(Enemy.transform.position, 0.5f);
-            foreach (Collider collider in colliders)
-            {
-                DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
-                if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
-                {
-                    LethalMon.Log("Tamed enemy opens door");
-                    if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
-                    {
-                        trigger.TriggerAnimationNonPlayer(false, true, false);
-                    }
-                    doorLock.OpenDoorAsEnemyServerRpc();
-                }
-            }
-        }
-
         Enemy.DoAIInterval();
     }
     #endregion
@@ -328,19 +323,17 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (distance1 > 4f && distance2 > 4f)
             {
-                //LethalMon.Logger.LogInfo("Following to destination");
-                previousPosition = Enemy.transform.position;
                 Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
-
-                /*if (Enemy.moveTowardsDestination)
-                {
-                    Enemy.agent.SetDestination(Enemy.destination);
-                }*/
-                Enemy.SyncPositionToClients();
+            }
+            else
+            {
+                // Turn in the direction of the owner gradually
+                Transform enemyTransform = Enemy.transform;
+                Vector3 direction = ownerPlayer.transform.position - enemyTransform.position;
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
             }
         }
-
-        // todo else turn in the direction of the owner
     }
 
     private void TeleportBehindOwner()
