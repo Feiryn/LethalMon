@@ -82,13 +82,6 @@ namespace LethalMon.Behaviours
             base.Start();
 
             sporeLizard = (Enemy as PufferAI)!;
-
-#if DEBUG
-            ownerPlayer = StartOfRound.Instance.allPlayerScripts.Where((p) => p.playerClientId == 0ul).First();
-            AddRidingTrigger();
-            SetRidingTriggerVisible();
-            isOutsideOfBall = true;
-#endif
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
