@@ -174,10 +174,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnTamedFollowing()
     {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         FollowOwner();
     }
 
-    internal virtual void OnTamedDefending() {
+    internal virtual void OnTamedDefending()
+    {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         if (targetEnemy == null && targetPlayer == null) // lost target
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }

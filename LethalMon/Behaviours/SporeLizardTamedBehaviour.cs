@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -62,6 +63,11 @@ namespace LethalMon.Behaviours
                 ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
                 ownerPlayer!.takingFallDamage = false;
             }
+            else if(!Utils.IsHost && ownerPlayer != null)
+            {
+                sporeLizard.transform.rotation = ownerPlayer.transform.rotation;
+                sporeLizard.transform.position = ownerPlayer.transform.position;
+            }
 
             sporeLizard.CalculateAnimationDirection();
         }
@@ -75,7 +81,7 @@ namespace LethalMon.Behaviours
             sporeLizard = (Enemy as PufferAI)!;
 
 #if DEBUG
-            ownerPlayer = Utils.CurrentPlayer;
+            ownerPlayer = StartOfRound.Instance.allPlayerScripts.Where((p) => p.playerClientId == 0ul).First();
             AddRidingTrigger();
             SetRidingTriggerVisible();
             isOutsideOfBall = true;
@@ -211,7 +217,8 @@ namespace LethalMon.Behaviours
             LethalMon.Log("SporeLizard.StopRiding");
             ownerPlayer!.playerBodyAnimator.enabled = true;
 
-            sporeLizard.transform.SetParent(null);
+            if (Utils.IsHost)
+                sporeLizard.transform.SetParent(null);
 
             sporeLizard.agent.enabled = true;
 
