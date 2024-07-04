@@ -2,7 +2,7 @@
 {
     internal class CatchableSporeLizard : CatchableEnemy
     {
-        public CatchableSporeLizard() : base(3, "Spore Lizard", 3)
+        public CatchableSporeLizard() : base(4, "Spore Lizard", 3)
         {
         }
     }
