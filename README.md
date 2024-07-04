@@ -20,7 +20,7 @@ The stronger the monster is, the harder to catch it is. And be careful, if the c
 
 You can throw the ball on the ground where you want the monster to appear.
 
-To retrieve it, press P (not configurable for now).
+To retrieve it, press P (configurable).
 
 If a player dies or disconnects, the monster will be called in the ball at it's location.
 
@@ -31,7 +31,7 @@ Here are the implementation status of monsters:
 
 |      Monster      | Implemented |                      Behaviour                       |
 |:-----------------:|:-----------:|:----------------------------------------------------:|
-|      Bracken      |     WIP     |                         TBD                          |
+|      Bracken      |     WIP     |                  Drags enemies away                  |
 |      Spider       |     No      |                         TBD                          |
 |      Butler       |     No      |                         TBD                          |
 |     Coil-head     |     No      |                         TBD                          |
@@ -42,7 +42,7 @@ Here are the implementation status of monsters:
 |      Masked       |     No      |                         TBD                          |
 |    Nutcracker     |     No      |                         TBD                          |
 |    Snare Flea     |     No      |                         TBD                          |
-|   Spore Lizard    |     No      |                         TBD                          |
+|   Spore Lizard    |     Yes     |               Can be used as mount                   |
 |      Thumper      |     No      |                         TBD                          |
 |       Bees        |     Yes     | Stun monsters and damage players that hurt the owner |
 |     Manticoil     |     No      |                         TBD                          |
@@ -62,6 +62,7 @@ Before first release:
 - [x] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
 - [ ] Bracken
 - [x] Bees
+- [x] Spore Lizard
 
 In a future release:
 - [ ] HUD
@@ -71,4 +72,3 @@ In a future release:
 
 Later:
 - [ ] Better animations
-- [ ] Config files
