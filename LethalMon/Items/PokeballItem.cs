@@ -141,6 +141,7 @@ public abstract class PokeballItem : ThrowableItem
 
                 LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
                 tamedBehaviour.ownerPlayer = this.playerThrownBy;
+                tamedBehaviour.SyncOwnerServerRpc(this.playerThrownBy.NetworkObject);
                 tamedBehaviour.ownClientId = this.playerThrownBy.playerClientId;
                 tamedBehaviour.ballType = this.ballType;
                 tamedBehaviour.ballValue = this.scrapValue;
@@ -354,6 +355,7 @@ public abstract class PokeballItem : ThrowableItem
         tamedBehaviour.ownClientId = ownerClientId;
     }
 
+    [ServerRpc(RequireOwnership = false)]
     public void SetCaughtEnemyServerRpc(string enemyTypeName)
     {
         SetCaughtEnemyClientRpc(enemyTypeName);
