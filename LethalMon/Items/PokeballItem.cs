@@ -280,10 +280,10 @@ public abstract class PokeballItem : ThrowableItem
         {
             LethalMon.Log("Capture success");
 
-            this.SetCaughtEnemy(this.enemyType);
-            
-            this.FallToGround();
+            this.SetCaughtEnemyServerRpc(this.enemyType.name);
+
             this.playerThrownBy = null;
+            this.FallToGround();
             this.grabbable = true;
             this.grabbableToEnemies = true;
         }
@@ -300,15 +300,12 @@ public abstract class PokeballItem : ThrowableItem
     #endregion
 
     #region Methods
-    public void SetCaughtEnemy(EnemyType enemyType, bool sync = true)
+    public void SetCaughtEnemy(EnemyType enemyType)
     {
         this.enemyType = enemyType;
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
         this.ChangeName();
-
-        if (sync)
-            SetCaughtEnemyServerRpc(this.enemyType.name);
     }
 
     private void ChangeName()
@@ -362,6 +359,7 @@ public abstract class PokeballItem : ThrowableItem
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         tamedBehaviour.ownerPlayer = ownerPlayer;
         tamedBehaviour.ownClientId = ownerPlayer.playerClientId;
+        tamedBehaviour.OnCallFromBall();
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -376,7 +374,7 @@ public abstract class PokeballItem : ThrowableItem
         LethalMon.Log("SyncContentPacket client rpc received");
 
         EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
-        SetCaughtEnemy(enemyType, false);
+        SetCaughtEnemy(enemyType);
     }
     #endregion
 }

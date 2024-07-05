@@ -5,12 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
     internal class SporeLizardTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
+        internal override bool Controllable => true;
+
         // Multiplier compared to default player movement
         internal readonly float RidingSpeedMultiplier = 1.5f;
         internal readonly float RidingJumpForceMultiplier = 1.3f;
@@ -25,6 +28,8 @@ namespace LethalMon.Behaviours
 
         internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
         internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
+
+        internal EnemyController? controller = null;
         #endregion
 
         #region Action Keys
@@ -39,8 +44,8 @@ namespace LethalMon.Behaviours
             LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
             base.ActionKey1Pressed();
 
-            if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding)
-                StopRidingServerRpc();
+            if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding && IsOwnerPlayer)
+                controller!.StopControllingServerRpc(ownerPlayer!.NetworkObject);
         }
         #endregion
 
@@ -56,55 +61,95 @@ namespace LethalMon.Behaviours
 
         void WhileRiding()
         {
-            if (IsOwnerPlayer)
-            {
-                usingModifiedValues = true;
-                ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed * RidingSpeedMultiplier;
-                ownerPlayer!.jumpForce = Utils.DefaultJumpForce * RidingJumpForceMultiplier;
-                ownerPlayer!.takingFallDamage = false;
-            }
-            else if(ownerPlayer != null)
-            {
-                if (!Utils.IsHost) // transform parenting not working on enemies. manually for now..
-                {
-                    sporeLizard.transform.rotation = ownerPlayer.transform.rotation;
-                    sporeLizard.transform.position = ownerPlayer.transform.position;
-                }
-            }
+            //sporeLizard.CalculateAnimationDirection();
+        }
+        #endregion
 
+        #region Controlling
+        internal void OnStartRiding()
+        {
+            if (Utils.IsHost)
+                SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+
+            if(controller!.IsControlledByUs)
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+        }
+
+        internal void OnStopRiding()
+        {
+            if(Utils.IsHost)
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+
+            if (controller!.IsControlledByUs)
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+
+            sporeLizard.agentLocalVelocity = Vector3.zero;
+            sporeLizard.CalculateAnimationDirection(0f);
+        }
+
+        internal void OnMove(Vector2 moveInputVector)
+        {
+            LethalMon.Log("Spore lizard is moving: " + moveInputVector);
+            controller!.Moving(moveInputVector);
             sporeLizard.CalculateAnimationDirection();
+        }
+
+        internal void OnJump()
+        {
+            LethalMon.Log("Spore lizard is jumping");
+            controller!.Jumping();
         }
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        void Awake()
         {
-            base.Start();
-
             sporeLizard = (Enemy as PufferAI)!;
+
+            if (TryGetComponent(out controller) && controller != null)
+            {
+                LethalMon.Log("controller found.", LethalMon.LogType.Warning);
+                controller.OnStartControlling = OnStartRiding;
+                controller.OnStopControlling = OnStopRiding;
+                controller.OnMove = OnMove;
+                controller.OnJump = OnJump;
+
+#if DEBUG
+                ownerPlayer = Utils.CurrentPlayer;
+                isOutsideOfBall = true;
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                controller!.enemy = GetComponent<EnemyAI>();
+                controller!.AddTrigger();
+                controller!.SetControlTriggerVisible(true);
+#endif
+            }
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            if(!IsRiding && usingModifiedValues)
-            {
-                // Reset to default
-                ownerPlayer!.jumpForce = previousJumpForce;
-                ownerPlayer!.sprintMultiplier = Utils.DefaultPlayerSpeed;
-                usingModifiedValues = false;
-            }
-
             base.OnUpdate(update, !IsRiding); // Don't attempt to SetDestination in Riding mode
+        }
+
+        internal override void OnCallFromBall()
+        {
+            base.OnCallFromBall();
+
+            if(ridingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
+                controller!.AddTrigger();
+
+            controller!.SetControlTriggerVisible();
+        }
+
+        internal override void OnRetreiveInBall()
+        {
+            base.OnRetreiveInBall();
+
+            controller!.SetControlTriggerVisible(false);
         }
 
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
-
-            if (ridingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
-                AddRidingTrigger();
-
-            SetRidingTriggerVisible();
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -123,114 +168,6 @@ namespace LethalMon.Behaviours
             sporeLizard.enabled = false;
             yield return new WaitForSeconds(1f);
             sporeLizard.enabled = true;
-        }
-
-        private void AddRidingTrigger()
-        {
-            LethalMon.Log("Adding riding trigger.");
-            var triggerObject = sporeLizard.transform.Find("PufferModel").gameObject;
-            if(triggerObject == null)
-            {
-                LethalMon.Log("Unable to get spore lizard model.", LethalMon.LogType.Error);
-                return;
-            }
-
-            triggerObject.tag = "InteractTrigger";
-            triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
-
-            ridingTrigger = triggerObject.AddComponent<InteractTrigger>();
-            ridingTrigger.interactable = true;
-            ridingTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
-            ridingTrigger.hoverTip = "Ride";
-            ridingTrigger.oneHandedItemAllowed = true;
-            ridingTrigger.twoHandedItemAllowed = true;
-            ridingTrigger.holdInteraction = true;
-            ridingTrigger.touchTrigger = false;
-            ridingTrigger.timeToHold = RidingTriggerHoldTime;
-            ridingTrigger.timeToHoldSpeedMultiplier = 1f;
-
-            ridingTrigger.holdingInteractEvent = new InteractEventFloat();
-            ridingTrigger.onInteract = new InteractEvent();
-            ridingTrigger.onInteractEarly = new InteractEvent();
-            ridingTrigger.onStopInteract = new InteractEvent();
-            ridingTrigger.onCancelAnimation = new InteractEvent();
-
-            ridingTrigger.onInteract.AddListener((player) => StartRidingServerRpc());
-
-            ridingTrigger.enabled = true;
-        }
-
-        private void SetRidingTriggerVisible(bool visible = true)
-        {
-            if (ridingTrigger == null) return;
-
-            ridingTrigger.holdInteraction = visible;
-            ridingTrigger.isPlayingSpecialAnimation = !visible;
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        public void StartRidingServerRpc()
-        {
-            LethalMon.Log("StartRidingServerRpc");
-            StartRidingClientRpc();
-            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
-        }
-
-        [ClientRpc]
-        public void StartRidingClientRpc()
-        {
-            LethalMon.Log("SporeLizard.StartRiding");
-
-            sporeLizard.agent.enabled = false;
-
-            sporeLizard.transform.position = ownerPlayer!.transform.position;
-            sporeLizard.transform.rotation = ownerPlayer!.transform.rotation;
-
-            if (Utils.IsHost)
-                sporeLizard.transform.SetParent(ownerPlayer!.transform);
-
-            previousJumpForce = ownerPlayer!.jumpForce;
-            ownerPlayer!.playerBodyAnimator.enabled = false;
-            // todo v55
-            // ownerPlayer!.disableInteract = true;
-
-            if (IsOwnerPlayer)
-            {
-                SetRidingTriggerVisible(false);
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-            }
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        public void StopRidingServerRpc()
-        {
-            LethalMon.Log("StopRidingServerRpc");
-            StopRidingClientRpc();
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-        }
-
-        [ClientRpc]
-        public void StopRidingClientRpc()
-        {
-            LethalMon.Log("SporeLizard.StopRiding");
-
-            sporeLizard.agent.enabled = true;
-
-            if (Utils.IsHost)
-                sporeLizard.transform.SetParent(null);
-
-            ownerPlayer!.playerBodyAnimator.enabled = true;
-            // todo v55
-            // ownerPlayer!.disableInteract = false;
-
-            sporeLizard.agentLocalVelocity = Vector3.zero;
-            sporeLizard.CalculateAnimationDirection(0f);
-
-            if (IsOwnerPlayer)
-            {
-                SetRidingTriggerVisible(true);
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-            }
         }
         #endregion
     }
