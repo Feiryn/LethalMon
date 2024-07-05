@@ -31,7 +31,7 @@ Here are the implementation status of monsters:
 
 |      Monster      | Implemented |                      Behaviour                       |
 |:-----------------:|:-----------:|:----------------------------------------------------:|
-|      Bracken      |     WIP     |                         TBD                          |
+|      Bracken      |     Yes     |                 Brings enemies away                  |
 |      Spider       |     No      |                         TBD                          |
 |      Butler       |     No      |                         TBD                          |
 |     Coil-head     |     No      |                         TBD                          |
@@ -60,7 +60,7 @@ Here are the implementation status of monsters:
 Before first release:
 - [ ] Audio
 - [x] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
-- [ ] Bracken
+- [x] Bracken
 - [x] Bees
 
 In a future release:
