@@ -188,32 +188,36 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         //LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
         OnUpdate();
 
-        if (customBehaviour > tamedBehaviourCount)
+        if (Enemy.IsOwner)
         {
-            customBehaviour -= tamedBehaviourCount;
-            if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
-                CustomBehaviours[customBehaviour]();
-            else
+            if (customBehaviour > tamedBehaviourCount)
             {
-                LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
-                foreach (var b in CustomBehaviours)
-                    LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Method.Name}");
-            }
-            return;
-        }
+                customBehaviour -= tamedBehaviourCount;
+                if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
+                    CustomBehaviours[customBehaviour]();
+                else
+                {
+                    LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
+                    foreach (var b in CustomBehaviours)
+                        LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Method.Name}");
+                }
 
-        switch ((TamingBehaviour)customBehaviour)
-        {
-            case TamingBehaviour.TamedFollowing:
-                OnTamedFollowing();
-                break;
-            case TamingBehaviour.TamedDefending:
-                OnTamedDefending();
-                break;
-            case TamingBehaviour.EscapedFromBall:
-                OnEscapedFromBall();
-                break;
-            default: break;
+                return;
+            }
+
+            switch ((TamingBehaviour)customBehaviour)
+            {
+                case TamingBehaviour.TamedFollowing:
+                    OnTamedFollowing();
+                    break;
+                case TamingBehaviour.TamedDefending:
+                    OnTamedDefending();
+                    break;
+                case TamingBehaviour.EscapedFromBall:
+                    OnEscapedFromBall();
+                    break;
+                default: break;
+            }
         }
     }
 
@@ -221,36 +225,99 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (update)
             Enemy.Update();
-
-        if (Enemy.updateDestinationInterval >= 0f)
-        {
-            Enemy.updateDestinationInterval -= Time.deltaTime;
-        }
         else
         {
-            if (Enemy.currentBehaviourStateIndex > LastDefaultBehaviourIndex)
+            if (!Enemy.IsOwner)
             {
-                if (base.IsOwner)
+                Enemy.SetClientCalculatingAI(enable: false);
+                if (!Enemy.inSpecialAnimation)
+                {
+                    base.transform.position = Vector3.SmoothDamp(base.transform.position, Enemy.serverPosition, ref Enemy.tempVelocity, Enemy.syncMovementSpeed);
+                    base.transform.eulerAngles = new Vector3(base.transform.eulerAngles.x, Mathf.LerpAngle(base.transform.eulerAngles.y, Enemy.targetYRotation, 15f * Time.deltaTime), base.transform.eulerAngles.z);
+                }
+                Enemy.timeSinceSpawn += Time.deltaTime;
+                return;
+            }
+            
+            if (Enemy.movingTowardsTargetPlayer && targetPlayer != null)
+            {
+                if (Enemy.setDestinationToPlayerInterval <= 0f)
+                {
+                    Enemy.setDestinationToPlayerInterval = 0.25f;
+                    Enemy.destination = RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position, RoundManager.Instance.navHit, 2.7f);
+                    Debug.Log("Set destination to target player A");
+                }
+                else
+                {
+                    Enemy.destination = new Vector3(targetPlayer.transform.position.x, Enemy.destination.y, targetPlayer.transform.position.z);
+                    Debug.Log("Set destination to target player B");
+                    Enemy.setDestinationToPlayerInterval -= Time.deltaTime;
+                }
+                if (Enemy.addPlayerVelocityToDestination > 0f)
+                {
+                    if (targetPlayer == GameNetworkManager.Instance.localPlayerController)
+                    {
+                        Enemy.destination += Vector3.Normalize(targetPlayer.thisController.velocity * 100f) * Enemy.addPlayerVelocityToDestination;
+                    }
+                    else if (targetPlayer.timeSincePlayerMoving < 0.25f)
+                    {
+                        Enemy.destination += Vector3.Normalize((targetPlayer.serverPlayerPosition - targetPlayer.oldPlayerPosition) * 100f) * Enemy.addPlayerVelocityToDestination;
+                    }
+                }
+            }
+            if (Enemy.inSpecialAnimation)
+            {
+                return;
+            }
+            if (Enemy.updateDestinationInterval >= 0f)
+            {
+                Enemy.updateDestinationInterval -= Time.deltaTime;
+            }
+            else
+            {
+                if (Enemy.currentBehaviourStateIndex > LastDefaultBehaviourIndex)
                 {
                     if (Enemy.openDoorSpeedMultiplier > 0f)
                     {
                         Utils.OpenDoorsAsEnemyAroundPosition(Enemy.transform.position);
                     }
+                }
 
-                    if (Enemy.moveTowardsDestination)
+                if (Enemy.updateDestinationInterval >= 0f)
+                {
+                    Enemy.updateDestinationInterval -= Time.deltaTime;
+                }
+                else
+                {
+                    if (doAIInterval)
                     {
-                        Enemy.agent.SetDestination(Enemy.destination);
+                        DoAIInterval();
                     }
-
-                    Enemy.SyncPositionToClients();
+                    else
+                    {
+                        if (Enemy.moveTowardsDestination)
+                        {
+                            Enemy.agent.SetDestination(Enemy.destination);
+                        }
+                        Enemy.SyncPositionToClients();
+                    }
+                    Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
+                }
+                Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
+            }
+            if (Mathf.Abs(Enemy.previousYRotation - base.transform.eulerAngles.y) > 6f)
+            {
+                Enemy.previousYRotation = base.transform.eulerAngles.y;
+                Enemy.targetYRotation = Enemy.previousYRotation;
+                if (base.IsServer)
+                {
+                    Enemy.UpdateEnemyRotationClientRpc((short)Enemy.previousYRotation);
+                }
+                else
+                {
+                    Enemy.UpdateEnemyRotationServerRpc((short)Enemy.previousYRotation);
                 }
             }
-            else if (doAIInterval)
-            {
-                DoAIInterval();
-            }
-            
-            Enemy.updateDestinationInterval = Enemy.AIIntervalTime;
         }
     }
 

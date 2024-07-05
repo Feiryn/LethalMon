@@ -143,7 +143,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         if (grabbedEnemyAi != null)
         {
-            var distanceTowardsOwner = DistanceTowardsOwner;
             if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner)
             {
                 LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
@@ -200,7 +199,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        base.OnUpdate(update, doAIInterval);
+        base.OnUpdate(update, false);
 
         bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(bracken.transform.position - bracken.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
         bracken.CalculateAnimationDirection();
