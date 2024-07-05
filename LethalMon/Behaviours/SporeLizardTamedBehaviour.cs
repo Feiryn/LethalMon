@@ -12,8 +12,8 @@ namespace LethalMon.Behaviours
     {
         #region Properties
         // Multiplier compared to default player movement
-        internal readonly float RidingSpeedMultiplier = 2.2f;
-        internal readonly float RidingJumpForceMultiplier = 1.7f;
+        internal readonly float RidingSpeedMultiplier = 1.5f;
+        internal readonly float RidingJumpForceMultiplier = 1.3f;
         internal readonly float RidingTriggerHoldTime = 1f;
 
         internal PufferAI sporeLizard { get; private set; }
@@ -191,7 +191,8 @@ namespace LethalMon.Behaviours
 
             previousJumpForce = ownerPlayer!.jumpForce;
             ownerPlayer!.playerBodyAnimator.enabled = false;
-            ownerPlayer!.disableInteract = true;
+            // todo v55
+            // ownerPlayer!.disableInteract = true;
 
             if (IsOwnerPlayer)
             {
@@ -219,7 +220,8 @@ namespace LethalMon.Behaviours
                 sporeLizard.transform.SetParent(null);
 
             ownerPlayer!.playerBodyAnimator.enabled = true;
-            ownerPlayer!.disableInteract = false;
+            // todo v55
+            // ownerPlayer!.disableInteract = false;
 
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);
