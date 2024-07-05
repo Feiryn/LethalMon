@@ -1,5 +1,6 @@
-using System.Reflection;
+using System;
 using GameNetcodeStuff;
+using LethalMon.Patches;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -89,6 +90,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
         else
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+    }
+
+    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    {
+        base.OnEscapedFromBall(playerWhoThrewBall);
+
+        bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
+        bees.SwitchToBehaviourState(2);
+        RedLocustBeesPatch.AngryUntil.Add(bees.GetInstanceID(), DateTime.Now.AddSeconds(10)); // todo: solve locally here instead of patch
     }
     #endregion
 

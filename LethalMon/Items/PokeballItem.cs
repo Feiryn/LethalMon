@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GameNetcodeStuff;
 using LethalLib.Modules;
 using LethalMon.Behaviours;
 using LethalMon.Throw;
@@ -62,6 +63,12 @@ public abstract class PokeballItem : ThrowableItem
     #endregion
 
     #region Base Methods
+    public override void Start()
+    {
+        base.Start();
+        for (int i = 0; i < propColliders.Length; i++)
+            propColliders[i].excludeLayers = 0; // 0 = nothing, -1 = everything (default since v55)
+    }
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
@@ -76,22 +83,20 @@ public abstract class PokeballItem : ThrowableItem
 
         LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
         LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
-        
-        if ((this.NetworkManager.IsHost || this.NetworkManager.IsServer) && !this.enemyCaptured && this.playerThrownBy != null)
+
+        if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
+
+        EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
+        if (enemyToCapture == null) return;
+
+        if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
+                out CatchableEnemy.CatchableEnemy catchable))
         {
-            EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
-            if (enemyToCapture != null)
-            {
-                if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
-                        out CatchableEnemy.CatchableEnemy catchable))
-                {
-                    this.CaptureEnemy(enemyToCapture, catchable);   
-                }
-                else
-                {
-                    LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
-                }
-            }
+            this.CaptureEnemy(enemyToCapture, catchable);   
+        }
+        else
+        {
+            LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable");
         }
     }
 
@@ -132,7 +137,7 @@ public abstract class PokeballItem : ThrowableItem
                 GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
                     Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
-                EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
+                //EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
                 if (!gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
                 {
                     LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
@@ -140,8 +145,6 @@ public abstract class PokeballItem : ThrowableItem
                 }
 
                 LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
-                tamedBehaviour.ownerPlayer = this.playerThrownBy;
-                tamedBehaviour.ownClientId = this.playerThrownBy.playerClientId;
                 tamedBehaviour.ballType = this.ballType;
                 tamedBehaviour.ballValue = this.scrapValue;
                 tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
@@ -150,7 +153,7 @@ public abstract class PokeballItem : ThrowableItem
                 tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
 
                 gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, tamedBehaviour.ownClientId);
+                CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
                 Destroy(this.gameObject);
             }
         }
@@ -323,37 +326,45 @@ public abstract class PokeballItem : ThrowableItem
     #region RPCs
 
     [ServerRpc(RequireOwnership = false)]
-    public void CallTamedEnemyServerRpc(NetworkObjectReference networkObjectReference, string enemyName, ulong ownerClientId)
+    public void CallTamedEnemyServerRpc(NetworkObjectReference networkObjectReference, string enemyName, NetworkObjectReference ownerNetworkReference)
     {
-        CallTamedEnemyClientRpc(networkObjectReference, enemyName, ownerClientId);
+        CallTamedEnemyClientRpc(networkObjectReference, enemyName, ownerNetworkReference);
     }
 
     [ClientRpc]
-    public void CallTamedEnemyClientRpc(NetworkObjectReference networkObjectReference, string enemyName, ulong ownerClientId)
+    public void CallTamedEnemyClientRpc(NetworkObjectReference networkObjectReference, string enemyName, NetworkObjectReference ownerNetworkReference)
     {
         LethalMon.Log("ReplaceWithCustomAi client rpc received");
-        if (!networkObjectReference.TryGet(out NetworkObject networkObject))
+        if (!networkObjectReference.TryGet(out NetworkObject enemyNetworkObject) || !ownerNetworkReference.TryGet(out NetworkObject ownerNetworkObject))
         {
             LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
 
-        if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy catchableEnemy))
+        if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy _))
         {
-            LethalMon.Log("Custom AI name not found (maybe mod version mismatch)");
+            LethalMon.Log("Enemy not catchable (maybe mod version mismatch).", LethalMon.LogType.Error);
             return;
         }
 
-        if (!networkObject.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+        if (!enemyNetworkObject.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
         {
-            LethalMon.Log("CallTamedEnemy: No tamed enemy behaviour found.");
+            LethalMon.Log("CallTamedEnemy: No tamed enemy behaviour found.", LethalMon.LogType.Error);
+            return;
+        }
+
+        if (!ownerNetworkObject.gameObject.TryGetComponent(out PlayerControllerB ownerPlayer))
+        {
+            LethalMon.Log("CallTamedEnemy: No owner found.", LethalMon.LogType.Error);
             return;
         }
 
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
-        tamedBehaviour.ownClientId = ownerClientId;
+        tamedBehaviour.ownerPlayer = ownerPlayer;
+        tamedBehaviour.ownClientId = ownerPlayer.playerClientId;
     }
 
+    [ServerRpc(RequireOwnership = false)]
     public void SetCaughtEnemyServerRpc(string enemyTypeName)
     {
         SetCaughtEnemyClientRpc(enemyTypeName);

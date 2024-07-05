@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
 using LethalCompanyInputUtils.Api;
+using LethalCompanyInputUtils.BindingPathEnums;
 using Newtonsoft.Json;
 using Unity.Collections;
 using Unity.Netcode;
@@ -22,6 +23,7 @@ namespace LethalMon
 
         // Seperate key
         public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
+        public InputAction ActionKey1 => Asset["actionKey1"];
 
         private static ModConfig instance = null;
         public static ModConfig Instance
@@ -43,14 +45,25 @@ namespace LethalMon
 
         override public void CreateInputActions(in InputActionMapBuilder builder)
         {
-            var retrieveBallKeyKeyboard = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyKeyboard", "<Keyboard>/p", "Key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
-            var retrieveBallKeyGamepad = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyGamepad", "<Gamepad>/rightShoulder", "Gamepad key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
+            var retrieveBallKeyKeyboard = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyKeyboard", "<Keyboard>/" + KeyboardControl.P.ToString(), "Key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
+            var retrieveBallKeyGamepad = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyGamepad", "<Gamepad>/" + GamepadControl.RightStickPress.ToString(), "Gamepad key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
             builder.NewActionBinding()
                 .WithActionId("retreiveBallKey")
                 .WithActionType(InputActionType.Button)
                 .WithBindingName("RetrieveBallKey")
                 .WithKbmPath(retrieveBallKeyKeyboard)
                 .WithGamepadPath(retrieveBallKeyGamepad)
+                .Finish();
+
+            
+            var actionKey1Keyboard = LethalMon.Instance.Config.Bind("Controls", "ActionKey1Keyboard", "<Keyboard>/" + KeyboardControl.V.ToString(), "Key for the first custom action on a tamed enemy. Requires a restart after changing.").Value;
+            var actionKey1Gamepad = LethalMon.Instance.Config.Bind("Controls", "ActionKey1Gamepad", "<Gamepad>/" + GamepadControl.RightShoulder.ToString(), "Gamepad key for the first custom action on a tamed enemy. Requires a restart after changing.").Value;
+            builder.NewActionBinding()
+                .WithActionId("actionKey1")
+                .WithActionType(InputActionType.Button)
+                .WithBindingName("ActionKey1")
+                .WithKbmPath(actionKey1Keyboard)
+                .WithGamepadPath(actionKey1Gamepad)
                 .Finish();
         }
 

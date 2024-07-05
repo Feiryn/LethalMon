@@ -55,6 +55,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="LethalCompanyInputUtils">
+        <HintPath>LethalCompanyInputUtils.dll</HintPath>
+      </Reference>
       <Reference Include="LethalLib">
         <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\LethalLib\plugins\LethalLib\LethalLib.dll</HintPath>
       </Reference>
@@ -63,6 +66,9 @@
       </Reference>
     </ItemGroup>
 
+	<Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
+	  <Exec Command="netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
+	</Target>
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
       <Exec Command="copy /Y  &quot;$(ProjectDir)bin\Debug\netstandard2.1\LethalMon.dll&quot; &quot;C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\$(ProjectName)\LethalMon.dll&quot;" />
     </Target>

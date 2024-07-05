@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
-using LethalLib;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.InputSystem;
 
 namespace LethalMon.Behaviours;
 
+[DisallowMultipleComponent]
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
     // Add your custom behaviour classes here
@@ -18,7 +19,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
         { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) }
+        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
+        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -57,7 +59,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         get
         {
-            if(_lastDefaultBehaviourIndex < 0)
+            if (_lastDefaultBehaviourIndex < 0)
                 _lastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
             return _lastDefaultBehaviourIndex;
         }
@@ -69,8 +71,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public enum TamingBehaviour
     {
         TamedFollowing = 1,
-        TamedDefending = 2,
-        EscapedFromBall = 3
+        TamedDefending = 2
     }
     private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length - 1;
 
@@ -87,6 +88,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
+    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - tamedBehaviourCount;
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -98,6 +100,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public void SwitchToCustomBehaviour(int behaviour)
     {
+        if (CurrentCustomBehaviour == behaviour) return;
+
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
@@ -143,7 +147,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
 
             // Add tamed behaviours
-            foreach(var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
+            foreach (var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
                 behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
 
             enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
@@ -168,15 +172,63 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnTamedFollowing()
     {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         FollowOwner();
     }
 
-    internal virtual void OnTamedDefending() {
+    internal virtual void OnTamedDefending()
+    {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         if (targetEnemy == null && targetPlayer == null) // lost target
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnEscapedFromBall() { } // wip / unused yet
+    internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
+    #endregion
+
+    #region ActionKeys
+    internal virtual void ActionKey1Pressed() { }
+
+    internal class ActionKey
+    {
+        internal InputAction? actionKey { get; set; } = null;
+        internal string description { get; set; } = "";
+        internal bool visible { get; set; } = false;
+
+        internal string Control => actionKey == null ? "" : actionKey.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
+        internal string ControlTip => $"{description}: [{Control}]";
+    }
+
+    /* TEMPLATE
+    private List<ActionKey> _actionKeys = new List<ActionKey>()
+    {
+        new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Event one" }
+    };
+    internal override List<ActionKey> ActionKeys => _actionKeys;*/
+    internal virtual List<ActionKey> ActionKeys => new();
+
+    internal void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
+    {
+        var keys = ActionKeys.Where((ak) => ak.actionKey == actionKey);
+        if (keys.Any())
+        {
+            keys.First().visible = enable;
+            ShowVisibleActionKeyControlTips();
+        }
+    }
+
+    internal void ShowVisibleActionKeyControlTips()
+    {
+        HUDManager.Instance.ClearControlTips();
+
+        var controlTips = ActionKeys.Where((ak) => ak.visible).Select((ak) => ak.ControlTip).ToArray();
+        HUDManager.Instance.ChangeControlTipMultiple(
+                controlTips,
+                holdingItem: Utils.CurrentPlayer.currentlyHeldObjectServer != null,
+                Utils.CurrentPlayer.currentlyHeldObjectServer?.itemProperties);
+    }
     #endregion
 
     #region Base Methods
@@ -201,7 +253,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                     foreach (var b in CustomBehaviours)
                         LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Method.Name}");
                 }
-
                 return;
             }
 
@@ -213,9 +264,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 case TamingBehaviour.TamedDefending:
                     OnTamedDefending();
                     break;
-                case TamingBehaviour.EscapedFromBall:
-                    OnEscapedFromBall();
-                    break;
                 default: break;
             }
         }
@@ -223,6 +271,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnUpdate(bool update = false, bool doAIInterval = true)
     {
+        if (StartOfRound.Instance.inShipPhase) return;
+
         if (update)
             Enemy.Update();
         else
@@ -380,7 +430,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
             TeleportBehindOwner();
 
-        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 8f,
+        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 5f,
                 out Vector3 potentialPosition1,
                 out Vector3 potentialPosition2))
         {

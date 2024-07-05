@@ -67,6 +67,9 @@ public class Utils
     }
 
     #region Player
+    public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();
+    public static List<PlayerControllerB>? AlivePlayers => AllPlayers?.Where(pcb => !pcb.isPlayerDead).ToList();
+
     public static PlayerControllerB CurrentPlayer => GameNetworkManager.Instance.localPlayerController;
 
     public static ulong? CurrentPlayerID => CurrentPlayer?.playerClientId;
@@ -84,6 +87,9 @@ public class Utils
             return false;
         }
     }
+
+    public static readonly float DefaultJumpForce = 13f;
+    public static float DefaultPlayerSpeed => CurrentPlayer.isSprinting ? 2.25f : 1f;
     #endregion
 
     #region Enemy
@@ -102,9 +108,41 @@ public class Utils
                 {
                     trigger.TriggerAnimationNonPlayer(false, true, false);
                 }
+
                 doorLock.OpenDoorAsEnemyServerRpc();
             }
         }
+    }
+
+    public enum Enemy // EnemyType.name
+    {
+        BaboonHawk,
+        Blob,
+        BushWolf,
+        Butler,
+        ButlerBees,
+        Centipede,
+        ClaySurgeon,
+        Crawler,
+        DocileLocustBees,
+        Doublewing,
+        FlowerSnake,
+        RedLocustBees,
+        DressGirl,
+        Flowerman,
+        ForestGiant,
+        HoarderBug,
+        Jester,
+        LassoMan,
+        MaskedPlayerEnemy,
+        MouthDog,
+        Nutcracker,
+        Puffer,
+        RadMech,
+        RedPillEnemyType,
+        SandSpider,
+        SandWorm,
+        SpringMan
     }
     #endregion
 }

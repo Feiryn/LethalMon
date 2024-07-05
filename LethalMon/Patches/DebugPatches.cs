@@ -5,14 +5,11 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 using LethalMon.Items;
-using System.Collections.Generic;
-using System.Linq;
-using Unity.Services.Authentication;
 
 namespace LethalMon.Patches
 {
     [HarmonyPatch]
-    internal class DebugPatches
+    internal class DebugPatches : NetworkBehaviour
     {
 #if DEBUG
         private static bool Executing = false;
@@ -37,8 +34,9 @@ namespace LethalMon.Patches
 
         public static void CheckFunctionKeys()
         {
-            /*if (Keyboard.current.f1Key.wasPressedThisFrame)
+            if (Keyboard.current.f1Key.wasPressedThisFrame)
             {
+                ToggleTestRoom();
             }
 
             else if (Keyboard.current.f2Key.wasPressedThisFrame)
@@ -49,29 +47,29 @@ namespace LethalMon.Patches
             {
             }
 
-            else */if (Keyboard.current.f4Key.wasPressedThisFrame)
+            else if (Keyboard.current.f4Key.wasPressedThisFrame)
             {
                 TeleportOutsideDungeon();
             }
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Hoarding bug");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.HoarderBug.ToString());
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Spring");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Puffer.ToString());
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Red Locust Bees");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.RedLocustBees.ToString());
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, "Flowerman");
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Flowerman.ToString());
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
@@ -140,16 +138,17 @@ namespace LethalMon.Patches
         {
             foreach (EnemyType enemyType in Utils.EnemyTypes)
             {
-                if (enemyName == enemyType.enemyName)
-                {
-                    var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
-                    LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
-                    GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
-                    gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                    var enemyAI = gameObject.GetComponent<EnemyAI>();
-                    RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
-                    return;
-                }
+                if (enemyName != enemyType.name) continue;
+
+                var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
+                LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
+                GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
+                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+                var enemyAI = gameObject.GetComponent<EnemyAI>();
+                RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
+                enemyAI.enabled = !StartOfRound.Instance.inShipPhase;
+
+                return;
             }
 
             LethalMon.Logger.LogInfo("No enemy found..");
@@ -166,7 +165,25 @@ namespace LethalMon.Patches
 
             Utils.CurrentPlayer.TeleportPlayer(entrance.entrancePoint.position);
         }
+
+        public static void ToggleTestRoom()
+        {
+            if (StartOfRound.Instance.testRoom == null)
+            {
+                StartOfRound.Instance.testRoom = Instantiate(StartOfRound.Instance.testRoomPrefab, StartOfRound.Instance.testRoomSpawnPosition.position, StartOfRound.Instance.testRoomSpawnPosition.rotation, StartOfRound.Instance.testRoomSpawnPosition);
+                if (Utils.IsHost)
+                    StartOfRound.Instance.testRoom.GetComponent<NetworkObject>().Spawn();
+                Utils.CurrentPlayer.TeleportPlayer(StartOfRound.Instance.testRoomSpawnPosition.position);
+            }
+            else
+            {
+                if (Utils.IsHost)
+                    StartOfRound.Instance.testRoom.GetComponent<NetworkObject>().Despawn();
+                Destroy(StartOfRound.Instance.testRoom);
+                Utils.CurrentPlayer.TeleportPlayer(Vector3.zero);
+            }
+        }
         #endregion
 #endif
-    }
+        }
 }
