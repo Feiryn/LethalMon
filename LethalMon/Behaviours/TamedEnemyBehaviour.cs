@@ -14,6 +14,8 @@ namespace LethalMon.Behaviours;
 [DisallowMultipleComponent]
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
+    internal virtual bool Controllable => false;
+
     // Add your custom behaviour classes here
     internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
     {
@@ -142,6 +144,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             else
                 LethalMon.Logger.LogInfo($"Added {tamedBehaviourType.Name} for {enemyType.enemyName}");
 
+            if (tamedBehaviour.Controllable)
+                enemyType.enemyPrefab.gameObject.AddComponent<EnemyController>();
+
             // Behaviour states
             if (enemyAI.enemyBehaviourStates == null)
                 enemyAI.enemyBehaviourStates = Array.Empty<EnemyBehaviourState>();
@@ -194,6 +199,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (targetEnemy == null && targetPlayer == null) // lost target
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
+
+    internal virtual void OnCallFromBall() { }
+
+    internal virtual void OnRetreiveInBall() { }
 
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
     #endregion
@@ -539,6 +548,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 		Enemy.GetComponent<NetworkObject>().Despawn(true);
 
         isOutsideOfBall = false;
+
+        OnRetreiveInBall();
 
         return pokeballItem;
     }

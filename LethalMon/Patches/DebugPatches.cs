@@ -41,6 +41,12 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f2Key.wasPressedThisFrame)
             {
+                foreach (var action in IngamePlayerSettings.Instance.playerInput.actions)
+                {
+                    LethalMon.Log($"Action found: {action.name}", LethalMon.LogType.Warning);
+                    foreach( var binding in  action.bindings)
+                        LethalMon.Log($"With binding: {binding.path}");
+                }
             }
 
             else if (Keyboard.current.f3Key.wasPressedThisFrame)
