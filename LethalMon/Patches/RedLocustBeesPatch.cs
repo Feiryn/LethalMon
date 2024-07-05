@@ -7,7 +7,7 @@ namespace LethalMon.Patches;
 
 public class RedLocustBeesPatch
 {
-    public static Dictionary<int, DateTime> AngryUntil = new();
+    public static readonly Dictionary<int, DateTime> AngryUntil = new();
     
     [HarmonyPatch(typeof(RedLocustBees), nameof(RedLocustBees.IsHivePlacedAndInLOS))]
     [HarmonyPrefix]

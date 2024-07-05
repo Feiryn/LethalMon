@@ -16,7 +16,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     #region Base Methods
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        base.OnUpdate(update, doAIInterval);
+        base.OnUpdate(update, false);
 
         BeesZapOnTimer();
     }
@@ -28,7 +28,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         bees = (Enemy as RedLocustBees)!;
 
         LethalMon.Logger.LogWarning("RedLocustBeesCustomAI.Start: " + (bees == null).ToString());
-        if(bees?.agent != null )
+        if(bees?.agent != null)
             bees.agent.speed = 10.3f;
     }
 
@@ -37,28 +37,28 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         if (!angry)
             ChangeAngryMode(true);
 
-        if (bees.targetPlayer != null)
+        if (targetPlayer != null)
         {
-            float distance = Vector3.Distance(bees.targetPlayer.transform.position, bees.transform.position);
+            float distance = Vector3.Distance(targetPlayer.transform.position, bees.transform.position);
             LethalMon.Log("Distance to player: " + distance);
-            if (bees.targetPlayer.isPlayerDead || !bees.targetPlayer.isPlayerControlled || distance > 25f)
+            if (targetPlayer.isPlayerDead || !targetPlayer.isPlayerControlled || distance > 25f)
             {
                 LethalMon.Log("Stop targeting player");
-                bees.targetPlayer = null;
+                targetPlayer = null;
             }
             else if (distance < 2.5f)
             {
                 LethalMon.Log("Target player collided");
 
-                BeeDamageServerRPC(bees.targetPlayer.GetComponent<NetworkObject>());
+                BeeDamageServerRPC(targetPlayer.GetComponent<NetworkObject>());
 
                 ChangeAngryMode(false);
-                bees.targetPlayer = null;
+                targetPlayer = null;
             }
             else
             {
                 LethalMon.Log("Follow player");
-                bees.SetDestinationToPosition(bees.targetPlayer.transform.position);
+                bees.SetDestinationToPosition(targetPlayer.transform.position);
                 return;
             }
         }
