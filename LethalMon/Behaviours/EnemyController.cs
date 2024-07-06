@@ -21,7 +21,7 @@ namespace LethalMon.Behaviours
         internal bool isSprinting = false;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
-        internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer;
+        internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
         internal virtual float EnemySpeed => 4f;
         internal virtual float EnemyJumpForce => 10f;
         internal bool EnemyCanJump = false;
@@ -38,12 +38,14 @@ namespace LethalMon.Behaviours
         #region Controlling methods
         internal Action? OnStartControlling = null;
         internal Action? OnStopControlling = null;
-        internal Action<Vector2> OnMove;
+        internal Func<Vector2, Vector3> OnCalculateMovementVector;
+        internal Action<Vector3> OnMove;
         internal Action OnJump;
         #endregion
 
         public EnemyController()
         {
+            OnCalculateMovementVector = CalculateMovementVector;
             OnMove = Moving;
             OnJump = Jumping;
         }
@@ -137,21 +139,6 @@ namespace LethalMon.Behaviours
 
             player.transform.position = enemy!.transform.position;
             player.transform.rotation = enemy!.transform.rotation;
-            /*player.transform.localPosition = Vector3.zero;*/
-
-            //player.transform.SetParent(enemy!.transform, true);
-            /*enemy.agent.enabled = false;
-
-            enemy.transform.position = player.transform.position;
-            enemy.transform.rotation = player.transform.rotation;
-
-            if (Utils.IsHost)
-                enemy.transform.SetParent(player.transform);
-
-            var previousJumpForce = player.jumpForce;
-            player.playerBodyAnimator.enabled = false;
-            player.disableInteract = true;*/
-
 
             if (IsControlledByUs)
             {
@@ -163,31 +150,17 @@ namespace LethalMon.Behaviours
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void StopControllingServerRpc(NetworkObjectReference playerNetworkReference)
+        public void StopControllingServerRpc()
         {
             LethalMon.Log("StopControllingServerRpc");
-            StopControllingClientRpc(playerNetworkReference);
+            StopControllingClientRpc();
         }
 
         [ClientRpc]
-        public void StopControllingClientRpc(NetworkObjectReference playerNetworkReference)
+        public void StopControllingClientRpc()
         {
-            LethalMon.Log("StopControllingClientRpc");
-            if (!playerNetworkReference.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out PlayerControllerB player))
-            {
-                LethalMon.Log("Failed to get player object (StopControllingClientRpc).", LethalMon.LogType.Error);
-                return;
-            }
-
-            player.inSpecialInteractAnimation = false;
-            //player.transform.SetParent(null);
-            /*enemy.agent.enabled = true;
-
-            if (Utils.IsHost)
-                enemy.transform.SetParent(null);
-
-            player.playerBodyAnimator.enabled = true;
-            player.disableInteract = false;*/
+            if(playerControlledBy != null)
+                playerControlledBy.inSpecialInteractAnimation = false;
 
             if (IsControlledByUs)
             {
@@ -203,7 +176,7 @@ namespace LethalMon.Behaviours
 
         internal void BindInputs()
         {
-            //if (inputsBinded || !IsControlledByUs) return;
+            if (inputsBinded || !IsControlledByUs) return;
 
             LethalMon.Log("Binding inputs to control enemy " + enemy!.enemyType.name);
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").started += SprintStart;
@@ -236,7 +209,7 @@ namespace LethalMon.Behaviours
                 if (inputsBinded && moveAction.IsPressed())
                 {
                     // Controlling player
-                    OnMove(moveAction.ReadValue<Vector2>());
+                    Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
                     playerControlledBy!.transform.position = enemy!.transform.position;
                 }
                 else
@@ -248,6 +221,9 @@ namespace LethalMon.Behaviours
                 enemy!.transform.rotation = playerControlledBy!.transform.rotation;
                 //enemy!.transform.rotation = Quaternion.Lerp(enemy!.transform.rotation, playerControlledBy!.transform.rotation, Time.deltaTime);
             }
+
+            if (inputsBinded && (playerControlledBy == null || playerControlledBy.isPlayerDead || enemy == null || enemy.isEnemyDead))
+                StopControllingServerRpc();
         }
 
         // Simplify abstract method parameter
@@ -256,11 +232,8 @@ namespace LethalMon.Behaviours
         internal void SprintStop(InputAction.CallbackContext callbackContext) => isSprinting = false;
 
         // Virtual methods
-        internal void Moving(Vector2 moveInputVector)
+        internal Vector3 CalculateMovementVector(Vector2 moveInputVector)
         {
-            float speed = EnemySpeed;
-            if (isSprinting)
-                speed *= 2.25f;
             var angleStrength = moveInputVector.x > 0 ? moveInputVector.x : -moveInputVector.x;
             var baseVector = playerControlledBy!.gameplayCamera.transform.forward;
             var leftrightVector = Quaternion.Euler(0, 90f * moveInputVector.x, 0) * baseVector * angleStrength;
@@ -270,7 +243,17 @@ namespace LethalMon.Behaviours
             if (!EnemyCanFly)
                 directionVector.y = 0f;
 
-            enemy!.agent.Move(directionVector * 0.02f * speed);
+            float speed = EnemySpeed;
+            if (isSprinting)
+                speed *= 2.25f;
+
+            return directionVector * 0.02f * speed;
+        }
+
+        internal void Moving(Vector3 direction)
+        {
+            OnMove(direction);
+            enemy!.agent.Move(direction);
         }
 
         internal virtual void Jumping()

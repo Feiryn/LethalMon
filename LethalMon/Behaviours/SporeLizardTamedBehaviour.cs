@@ -42,7 +42,7 @@ namespace LethalMon.Behaviours
             base.ActionKey1Pressed();
 
             if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding && IsOwnerPlayer)
-                controller!.StopControllingServerRpc(ownerPlayer!.NetworkObject);
+                controller!.StopControllingServerRpc();
         }
         #endregion
 
@@ -84,9 +84,8 @@ namespace LethalMon.Behaviours
             sporeLizard.CalculateAnimationDirection(0f);
         }
 
-        internal void OnMove(Vector2 moveInputVector)
+        internal void OnMove(Vector3 direction)
         {
-            controller!.Moving(moveInputVector);
             sporeLizard.CalculateAnimationDirection();
         }
 
