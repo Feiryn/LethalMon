@@ -231,15 +231,21 @@ namespace LethalMon.Behaviours
 
         void Update()
         {
-            if (inputsBinded)
+            if (playerControlledBy != null && enemy != null)
             {
-                if (moveAction.IsPressed())
+                if (inputsBinded && moveAction.IsPressed())
                 {
+                    // Controlling player
                     OnMove(moveAction.ReadValue<Vector2>());
+                    playerControlledBy!.transform.position = enemy!.transform.position;
+                }
+                else
+                {
+                    // Other clients
+                    enemy!.transform.position = playerControlledBy!.transform.position;
                 }
 
                 enemy!.transform.rotation = playerControlledBy!.transform.rotation;
-                playerControlledBy!.transform.position = enemy!.transform.position;
                 //enemy!.transform.rotation = Quaternion.Lerp(enemy!.transform.rotation, playerControlledBy!.transform.rotation, Time.deltaTime);
             }
         }
@@ -255,14 +261,16 @@ namespace LethalMon.Behaviours
             float speed = EnemySpeed;
             if (isSprinting)
                 speed *= 2.25f;
+            var angleStrength = moveInputVector.x > 0 ? moveInputVector.x : -moveInputVector.x;
+            var baseVector = playerControlledBy!.gameplayCamera.transform.forward;
+            var leftrightVector = Quaternion.Euler(0, 90f * moveInputVector.x, 0) * baseVector * angleStrength;
+            var forwardVector = baseVector * moveInputVector.y;
+            var directionVector = leftrightVector + forwardVector;
 
-            var direction = Quaternion.Euler(0, 90f * moveInputVector.x, 0) * playerControlledBy!.gameplayCamera.transform.forward;
             if (!EnemyCanFly)
-                direction.y = 0f;
-            direction.z *= moveInputVector.y;
+                directionVector.y = 0f;
 
-            enemy!.agent.Move(direction * 0.02f * speed);
-            LethalMon.Log(playerControlledBy!.gameplayCamera.transform.forward + " / " + direction);
+            enemy!.agent.Move(directionVector * 0.02f * speed);
         }
 
         internal virtual void Jumping()
