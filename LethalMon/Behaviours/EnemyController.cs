@@ -39,6 +39,7 @@ namespace LethalMon.Behaviours
         internal Action? OnStartControlling = null;
         internal Action? OnStopControlling = null;
         internal Func<Vector2, Vector3> OnCalculateMovementVector;
+        internal Func<GameObject, GameObject> TriggerObject = (gameObject) => gameObject;
         internal Action<Vector3> OnMove;
         internal Action OnJump;
         #endregion
@@ -57,7 +58,7 @@ namespace LethalMon.Behaviours
         }
 
         #region Methods
-        public void AddTrigger(string hoverTip = "Ride")
+        public void AddTrigger(string hoverTip = "Control")
         {
             if (enemy == null || controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
@@ -75,7 +76,7 @@ namespace LethalMon.Behaviours
 
             triggerObject.transform.SetParent(enemy.gameObject.transform, true);*/
 
-            var triggerObject = enemy.transform.Find("PufferModel").gameObject;
+            var triggerObject = TriggerObject(enemy.gameObject);
             if (triggerObject == null)
             {
                 LethalMon.Log("Unable to get spore lizard model.", LethalMon.LogType.Error);
@@ -135,7 +136,7 @@ namespace LethalMon.Behaviours
 
             enemy!.moveTowardsDestination = false;
 
-            player.inSpecialInteractAnimation = true;
+            player.disableMoveInput = true;
 
             player.transform.position = enemy!.transform.position;
             player.transform.rotation = enemy!.transform.rotation;
@@ -160,7 +161,7 @@ namespace LethalMon.Behaviours
         public void StopControllingClientRpc()
         {
             if(playerControlledBy != null)
-                playerControlledBy.inSpecialInteractAnimation = false;
+                playerControlledBy.disableMoveInput = false;
 
             if (IsControlledByUs)
             {
