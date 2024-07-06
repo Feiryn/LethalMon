@@ -2,10 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.Netcode;
 using UnityEngine;
-using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -61,7 +58,7 @@ namespace LethalMon.Behaviours
 
         void WhileRiding()
         {
-            //sporeLizard.CalculateAnimationDirection();
+            sporeLizard.CalculateAnimationDirection();
         }
         #endregion
 
@@ -71,7 +68,7 @@ namespace LethalMon.Behaviours
             if (Utils.IsHost)
                 SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
 
-            if(controller!.IsControlledByUs)
+            if (controller!.IsControlledByUs)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
         }
 
@@ -89,7 +86,6 @@ namespace LethalMon.Behaviours
 
         internal void OnMove(Vector2 moveInputVector)
         {
-            LethalMon.Log("Spore lizard is moving: " + moveInputVector);
             controller!.Moving(moveInputVector);
             sporeLizard.CalculateAnimationDirection();
         }
@@ -108,7 +104,6 @@ namespace LethalMon.Behaviours
 
             if (TryGetComponent(out controller) && controller != null)
             {
-                LethalMon.Log("controller found.", LethalMon.LogType.Warning);
                 controller.OnStartControlling = OnStartRiding;
                 controller.OnStopControlling = OnStopRiding;
                 controller.OnMove = OnMove;
