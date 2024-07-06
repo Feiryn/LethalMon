@@ -70,6 +70,9 @@ namespace LethalMon.Behaviours
 
             if (controller!.IsControlledByUs)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+
+            if(controller!.playerControlledBy != null)
+                controller!.playerControlledBy.playerBodyAnimator.SetLayerWeight(controller!.playerControlledBy.playerBodyAnimator.GetLayerIndex("HoldingItemsBothHands"), 1f);
         }
 
         internal void OnStopRiding()
@@ -82,6 +85,9 @@ namespace LethalMon.Behaviours
 
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);
+
+            if (controller!.playerControlledBy != null)
+                controller!.playerControlledBy.playerBodyAnimator.SetLayerWeight(controller!.playerControlledBy.playerBodyAnimator.GetLayerIndex("HoldingItemsBothHands"), 0f);
         }
 
         internal void OnMove(Vector3 direction)
@@ -103,6 +109,7 @@ namespace LethalMon.Behaviours
 
             if (TryGetComponent(out controller) && controller != null)
             {
+                controller.TriggerObject = (gameObject) => gameObject.transform.Find("PufferModel").gameObject;
                 controller.OnStartControlling = OnStartRiding;
                 controller.OnStopControlling = OnStopRiding;
                 controller.OnMove = OnMove;
@@ -113,7 +120,7 @@ namespace LethalMon.Behaviours
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
-                controller!.AddTrigger();
+                controller!.AddTrigger("Ride");
                 controller!.SetControlTriggerVisible(true);
 #endif
             }
