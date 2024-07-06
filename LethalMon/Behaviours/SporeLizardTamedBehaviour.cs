@@ -113,6 +113,8 @@ namespace LethalMon.Behaviours
                 controller.OnStartControlling = OnStartRiding;
                 controller.OnStopControlling = OnStopRiding;
                 controller.OnMove = OnMove;
+
+                controller.EnemyCanJump = true;
                 controller.OnJump = OnJump;
 
 #if DEBUG
