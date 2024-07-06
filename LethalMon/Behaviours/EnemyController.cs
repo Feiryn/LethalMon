@@ -136,7 +136,7 @@ namespace LethalMon.Behaviours
 
             enemy!.moveTowardsDestination = false;
 
-            player.disableMoveInput = true;
+            player.inSpecialInteractAnimation = true;
 
             player.transform.position = enemy!.transform.position;
             player.transform.rotation = enemy!.transform.rotation;
@@ -161,7 +161,7 @@ namespace LethalMon.Behaviours
         public void StopControllingClientRpc()
         {
             if(playerControlledBy != null)
-                playerControlledBy.disableMoveInput = false;
+                playerControlledBy.inSpecialInteractAnimation = false;
 
             if (IsControlledByUs)
             {
