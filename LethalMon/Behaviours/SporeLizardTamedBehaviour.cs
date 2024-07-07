@@ -10,19 +10,13 @@ namespace LethalMon.Behaviours
     {
         #region Properties
         internal override bool Controllable => true;
-
-        // Multiplier compared to default player movement
-        internal readonly float RidingSpeedMultiplier = 1.5f;
-        internal readonly float RidingJumpForceMultiplier = 1.3f;
         internal readonly float RidingTriggerHoldTime = 1f;
 
         internal PufferAI sporeLizard { get; private set; }
 
         internal InteractTrigger? ridingTrigger = null;
 
-        internal float previousJumpForce = Utils.DefaultJumpForce;
         internal bool nightVisionPreviouslyEnabled = false;
-        internal bool usingModifiedValues = false;
 
         internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
         internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
@@ -42,7 +36,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
             base.ActionKey1Pressed();
 
-            if (CurrentCustomBehaviour == (int)CustomBehaviour.Riding && IsOwnerPlayer)
+            if (IsRiding && IsOwnerPlayer)
                 controller!.StopControllingServerRpc();
         }
         #endregion
