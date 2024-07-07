@@ -1,8 +1,5 @@
 ﻿using GameNetcodeStuff;
-using LethalLib.Modules;
 using System;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -22,7 +19,8 @@ namespace LethalMon.Behaviours
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
-        internal virtual float EnemySpeed => 4f;
+        internal virtual float EnemySpeedInside => 2f;
+        internal virtual float EnemySpeedOutside => 4f;
         internal virtual float EnemyJumpForce => 10f;
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
@@ -39,7 +37,6 @@ namespace LethalMon.Behaviours
         internal Action? OnStartControlling = null;
         internal Action? OnStopControlling = null;
         internal Func<Vector2, Vector3> OnCalculateMovementVector;
-        internal Func<GameObject, GameObject> TriggerObject = (gameObject) => gameObject;
         internal Action<Vector3> OnMove;
         internal Action OnJump;
         #endregion
@@ -58,7 +55,7 @@ namespace LethalMon.Behaviours
         }
 
         #region Methods
-        public void AddTrigger(string hoverTip = "Control")
+        public void AddTrigger(string hoverTip = "Control", GameObject? triggerObject = null)
         {
             if (enemy == null || controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
@@ -76,7 +73,9 @@ namespace LethalMon.Behaviours
 
             triggerObject.transform.SetParent(enemy.gameObject.transform, true);*/
 
-            var triggerObject = TriggerObject(enemy.gameObject);
+            if (triggerObject == null)
+                triggerObject = enemy!.gameObject;
+
             if (triggerObject == null)
             {
                 LethalMon.Log("Unable to get spore lizard model.", LethalMon.LogType.Error);
@@ -241,10 +240,10 @@ namespace LethalMon.Behaviours
             var forwardVector = baseVector * moveInputVector.y;
             var directionVector = leftrightVector + forwardVector;
 
-            if (!EnemyCanFly)
-                directionVector.y = 0f;
+            /*if (!EnemyCanFly)
+                directionVector.y = 0f;*/
 
-            float speed = EnemySpeed;
+            float speed = playerControlledBy.isInsideFactory ? EnemySpeedInside : EnemySpeedOutside;
             if (isSprinting)
                 speed *= 2.25f;
 

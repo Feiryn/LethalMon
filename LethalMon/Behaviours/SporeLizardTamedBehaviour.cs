@@ -21,6 +21,7 @@ namespace LethalMon.Behaviours
         internal InteractTrigger? ridingTrigger = null;
 
         internal float previousJumpForce = Utils.DefaultJumpForce;
+        internal bool nightVisionPreviouslyEnabled = false;
         internal bool usingModifiedValues = false;
 
         internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
@@ -68,11 +69,12 @@ namespace LethalMon.Behaviours
             if (Utils.IsHost)
                 SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
 
-            if (controller!.IsControlledByUs)
+            if (IsOwnerPlayer)
+            {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-
-            if(controller!.playerControlledBy != null)
-                controller!.playerControlledBy.playerBodyAnimator.SetLayerWeight(controller!.playerControlledBy.playerBodyAnimator.GetLayerIndex("HoldingItemsBothHands"), 1f);
+                nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
+                ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retreive in ball when going outside, so that it gets disabled again
+            }
         }
 
         internal void OnStopRiding()
@@ -80,14 +82,14 @@ namespace LethalMon.Behaviours
             if(Utils.IsHost)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
-            if (controller!.IsControlledByUs)
+            if (IsOwnerPlayer)
+            {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+                ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
+            }
 
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);
-
-            if (controller!.playerControlledBy != null)
-                controller!.playerControlledBy.playerBodyAnimator.SetLayerWeight(controller!.playerControlledBy.playerBodyAnimator.GetLayerIndex("HoldingItemsBothHands"), 0f);
         }
 
         internal void OnMove(Vector3 direction)
@@ -109,7 +111,6 @@ namespace LethalMon.Behaviours
 
             if (TryGetComponent(out controller) && controller != null)
             {
-                controller.TriggerObject = (gameObject) => gameObject.transform.Find("PufferModel").gameObject;
                 controller.OnStartControlling = OnStartRiding;
                 controller.OnStopControlling = OnStopRiding;
                 controller.OnMove = OnMove;
@@ -122,7 +123,7 @@ namespace LethalMon.Behaviours
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
-                controller!.AddTrigger("Ride");
+                controller!.AddTrigger("Ride", Enemy.transform.Find("PufferModel").gameObject);
                 controller!.SetControlTriggerVisible(true);
 #endif
             }
