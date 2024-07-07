@@ -124,7 +124,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         foreach (var enemyType in Utils.EnemyTypes)
         {
             enemyCount++;
-            if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI)) continue;
+            if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI) || enemyAI == null) continue;
 
             // Behaviour controller
             var tamedBehaviourType = BehaviourClassMapping.GetValueOrDefault(enemyAI.GetType(), typeof(TamedEnemyBehaviour));
@@ -142,6 +142,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 LethalMon.Logger.LogInfo($"Added {tamedBehaviourType.Name} for {enemyType.enemyName}");
 
             // Behaviour states
+            if (enemyAI.enemyBehaviourStates == null)
+                enemyAI.enemyBehaviourStates = [];
             LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
 
             var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
