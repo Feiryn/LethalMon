@@ -117,14 +117,14 @@ namespace LethalMon.Behaviours
 
                 controller.EnemyCanJump = true;
                 controller.OnJump = OnJump;
-#if DEBUG
+
+                /* Debug code to test the riding feature
                 ownerPlayer = Utils.CurrentPlayer;
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Ride", Enemy.transform.Find("PufferModel").gameObject);
-                controller!.SetControlTriggerVisible(true);
-#endif
+                controller!.SetControlTriggerVisible(true);*/
             }
         }
 
