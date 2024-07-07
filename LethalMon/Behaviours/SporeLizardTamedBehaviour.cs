@@ -117,7 +117,6 @@ namespace LethalMon.Behaviours
 
                 controller.EnemyCanJump = true;
                 controller.OnJump = OnJump;
-
 #if DEBUG
                 ownerPlayer = Utils.CurrentPlayer;
                 isOutsideOfBall = true;
@@ -139,7 +138,7 @@ namespace LethalMon.Behaviours
             base.OnCallFromBall();
 
             if(ridingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
-                controller!.AddTrigger();
+                controller!.AddTrigger("Ride", Enemy.transform.Find("PufferModel").gameObject);
 
             controller!.SetControlTriggerVisible();
         }
@@ -154,6 +153,8 @@ namespace LethalMon.Behaviours
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
+
+            sporeLizard.CalculateAnimationDirection();
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)

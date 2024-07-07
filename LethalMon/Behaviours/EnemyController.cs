@@ -3,6 +3,7 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 namespace LethalMon.Behaviours
 {
@@ -19,8 +20,8 @@ namespace LethalMon.Behaviours
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
-        internal virtual float EnemySpeedInside => 2f;
-        internal virtual float EnemySpeedOutside => 4f;
+        internal virtual float EnemySpeedInside => 4f;
+        internal virtual float EnemySpeedOutside => 6f;
         internal virtual float EnemyJumpForce => 10f;
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
@@ -219,7 +220,6 @@ namespace LethalMon.Behaviours
                 }
 
                 enemy!.transform.rotation = playerControlledBy!.transform.rotation;
-                //enemy!.transform.rotation = Quaternion.Lerp(enemy!.transform.rotation, playerControlledBy!.transform.rotation, Time.deltaTime);
             }
 
             if (inputsBinded && (playerControlledBy == null || playerControlledBy.isPlayerDead || enemy == null || enemy.isEnemyDead))
@@ -240,20 +240,23 @@ namespace LethalMon.Behaviours
             var forwardVector = baseVector * moveInputVector.y;
             var directionVector = leftrightVector + forwardVector;
 
-            /*if (!EnemyCanFly)
-                directionVector.y = 0f;*/
+            if (!EnemyCanFly)
+                directionVector.y = 0f;
 
             float speed = playerControlledBy.isInsideFactory ? EnemySpeedInside : EnemySpeedOutside;
             if (isSprinting)
                 speed *= 2.25f;
 
-            return directionVector * 0.02f * speed;
+            LethalMon.Log(Time.deltaTime.ToString());
+            return directionVector * speed * Time.deltaTime;
         }
 
         internal void Moving(Vector3 direction)
         {
+            var navMeshPos = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, RoundManager.Instance.navHit, -1f);
             OnMove(direction);
-            enemy!.agent.Move(direction);
+            enemy!.agent.Move(navMeshPos - enemy!.transform.position);
+            enemy!.agent.destination = navMeshPos;
         }
 
         internal virtual void Jumping()
