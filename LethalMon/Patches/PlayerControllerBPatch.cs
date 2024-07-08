@@ -143,7 +143,7 @@ public class PlayerControllerBPatch
                         {
                             EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
                                 enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
-                            pokeballItem.SetCaughtEnemy(enemyType);
+                            pokeballItem.SetCaughtEnemyServerRpc(enemyType.name);
                             HUDManager.Instance.AddTextMessageClientRpc("Caught enemy: " + enemyType.name);
                             
                             currentTestEnemyTypeIndex++;
@@ -175,6 +175,7 @@ public class PlayerControllerBPatch
             tamedBehaviour.Enemy.transform.position = pos;
             tamedBehaviour.Enemy.agent.enabled = true;
             tamedBehaviour.Enemy.serverPosition = pos;
+            tamedBehaviour.Enemy.SetEnemyOutside(!__instance.isInsideFactory);
         }
     }
     

@@ -6,19 +6,16 @@ using UnityEngine;
 
 namespace LethalMon.Behaviours
 {
-    internal class SporeLizardTamedBehaviour : TamedEnemyBehaviour
+    internal class TulipSnakeTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
         internal override bool Controllable => true;
-        internal readonly float RidingTriggerHoldTime = 1f;
 
-        internal PufferAI sporeLizard { get; private set; }
+        internal FlowerSnakeEnemy tulipSnake { get; private set; }
 
-        internal InteractTrigger? ridingTrigger = null;
+        internal InteractTrigger? flyingTrigger = null;
 
-        internal bool nightVisionPreviouslyEnabled = false;
-
-        internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
+        internal bool IsFlying => CurrentCustomBehaviour == (int)CustomBehaviour.Flying;
         internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
 
         internal EnemyController? controller = null;
@@ -27,7 +24,7 @@ namespace LethalMon.Behaviours
         #region Action Keys
         private List<ActionKey> _actionKeys = new List<ActionKey>()
         {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Stop riding" }
+            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Stop flying" }
         };
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
@@ -36,7 +33,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
             base.ActionKey1Pressed();
 
-            if (IsRiding && IsOwnerPlayer)
+            if (CurrentCustomBehaviour == (int)CustomBehaviour.Flying && IsOwnerPlayer)
                 controller!.StopControllingServerRpc();
         }
         #endregion
@@ -44,95 +41,90 @@ namespace LethalMon.Behaviours
         #region Custom behaviours
         private enum CustomBehaviour
         {
-            Riding = 1,
+            Flying = 1,
         }
         internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
         {
-            { new Tuple<string, Action>(CustomBehaviour.Riding.ToString(), WhileRiding) },
+            { new Tuple<string, Action>(CustomBehaviour.Flying.ToString(), WhileFlying) },
         };
 
-        void WhileRiding()
+        void WhileFlying()
         {
-            sporeLizard.CalculateAnimationDirection();
+            tulipSnake.CalculateAnimationSpeed();
         }
         #endregion
 
         #region Controlling
-        internal void OnStartRiding()
+        internal void OnStartFlying()
         {
             if (Utils.IsHost)
-                SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+                SwitchToCustomBehaviour((int)CustomBehaviour.Flying);
 
             if (IsOwnerPlayer)
-            {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-                nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
-                ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retreive in ball when going outside, so that it gets disabled again
-            }
+
+            if (ownerPlayer != null)
+                ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: true);
         }
 
-        internal void OnStopRiding()
+        internal void OnStopFlying()
         {
             if(Utils.IsHost)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
             if (IsOwnerPlayer)
-            {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-                ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
-            }
 
-            sporeLizard.agentLocalVelocity = Vector3.zero;
-            sporeLizard.CalculateAnimationDirection(0f);
+            if(ownerPlayer != null)
+                ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: false);
         }
 
         internal void OnMove(Vector3 direction)
         {
-            sporeLizard.CalculateAnimationDirection();
         }
 
         internal void OnJump()
         {
-            LethalMon.Log("Spore lizard is jumping");
-            controller!.Jumping();
         }
         #endregion
 
         #region Base Methods
         void Awake()
         {
-            sporeLizard = (Enemy as PufferAI)!;
+            tulipSnake = (Enemy as FlowerSnakeEnemy)!;
 
             if (TryGetComponent(out controller) && controller != null)
             {
-                controller.OnStartControlling = OnStartRiding;
-                controller.OnStopControlling = OnStopRiding;
+                controller.OnStartControlling = OnStartFlying;
+                controller.OnStopControlling = OnStopFlying;
                 controller.OnMove = OnMove;
 
-                controller.EnemyCanJump = true;
+                controller.EnemyCanFly = true;
                 controller.OnJump = OnJump;
+                controller.EnemySpeedOutside = 8f;
+                controller.EnemyOffsetWhileControlling = new Vector3(-0.2f, 2.4f, 0f);
 
                 // Debug
                 ownerPlayer = Utils.CurrentPlayer;
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
-                controller!.AddTrigger("Ride");
+                controller!.AddTrigger("Fly");
                 controller!.SetControlTriggerVisible(true);
             }
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            base.OnUpdate(update, !IsRiding); // Don't attempt to SetDestination in Riding mode
+            base.OnUpdate(update, !IsFlying); // Don't attempt to SetDestination in Riding mode
         }
 
         internal override void OnCallFromBall()
         {
             base.OnCallFromBall();
 
-            if(ridingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
-                controller!.AddTrigger("Ride");
+            if(flyingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
+                controller!.AddTrigger("Fly");
 
             controller!.SetControlTriggerVisible();
         }
@@ -148,14 +140,13 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedFollowing();
 
-            sporeLizard.CalculateAnimationDirection();
+            tulipSnake.CalculateAnimationSpeed();
+            tulipSnake.DoChuckleOnInterval();
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
-
-            sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
         }
         #endregion
 

@@ -2,7 +2,9 @@
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.ProBuilder.Shapes;
 using UnityEngine.UIElements;
 
 namespace LethalMon.Behaviours
@@ -20,11 +22,12 @@ namespace LethalMon.Behaviours
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
-        internal virtual float EnemySpeedInside => 4f;
-        internal virtual float EnemySpeedOutside => 6f;
-        internal virtual float EnemyJumpForce => 10f;
+        internal float EnemySpeedInside = 4f;
+        internal float EnemySpeedOutside = 6f;
+        internal float EnemyJumpForce = 10f;
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
+        internal Vector3 EnemyOffsetWhileControlling = Vector3.zero;
 
         internal InputAction moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
 
@@ -32,6 +35,7 @@ namespace LethalMon.Behaviours
         internal virtual float ControlTriggerHoldTime => 1f;
 
         internal InteractTrigger? controlTrigger = null;
+        internal Vector3 triggerCenterDistance = Vector3.zero;
         #endregion
 
         #region Controlling methods
@@ -56,32 +60,24 @@ namespace LethalMon.Behaviours
         }
 
         #region Methods
-        public void AddTrigger(string hoverTip = "Control", GameObject? triggerObject = null)
+        public void AddTrigger(string hoverTip = "Control")
         {
-            if (enemy == null || controlTrigger != null) return;
+            if (enemy?.transform == null || controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
 
-            /*var triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            triggerObject.transform.localScale = Vector3.one * 4f;
-            triggerObject.transform.position = enemy.transform.position;
-
-            if(triggerObject.TryGetComponent(out MeshRenderer mr))
+            var bounds = Utils.RealEnemyBounds(enemy);
+            if(bounds == null)
             {
-                mr.material = new Material(Shader.Find("HDRP/Lit"));
-                mr.material.color = Color.red;
-                mr.enabled = true;
-            }
-
-            triggerObject.transform.SetParent(enemy.gameObject.transform, true);*/
-
-            if (triggerObject == null)
-                triggerObject = enemy!.gameObject;
-
-            if (triggerObject == null)
-            {
-                LethalMon.Log("Unable to get spore lizard model.", LethalMon.LogType.Error);
+                LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
                 return;
             }
+
+            var triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            triggerObject.transform.position = bounds.Value.center;
+            triggerCenterDistance = enemy!.transform.position - bounds.Value.center;
+            triggerObject.transform.localScale = bounds.Value.size;
+            Physics.IgnoreCollision(triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
+            //triggerObject.transform.SetParent(enemy.gameObject.transform, false); // damn parenting not working...
 
             triggerObject.tag = "InteractTrigger";
             triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
@@ -138,7 +134,8 @@ namespace LethalMon.Behaviours
 
             player.inSpecialInteractAnimation = true;
 
-            player.transform.position = enemy!.transform.position;
+            enemy!.transform.localPosition += EnemyOffsetWhileControlling;
+            player.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
             player.transform.rotation = enemy!.transform.rotation;
 
             if (IsControlledByUs)
@@ -205,18 +202,21 @@ namespace LethalMon.Behaviours
 
         void Update()
         {
+            if(controlTrigger != null)
+                controlTrigger.gameObject.transform.position = enemy!.transform.position + triggerCenterDistance;
+
             if (playerControlledBy != null && enemy != null)
             {
                 if (inputsBinded && moveAction.IsPressed())
                 {
                     // Controlling player
                     Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
-                    playerControlledBy!.transform.position = enemy!.transform.position;
+                    playerControlledBy!.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
                 }
                 else
                 {
                     // Other clients
-                    enemy!.transform.position = playerControlledBy!.transform.position;
+                    enemy!.transform.position = playerControlledBy!.transform.position + EnemyOffsetWhileControlling;
                 }
 
                 enemy!.transform.rotation = playerControlledBy!.transform.rotation;
@@ -247,16 +247,25 @@ namespace LethalMon.Behaviours
             if (isSprinting)
                 speed *= 2.25f;
 
-            LethalMon.Log(Time.deltaTime.ToString());
             return directionVector * speed * Time.deltaTime;
         }
 
         internal void Moving(Vector3 direction)
         {
-            var navMeshPos = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, RoundManager.Instance.navHit, -1f);
-            OnMove(direction);
-            enemy!.agent.Move(navMeshPos - enemy!.transform.position);
-            enemy!.agent.destination = navMeshPos;
+            if (EnemyCanFly)
+            {
+                var position = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, default, 15f);
+                if (!RoundManager.Instance.GotNavMeshPositionResult)
+                    position = enemy!.ChooseClosestNodeToPosition(enemy!.transform.position + direction).transform.position;
+                enemy!.transform.position = position;
+            }
+            else
+            {
+                var navMeshPos = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, RoundManager.Instance.navHit, -1f);
+                OnMove(direction);
+                enemy!.agent.Move(navMeshPos - enemy!.transform.position);
+                enemy!.agent.destination = navMeshPos;
+            }
         }
 
         internal virtual void Jumping()
