@@ -60,7 +60,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         get
         {
             if (_lastDefaultBehaviourIndex < 0)
-                _lastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.GetType(), int.MaxValue);
+                _lastDefaultBehaviourIndex = LastDefaultBehaviourIndices.GetValueOrDefault(Enemy.enemyType.enemyPrefab.GetInstanceID(), int.MaxValue);
             return _lastDefaultBehaviourIndex;
         }
     }
@@ -114,7 +114,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     // The last vanilla behaviour index for each enemy type
-    public static Dictionary<Type, int> LastDefaultBehaviourIndices = new Dictionary<Type, int>();
+    public static Dictionary<int, int> LastDefaultBehaviourIndices = new();
 
     // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
     [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
@@ -144,15 +144,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             // Behaviour states
             if (enemyAI.enemyBehaviourStates == null)
                 enemyAI.enemyBehaviourStates = [];
-            LastDefaultBehaviourIndices.Add(enemyAI.GetType(), enemyAI.enemyBehaviourStates.Length - 1);
+            if (LastDefaultBehaviourIndices.ContainsKey(enemyType.enemyPrefab.GetInstanceID()))
+            {
+                LethalMon.Logger.LogWarning("An enemy type (" + enemyType + " with instance ID " + enemyType.enemyPrefab.GetInstanceID() + ") is being registered but already has been registered before.");
+            }
+            else
+            {
+                LastDefaultBehaviourIndices.Add(enemyType.enemyPrefab.GetInstanceID(), enemyAI.enemyBehaviourStates.Length - 1);
 
-            var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
+                var behaviourStateList = enemyAI.enemyBehaviourStates.ToList();
 
-            // Add tamed behaviours
-            foreach (var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
-                behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
+                // Add tamed behaviours
+                foreach (var behaviourName in Enum.GetNames(typeof(TamingBehaviour)))
+                    behaviourStateList.Add(new EnemyBehaviourState() { name = behaviourName });
 
-            enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
+                enemyAI.enemyBehaviourStates = behaviourStateList.ToArray();
+            }
         }
 
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
