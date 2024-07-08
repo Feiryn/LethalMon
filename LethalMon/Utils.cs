@@ -6,6 +6,7 @@ using GameNetcodeStuff;
 using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
+using static LethalMon.Utils;
 
 namespace LethalMon;
 
@@ -143,6 +144,20 @@ public class Utils
         SandSpider,
         SandWorm,
         SpringMan
+    }
+
+    public static Bounds? RealEnemyBounds(EnemyAI enemy)
+    {
+        if (enemy == null) return null;
+
+        var renderers = enemy.gameObject.GetComponentsInChildren<Renderer>();
+        if (renderers == null) return null;
+
+        var bounds = renderers[0].bounds;
+        for (var i = 1; i < renderers.Length; ++i)
+            bounds.Encapsulate(renderers[i].bounds);
+
+        return bounds;
     }
     #endregion
 }

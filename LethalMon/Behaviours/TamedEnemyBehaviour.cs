@@ -23,7 +23,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
         { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
         { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
-        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) }
+        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
+        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -542,7 +543,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 	    pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(ballValue);
 	    ball.GetComponent<NetworkObject>().Spawn(false);
-	    pokeballItem.SetCaughtEnemy(Enemy.enemyType);
+	    pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
 	    pokeballItem.FallToGround();
 
 		Enemy.GetComponent<NetworkObject>().Despawn(true);

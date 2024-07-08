@@ -60,7 +60,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.HoarderBug.ToString());
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.FlowerSnake.ToString());
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)

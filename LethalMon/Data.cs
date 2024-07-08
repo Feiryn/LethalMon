@@ -30,6 +30,7 @@ public static class Data
         { Enemy.HoarderBug.ToString(), new CatchableHoarderBug() },
         { Enemy.RedLocustBees.ToString(), new CatchableRedLocustBees() },
         { Enemy.Puffer.ToString(), new CatchableSporeLizard() },
-        { Enemy.MouthDog.ToString(), new CatchableMouthDog() }
+        { Enemy.MouthDog.ToString(), new CatchableMouthDog() },
+        { Enemy.FlowerSnake.ToString(), new CatchableTulipSnake() }
     };
 }
