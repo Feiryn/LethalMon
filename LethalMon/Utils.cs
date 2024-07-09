@@ -6,7 +6,6 @@ using GameNetcodeStuff;
 using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
-using static LethalMon.Utils;
 
 namespace LethalMon;
 

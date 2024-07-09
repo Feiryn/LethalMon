@@ -33,7 +33,6 @@ namespace LethalMon.Behaviours
 
         internal override void ActionKey1Pressed()
         {
-            LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
             base.ActionKey1Pressed();
 
             if (IsRiding && IsOwnerPlayer)

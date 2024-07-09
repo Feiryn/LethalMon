@@ -152,7 +152,8 @@ namespace LethalMon.Patches
                 gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
                 var enemyAI = gameObject.GetComponent<EnemyAI>();
                 RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
-                enemyAI.enabled = !StartOfRound.Instance.inShipPhase;
+                enemyAI.enabled = StartOfRound.Instance.testRoom == null;
+                enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
 
                 return;
             }
