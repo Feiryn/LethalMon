@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static UnityEngine.UI.Image;
 
@@ -137,12 +138,12 @@ namespace LethalMon.Behaviours
                 controller.EnemyOffsetWhileControlling = new Vector3(0.2f, 2.4f, 0f);
 
                 // Debug
-                ownerPlayer = Utils.CurrentPlayer;
+                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Fly");
-                controller!.SetControlTriggerVisible(true);
+                controller!.SetControlTriggerVisible(true);*/
             }
         }
 

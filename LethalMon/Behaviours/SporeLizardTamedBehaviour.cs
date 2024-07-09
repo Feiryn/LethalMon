@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -112,12 +113,12 @@ namespace LethalMon.Behaviours
                 controller.OnJump = OnJump;
 
                 // Debug
-                ownerPlayer = Utils.CurrentPlayer;
+                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Ride");
-                controller!.SetControlTriggerVisible(true);
+                controller!.SetControlTriggerVisible(true); */
             }
         }
 
