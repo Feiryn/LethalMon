@@ -18,6 +18,8 @@ namespace LethalMon.Behaviours
 
         internal bool isSprinting = false;
         internal bool isMoving = false;
+        internal Vector3 lastDirection = Vector3.zero;
+        internal float currentSpeed = 0f;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
@@ -236,18 +238,25 @@ namespace LethalMon.Behaviours
 
                     if (moveAction.IsPressed())
                     {
-                        Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
-
-                        if(!isMoving)
+                        // Actively moving
+                        if (!isMoving)
                         {
                             OnStartMoving?.Invoke();
                             isMoving = true;
                         }
+                        Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
                     }
-                    else if (isMoving)
+                    else
                     {
-                        OnStopMoving?.Invoke();
-                        isMoving = false;
+                        // Not moving anymore
+                        if (isMoving)
+                        {
+                            OnStopMoving?.Invoke();
+                            isMoving = false;
+                        }
+
+                        if (currentSpeed > 0.1f)
+                            Moving(lastDirection);
                     }
                 }
                 else
@@ -280,15 +289,27 @@ namespace LethalMon.Behaviours
             if (!EnemyCanFly)
                 directionVector.y = 0f;
 
-            float speed = playerControlledBy.isInsideFactory ? EnemySpeedInside : EnemySpeedOutside;
-            if (isSprinting)
-                speed *= 2.25f;
-
-            return directionVector * speed * Time.deltaTime;
+            return directionVector * Time.deltaTime;
         }
 
         internal void Moving(Vector3 direction)
         {
+            lastDirection = direction;
+
+            if (isMoving)
+            {
+                float maxSpeed = playerControlledBy!.isInsideFactory ? EnemySpeedInside : EnemySpeedOutside;
+                if (isSprinting)
+                    maxSpeed *= 2.25f;
+
+                currentSpeed = Mathf.Max(Mathf.Lerp(currentSpeed, maxSpeed, 2f * Time.deltaTime), 0f);
+            }
+            else
+                currentSpeed = Mathf.Max( Mathf.Lerp(currentSpeed, 0f, 5f * Time.deltaTime), 0f);
+
+            LethalMon.Log("Currentspeed: " + currentSpeed);
+            direction *= currentSpeed;
+
             if (EnemyCanFly)
             {
                 var raycastForward = direction;
