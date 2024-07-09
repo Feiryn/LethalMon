@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEngine.UI.Image;
 
 namespace LethalMon.Behaviours
 {
@@ -30,8 +31,9 @@ namespace LethalMon.Behaviours
 
         internal override void ActionKey1Pressed()
         {
-            LethalMon.Log("ActionKey1Pressed TamedEnemyBehaviour");
             base.ActionKey1Pressed();
+            LethalMon.Log((CurrentCustomBehaviour == (int)CustomBehaviour.Flying).ToString());
+            LethalMon.Log(IsOwnerPlayer.ToString());
 
             if (CurrentCustomBehaviour == (int)CustomBehaviour.Flying && IsOwnerPlayer)
                 controller!.StopControllingServerRpc();
@@ -51,6 +53,28 @@ namespace LethalMon.Behaviours
         void WhileFlying()
         {
             tulipSnake.CalculateAnimationSpeed();
+            //tulipSnake.SetClingingAnimationPosition();
+
+            if (Utils.IsHost)
+            {
+                bool flying = !Physics.Raycast(new Ray(ownerPlayer!.transform.position, Vector3.down), out _, ownerPlayer!.transform.localScale.y / 2f + 0.03f, ownerPlayer!.walkableSurfacesNoPlayersMask /*StartOfRound.Instance.allPlayersCollideWithMask*/, QueryTriggerInteraction.Ignore);
+                if (flying)
+                {
+                    if (!tulipSnake.flapping)
+                    {
+                        tulipSnake.SetFlappingLocalClient(setFlapping: true, isMainSnake: true);
+                        tulipSnake.SetFlappingClientRpc(setFlapping: true);
+                    }
+                }
+                else
+                {
+                    if (tulipSnake.flapping)
+                    {
+                        tulipSnake.SetFlappingLocalClient(setFlapping: false, isMainSnake: true);
+                        tulipSnake.SetFlappingClientRpc(setFlapping: false);
+                    }
+                }
+            }
         }
         #endregion
 
@@ -65,6 +89,10 @@ namespace LethalMon.Behaviours
 
             if (ownerPlayer != null)
                 ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: true);
+
+            //tulipSnake.clingingToPlayer = ownerPlayer;
+            //tulipSnake.creatureAnimator.SetInteger("clingType", 4);
+            tulipSnake.inSpecialAnimation = true;
         }
 
         internal void OnStopFlying()
@@ -77,6 +105,10 @@ namespace LethalMon.Behaviours
 
             if(ownerPlayer != null)
                 ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: false);
+
+            //tulipSnake.clingingToPlayer = null;
+            //tulipSnake.creatureAnimator.SetInteger("clingType", 0);
+            tulipSnake.inSpecialAnimation = false;
         }
 
         internal void OnMove(Vector3 direction)
@@ -102,7 +134,7 @@ namespace LethalMon.Behaviours
                 controller.EnemyCanFly = true;
                 controller.OnJump = OnJump;
                 controller.EnemySpeedOutside = 8f;
-                controller.EnemyOffsetWhileControlling = new Vector3(-0.2f, 2.4f, 0f);
+                controller.EnemyOffsetWhileControlling = new Vector3(0.2f, 2.4f, 0f);
 
                 // Debug
                 ownerPlayer = Utils.CurrentPlayer;

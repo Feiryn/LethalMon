@@ -1,11 +1,9 @@
 ﻿using GameNetcodeStuff;
+using LethalLib.Modules;
 using System;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.AI;
 using UnityEngine.InputSystem;
-using UnityEngine.ProBuilder.Shapes;
-using UnityEngine.UIElements;
 
 namespace LethalMon.Behaviours
 {
@@ -19,6 +17,7 @@ namespace LethalMon.Behaviours
         internal bool inputsBinded = false;
 
         internal bool isSprinting = false;
+        internal bool isMoving = false;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
@@ -43,6 +42,8 @@ namespace LethalMon.Behaviours
         internal Action? OnStopControlling = null;
         internal Func<Vector2, Vector3> OnCalculateMovementVector;
         internal Action<Vector3> OnMove;
+        internal Action OnStartMoving;
+        internal Action OnStopMoving;
         internal Action OnJump;
         #endregion
 
@@ -131,8 +132,14 @@ namespace LethalMon.Behaviours
             playerControlledBy = player;
 
             enemy!.moveTowardsDestination = false;
+            if (EnemyCanFly)
+            {
+                enemy!.agent.enabled = false;
+                playerControlledBy.jetpackControls = true;
+                playerControlledBy.disablingJetpackControls = true;
+            }
 
-            player.inSpecialInteractAnimation = true;
+            player.disableMoveInput = true;
 
             enemy!.transform.localPosition += EnemyOffsetWhileControlling;
             player.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
@@ -143,6 +150,9 @@ namespace LethalMon.Behaviours
                 SetControlTriggerVisible(false);
                 BindInputs();
             }
+
+            if (enemy!.TryGetComponent(out Collider collider))
+                Physics.IgnoreCollision(collider, player.playerCollider);
 
             OnStartControlling?.Invoke();
         }
@@ -157,8 +167,19 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         public void StopControllingClientRpc()
         {
-            if(playerControlledBy != null)
-                playerControlledBy.inSpecialInteractAnimation = false;
+            if (playerControlledBy != null)
+            {
+                playerControlledBy.disableMoveInput = false;
+                playerControlledBy!.jetpackControls = false;
+                playerControlledBy.disablingJetpackControls = false;
+
+                if (enemy!.TryGetComponent(out Collider collider))
+                    Physics.IgnoreCollision(collider, playerControlledBy.playerCollider, false);
+            }
+
+            enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
+
+            enemy!.agent.enabled = true;
 
             if (IsControlledByUs)
             {
@@ -207,11 +228,27 @@ namespace LethalMon.Behaviours
 
             if (playerControlledBy != null && enemy != null)
             {
-                if (inputsBinded && moveAction.IsPressed())
+                if (inputsBinded)
                 {
                     // Controlling player
-                    Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
                     playerControlledBy!.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
+                    playerControlledBy!.ResetFallGravity();
+
+                    if (moveAction.IsPressed())
+                    {
+                        Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
+
+                        if(!isMoving)
+                        {
+                            OnStartMoving?.Invoke();
+                            isMoving = true;
+                        }
+                    }
+                    else if (isMoving)
+                    {
+                        OnStopMoving?.Invoke();
+                        isMoving = false;
+                    }
                 }
                 else
                 {
@@ -254,10 +291,11 @@ namespace LethalMon.Behaviours
         {
             if (EnemyCanFly)
             {
-                var position = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, default, 15f);
-                if (!RoundManager.Instance.GotNavMeshPositionResult)
-                    position = enemy!.ChooseClosestNodeToPosition(enemy!.transform.position + direction).transform.position;
-                enemy!.transform.position = position;
+                var raycastForward = direction;
+                raycastForward.Scale(playerControlledBy!.playerCollider.bounds.size / 2f);
+                bool willCollide = Physics.Raycast(new Ray(playerControlledBy!.playerCollider.bounds.center, raycastForward), out _, playerControlledBy!.transform.localScale.y / 2f + 0.03f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore);
+                if (willCollide) return;
+                enemy!.transform.position += direction;
             }
             else
             {
