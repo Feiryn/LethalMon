@@ -97,9 +97,12 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         if (bracken == null)
             bracken = gameObject.AddComponent<FlowermanAI>();
 
-        bracken.creatureAnimator.SetBool("sneak", value: true);
-        bracken.creatureAnimator.Play("Base Layer.CreepForward");
-        
+        if (ownerPlayer != null)
+        {
+            bracken.creatureAnimator.SetBool("sneak", value: true);
+            bracken.creatureAnimator.Play("Base Layer.CreepForward");
+        }
+
         Transform? torso3 = bracken.gameObject.transform
             .Find("FlowermanModel")?
             .Find("AnimContainer")?

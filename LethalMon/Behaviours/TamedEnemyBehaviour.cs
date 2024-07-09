@@ -20,7 +20,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
         { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
         { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
-        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) }
+        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
+        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -143,7 +144,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             // Behaviour states
             if (enemyAI.enemyBehaviourStates == null)
-                enemyAI.enemyBehaviourStates = [];
+                enemyAI.enemyBehaviourStates = Array.Empty<EnemyBehaviourState>();
             if (LastDefaultBehaviourIndices.ContainsKey(enemyType.enemyPrefab.GetInstanceID()))
             {
                 LethalMon.Logger.LogWarning("An enemy type (" + enemyType + " with instance ID " + enemyType.enemyPrefab.GetInstanceID() + ") is being registered but already has been registered before.");

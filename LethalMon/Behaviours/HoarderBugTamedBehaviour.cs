@@ -80,7 +80,11 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         if (hoarderBug == null)
             hoarderBug = gameObject.AddComponent<HoarderBugAI>();
 
-        hoarderBug.creatureAnimator.Play("Base Layer.Walking");
+        if (ownerPlayer != null)
+        {
+            hoarderBug.creatureAnimator.Play("Base Layer.Walking");
+        }
+        
     }
 
     internal override void OnTamedFollowing()

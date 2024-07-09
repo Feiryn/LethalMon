@@ -24,8 +24,11 @@ namespace LethalMon.Throw
                 return;
             }
 
-            if(playerNetworkObject.TryGetComponent( out PlayerControllerB player))
+            if (playerNetworkObject.TryGetComponent(out PlayerControllerB player))
+            {
                 playerThrownBy = player;
+                lastThrower = playerThrownBy;
+            }
         }
         #endregion
         
@@ -35,6 +38,7 @@ namespace LethalMon.Throw
             if (base.IsOwner)
             {
                 playerThrownBy = playerHeldBy;
+                lastThrower = playerThrownBy;
                 playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination());
                 this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>());
             }
@@ -102,5 +106,7 @@ namespace LethalMon.Throw
         public Ray itemThrowRay;
 
         public PlayerControllerB playerThrownBy;
+
+        public PlayerControllerB lastThrower;
     }
 }

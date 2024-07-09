@@ -1,3 +1,7 @@
+# 0.1.1
+
+- Fixed a bug that can happen with mods that adds custom enemies
+
 # 0.1.0
 
 - Configurable key for retrieving tamed enemy (thanks to [@NiroDev](https://github.com/NiroDev))

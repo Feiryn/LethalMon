@@ -110,7 +110,7 @@ public abstract class PokeballItem : ThrowableItem
 
                 if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
                 {
-                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.playerThrownBy);
+                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
                 }
             }
         }
