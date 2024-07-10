@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using GameNetcodeStuff;
 using UnityEngine;
@@ -92,16 +91,19 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         MouthDogAI[] mouthDogAIs = FindObjectsOfType<MouthDogAI>();
         foreach (MouthDogAI mouthDogAI in mouthDogAIs)
         {
-            if (mouthDogAI == mouthDog || mouthDogAI.isEnemyDead || Vector3.Distance(mouthDogAI.transform.position, ownerPlayer!.transform.position) > 15f) continue;
+            if (mouthDogAI == mouthDog || mouthDogAI.isEnemyDead || Vector3.Distance(mouthDogAI.transform.position, ownerPlayer!.transform.position) > 20f) continue;
             
             bool foundPath = false;
-            for (float i = 15f; i > 5f; i--)
+            for (float i = 15f; i > 7f && !foundPath; i--)
             {
-                Vector3? farPosition = GetPositionFarFromOwner(mouthDogAI, i);
-                if (farPosition != null && mouthDog.SetDestinationToPosition(farPosition.Value, true))
+                Vector3[] farPositions = GetPositionsFarFromOwner(mouthDogAI, i);
+                foreach (Vector3 farPosition in farPositions)
                 {
-                    foundPath = true;
-                    break;
+                    if (mouthDog.SetDestinationToPosition(farPosition, true))
+                    {
+                        foundPath = true;
+                        break;
+                    }
                 }
             }
 
@@ -118,24 +120,43 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
     
-    private Vector3? GetPositionFarFromOwner(MouthDogAI enemyToDefendFrom, float distance)
+    private Vector3[] GetPositionsFarFromOwner(MouthDogAI enemyToDefendFrom, float distance)
     {
+        const int sidesPoints = 10;
+        const float sidesPointsDistance = 0.5f;
+
         Vector3 enemyPosition = enemyToDefendFrom.transform.position;
         Vector3 direction = Vector3.Normalize(enemyPosition - ownerPlayer!.transform.position);
         Vector3 destinationPoint = enemyPosition + direction * distance;
+        
+        Vector3[] positionsArray = new Vector3[1 + sidesPoints * 2];
+        positionsArray[0] = destinationPoint;
 
-        RaycastHit hitInfo;
-        if (Physics.Raycast(new Ray(destinationPoint, Vector3.down), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
+        Vector2 projectedDirectionOnXY = new Vector2(direction.x, direction.y);
+        Vector2 perpendicular = Vector2.Perpendicular(projectedDirectionOnXY);
+
+        for (int i = 1; i <= sidesPoints; ++i)
         {
-            return hitInfo.point;
+            positionsArray[1 + (i - 1) * 2] = new Vector3(destinationPoint.x + perpendicular.x * sidesPointsDistance * i, destinationPoint.y + perpendicular.y * sidesPointsDistance * i, destinationPoint.z);
+            positionsArray[2 + (i - 1) * 2] = new Vector3(destinationPoint.x - perpendicular.x * sidesPointsDistance * i, destinationPoint.y - perpendicular.y * sidesPointsDistance * i, destinationPoint.z);
         }
-        
-        if (Physics.Raycast(new Ray(destinationPoint, Vector3.up), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
+
+        for (int i = 0; i < positionsArray.Length; ++i)
         {
-            return hitInfo.point;
+            RaycastHit hitInfo;
+            if (Physics.Raycast(new Ray(positionsArray[i], Vector3.down), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
+            {
+                positionsArray[i] = hitInfo.point;
+            }
+            else if (Physics.Raycast(new Ray(positionsArray[i], Vector3.up), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
+            {
+                positionsArray[i] = hitInfo.point;
+            }
+            
+            LethalMon.Log("Position " + i + " = " + positionsArray[i]);
         }
-        
-        return null;
+
+        return positionsArray;
     }
     
     internal override void OnTamedDefending()
