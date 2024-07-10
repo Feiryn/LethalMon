@@ -27,10 +27,19 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         base.Start();
 
         bees = (Enemy as RedLocustBees)!;
+        if (bees == null)
+            bees = gameObject.AddComponent<RedLocustBees>();
 
-        LethalMon.Logger.LogWarning("RedLocustBeesCustomAI.Start: " + (bees == null).ToString());
-        if(bees?.agent != null)
+        if (this.ownerPlayer == null) return;
+        
+        if(bees.agent != null)
             bees.agent.speed = 10.3f;
+            
+        bees.beesIdle.volume = 0.2f;
+        bees.beesDefensive.volume = 0.2f;
+        bees.beesAngry.Stop();
+        bees.beeZapAudio.Stop();
+        bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make it smaller
     }
 
     internal override void OnTamedDefending()
