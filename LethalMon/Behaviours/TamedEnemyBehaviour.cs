@@ -74,7 +74,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         TamedFollowing = 1,
         TamedDefending = 2
     }
-    private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length - 1;
+    private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
 
     private Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>(); // List of behaviour state indices and their custom handler
 
