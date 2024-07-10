@@ -135,6 +135,7 @@ namespace LethalMon.Behaviours
                 controller.EnemyCanFly = true;
                 controller.OnJump = OnJump;
                 controller.EnemySpeedOutside = 8f;
+                controller.EnemyDuration = 3f;
                 controller.EnemyOffsetWhileControlling = new Vector3(0.2f, 2.4f, 0f);
 
                 // Debug

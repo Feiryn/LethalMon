@@ -14,18 +14,26 @@ namespace LethalMon.Behaviours
 
         internal PlayerControllerB? playerControlledBy = null;
 
-        internal bool inputsBinded = false;
+        // Stamina
+        private float controllingPlayerStamina = 0f;
+        private Color staminaDefaultColor;
+        private float enemyStamina = 1f;
+
+        private bool inputsBinded = false;
 
         internal bool isSprinting = false;
         internal bool isMoving = false;
-        internal Vector3 lastDirection = Vector3.zero;
-        internal float currentSpeed = 0f;
+        private Vector3 lastDirection = Vector3.zero;
+        private float currentSpeed = 0f;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
         internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
+
+        // Changeable variables
         internal float EnemySpeedInside = 4f;
         internal float EnemySpeedOutside = 6f;
         internal float EnemyJumpForce = 10f;
+        internal float EnemyDuration = 5f;
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
         internal Vector3 EnemyOffsetWhileControlling = Vector3.zero;
@@ -149,6 +157,11 @@ namespace LethalMon.Behaviours
 
             if (IsControlledByUs)
             {
+                controllingPlayerStamina = player.sprintMeter;
+                player.sprintMeter = enemyStamina;
+                staminaDefaultColor = player.sprintMeterUI.color;
+                player.sprintMeterUI.color = Color.cyan;
+
                 SetControlTriggerVisible(false);
                 BindInputs();
             }
@@ -187,6 +200,9 @@ namespace LethalMon.Behaviours
             {
                 SetControlTriggerVisible(true);
                 UnbindInputs();
+                playerControlledBy!.sprintMeter = controllingPlayerStamina;
+                playerControlledBy!.sprintMeterUI.fillAmount = playerControlledBy.sprintMeter;
+                playerControlledBy!.sprintMeterUI.color = staminaDefaultColor;
             }
 
             OnStopControlling?.Invoke();
@@ -223,9 +239,14 @@ namespace LethalMon.Behaviours
             inputsBinded = false;
         }
 
+        void LateUpdate()
+        {
+            UpdateStamina();
+        }
+
         void Update()
         {
-            if(controlTrigger != null)
+            if (controlTrigger != null)
                 controlTrigger.gameObject.transform.position = enemy!.transform.position + triggerCenterDistance;
 
             if (playerControlledBy != null && enemy != null)
@@ -272,6 +293,38 @@ namespace LethalMon.Behaviours
                 StopControllingServerRpc();
         }
 
+        private void UpdateStamina()
+        {
+            if (IsControlledByUs && inputsBinded)
+            {
+                // Controlled
+                if (isMoving)
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * playerControlledBy.carryWeight * (isSprinting ? 4f : 1f) / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
+                else if (EnemyCanFly && !playerControlledBy!.IsPlayerNearGround())
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * playerControlledBy.carryWeight / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
+                else
+                    enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f), 0f, 1f); // Gain stamina if grounded and not moving
+
+                controllingPlayerStamina = Mathf.Clamp(controllingPlayerStamina + Time.deltaTime / (playerControlledBy.sprintTime + 2f), 0f, 1f);
+
+                if (playerControlledBy.sprintMeter < 0.2f)
+                {
+                    StopControllingServerRpc();
+                    return;
+                }
+
+                playerControlledBy.sprintMeter = enemyStamina;
+                playerControlledBy.sprintMeterUI.fillAmount = enemyStamina;
+            }
+            else
+            {
+                // Not controlled
+                enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / 2f / EnemyDuration, 0f, 1f);
+            }
+
+            //LethalMon.Log($"Stamina player {(int)(100f*controllingPlayerStamina)}%, enemy{(int)(100f * enemyStamina)}%");
+        }
+
         // Simplify abstract method parameter
         internal void Jump(InputAction.CallbackContext callbackContext) => OnJump();
         internal void SprintStart(InputAction.CallbackContext callbackContext) => isSprinting = true;
@@ -298,7 +351,7 @@ namespace LethalMon.Behaviours
 
             if (isMoving)
             {
-                float maxSpeed = playerControlledBy!.isInsideFactory ? EnemySpeedInside : EnemySpeedOutside;
+                float maxSpeed = playerControlledBy!.isInsideFactory && StartOfRound.Instance.testRoom == null ? EnemySpeedInside : EnemySpeedOutside;
                 if (isSprinting)
                     maxSpeed *= 2.25f;
 
