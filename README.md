@@ -29,46 +29,41 @@ If a player dies or disconnects, the monster will be called in the ball at it's 
 
 Here are the implementation status of monsters:
 
-|      Monster      | Implemented |                      Behaviour                       |
-|:-----------------:|:-----------:|:----------------------------------------------------:|
-|      Bracken      |     Yes     |                  Drags enemies away                  |
-|      Spider       |     No      |                         TBD                          |
-|      Butler       |     No      |                         TBD                          |
-|     Coil-head     |     No      |                         TBD                          |
-|    Ghost Girl     |     No      |                         TBD                          |
-|   Hoarding Bug    |     Yes     |     Brings items in a line of sight to the owner     |
-|     Hygrodere     |     No      |                         TBD                          |
-|      Jester       |     No      |                         TBD                          |
-|      Masked       |     No      |                         TBD                          |
-|    Nutcracker     |     No      |                         TBD                          |
-|    Snare Flea     |     No      |                         TBD                          |
-|   Spore Lizard    |     Yes     |               Can be used as mount                   |
-|      Thumper      |     No      |                         TBD                          |
-|       Bees        |     Yes     | Stun monsters and damage players that hurt the owner |
-|     Manticoil     |     No      |                         TBD                          |
-|  Roaming Locusts  | Will not be |                          -                           |
-|    Tulip Snake    |     No      |                         TBD                          |
-|    Baboon Hawk    |     No      |                         TBD                          |
-|  Earth Leviathan  |     No      |                         TBD                          |
-|    Eyeless Dog    |     No      |                         TBD                          |
-|   Forest Keeper   |     No      |                         TBD                          |
-|     Old Bird      |     No      |                         TBD                          |
-|   Mask Hornets    |     No      |                         TBD                          |
+|     Monster     | Implemented |                               Behaviour                                |
+|:---------------:|:-----------:|:----------------------------------------------------------------------:|
+|     Bracken     |     Yes     |                           Drags enemies away                           |
+|     Spider      |     No      |                                  TBD                                   |
+|     Butler      |     No      |                                  TBD                                   |
+|    Coil-head    |     No      |                                  TBD                                   |
+|   Ghost Girl    |     No      |                                  TBD                                   |
+|  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |
+|    Hygrodere    |     No      |                                  TBD                                   |
+|     Jester      |     No      |                                  TBD                                   |
+|     Masked      |     No      |                                  TBD                                   |
+|   Nutcracker    |     No      |                                  TBD                                   |
+|   Snare Flea    |     No      |                                  TBD                                   |
+|  Spore Lizard   |     Yes     |                          Can be used as mount                          |
+|     Thumper     |     No      |                                  TBD                                   |
+|      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |
+|    Manticoil    |     No      |                                  TBD                                   |
+| Roaming Locusts | Will not be |                                   -                                    |
+|   Tulip Snake   |     No      |                                  TBD                                   |
+|   Baboon Hawk   |     No      |                                  TBD                                   |
+| Earth Leviathan |     No      |                                  TBD                                   |
+|   Eyeless Dog   |     Yes     | Run far from the owner and howls in order to draw other dogs attention |
+|  Forest Keeper  |     No      |                                  TBD                                   |
+|    Old Bird     |     No      |                                  TBD                                   |
+|  Mask Hornets   |     No      |                                  TBD                                   |
+|     Barber      |     No      |                                  TBD                                   |
+|  Kidnapper Fox  |     No      |                                  TBD                                   |
 
 ## Roadmap
 
-Before first release:
-- [ ] Audio
-- [x] Show the real names of the monsters instead of the name in the code (e.g. Flowerman = Bracken)
-- [x] Bracken
-- [x] Bees
-- [x] Spore Lizard
-
-In a future release:
-- [ ] HUD
-- [ ] Name above your own monsters
-- [ ] Better (and working) tooltips
-- [ ] Implementation of more monsters
-
-Later:
-- [ ] Better animations
+- Audio
+- HUD
+- Name above your own monsters
+- Better (and working) tooltips
+- Implementation of more monsters
+- Better animations and models
+- Buyable balls in the shop
+- Configurable parameters
