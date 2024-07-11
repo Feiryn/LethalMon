@@ -33,10 +33,11 @@ namespace LethalMon.Behaviours
         internal float EnemySpeedInside = 4f;
         internal float EnemySpeedOutside = 6f;
         internal float EnemyJumpForce = 10f;
-        internal float EnemyDuration = 5f;
+        internal float EnemyDuration = 5f; // General stamina duration
+        internal float EnemyStrength = 1f; // Defines how much the enemy stamina is affected by held items
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
-        internal Vector3 EnemyOffsetWhileControlling = Vector3.zero;
+        internal Vector3 EnemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
 
         internal InputAction moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
 
@@ -44,7 +45,7 @@ namespace LethalMon.Behaviours
         internal virtual float ControlTriggerHoldTime => 1f;
 
         internal InteractTrigger? controlTrigger = null;
-        internal Vector3 triggerCenterDistance = Vector3.zero;
+        internal Vector3 triggerCenterDistance = Vector3.zero; // TODO: transform parenting
         #endregion
 
         #region Controlling methods
@@ -52,8 +53,8 @@ namespace LethalMon.Behaviours
         internal Action? OnStopControlling = null;
         internal Func<Vector2, Vector3> OnCalculateMovementVector;
         internal Action<Vector3> OnMove;
-        internal Action OnStartMoving;
-        internal Action OnStopMoving;
+        internal Action? OnStartMoving;
+        internal Action? OnStopMoving;
         internal Action OnJump;
         #endregion
 
@@ -143,11 +144,7 @@ namespace LethalMon.Behaviours
 
             enemy!.moveTowardsDestination = false;
             if (EnemyCanFly)
-            {
                 enemy!.agent.enabled = false;
-                playerControlledBy.jetpackControls = true;
-                playerControlledBy.disablingJetpackControls = true;
-            }
 
             player.disableMoveInput = true;
 
@@ -185,8 +182,6 @@ namespace LethalMon.Behaviours
             if (playerControlledBy != null)
             {
                 playerControlledBy.disableMoveInput = false;
-                playerControlledBy!.jetpackControls = false;
-                playerControlledBy.disablingJetpackControls = false;
 
                 if (enemy!.TryGetComponent(out Collider collider))
                     Physics.IgnoreCollision(collider, playerControlledBy.playerCollider, false);
@@ -194,7 +189,8 @@ namespace LethalMon.Behaviours
 
             enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
 
-            enemy!.agent.enabled = true;
+            if (EnemyCanFly)
+                enemy!.agent.enabled = true;
 
             if (IsControlledByUs)
             {
@@ -299,9 +295,9 @@ namespace LethalMon.Behaviours
             {
                 // Controlled
                 if (isMoving)
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * playerControlledBy.carryWeight * (isSprinting ? 4f : 1f) / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (isSprinting ? 4f : 1f) / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
                 else if (EnemyCanFly && !playerControlledBy!.IsPlayerNearGround())
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * playerControlledBy.carryWeight / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
                 else
                     enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f), 0f, 1f); // Gain stamina if grounded and not moving
 
@@ -360,15 +356,22 @@ namespace LethalMon.Behaviours
             else
                 currentSpeed = Mathf.Max( Mathf.Lerp(currentSpeed, 0f, 5f * Time.deltaTime), 0f);
 
-            LethalMon.Log("Currentspeed: " + currentSpeed);
             direction *= currentSpeed;
 
             if (EnemyCanFly)
             {
+                // Collision checking
                 var raycastForward = direction;
                 raycastForward.Scale(playerControlledBy!.playerCollider.bounds.size / 2f);
-                bool willCollide = Physics.Raycast(new Ray(playerControlledBy!.playerCollider.bounds.center, raycastForward), out _, playerControlledBy!.transform.localScale.y / 2f + 0.03f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore);
-                if (willCollide) return;
+                bool willCollideForward = Physics.Raycast(new Ray(playerControlledBy!.playerCollider.bounds.center, raycastForward), out _, 0.5f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore);
+                if (willCollideForward) return;
+
+                if (direction.y < 0f)
+                {
+                    bool willCollideDownwards = Physics.Raycast(new Ray(playerControlledBy!.playerCollider.bounds.center, Vector3.down), out _, playerControlledBy!.transform.localScale.y / 2f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore);
+                    if (willCollideDownwards) return;
+                }
+                
                 enemy!.transform.position += direction;
             }
             else
