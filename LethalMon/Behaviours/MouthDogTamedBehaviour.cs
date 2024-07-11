@@ -189,8 +189,6 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
             {
                 positionsArray[i] = hitInfo.point;
             }
-            
-            LethalMon.Log("Position " + i + " = " + positionsArray[i]);
         }
 
         return positionsArray;
