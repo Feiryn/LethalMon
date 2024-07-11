@@ -95,6 +95,10 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+
+            tulipSnake.flapping = false;
+            tulipSnake.SetFlappingLocalClient(false);
+            tulipSnake.SetFlappingClientRpc(false);
         }
 
         internal void OnMove(Vector3 direction)
@@ -117,6 +121,7 @@ namespace LethalMon.Behaviours
             if (ownerPlayer != null)
             {
                 tulipSnake.creatureVoice.volume = 0f;
+                tulipSnake.SetFlappingLocalClient(false);
             }
         }
         
@@ -177,7 +182,7 @@ namespace LethalMon.Behaviours
             {
                 tulipSnake.clingPosition = 0;
                 tulipSnake.creatureAnimator.SetInteger("clingType", 0);
-                tulipSnake.SetFlappingLocalClient(true);
+                tulipSnake.SetFlappingLocalClient(false);
             }
             
             //Enemy!.transform.position = new Vector3(Enemy!.transform.position.x, ownerPlayer!.gameplayCamera.transform.position.y, Enemy!.transform.position.z);
