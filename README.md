@@ -47,7 +47,7 @@ Here are the implementation status of monsters:
 |      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |
 |    Manticoil    |     No      |                                  TBD                                   |
 | Roaming Locusts | Will not be |                                   -                                    |
-|   Tulip Snake   |     No      |                                  TBD                                   |
+|   Tulip Snake   |     Yes     |                        Allows the player to fly                        |
 |   Baboon Hawk   |     No      |                                  TBD                                   |
 | Earth Leviathan |     No      |                                  TBD                                   |
 |   Eyeless Dog   |     Yes     | Run far from the owner and howls in order to draw other dogs attention |
