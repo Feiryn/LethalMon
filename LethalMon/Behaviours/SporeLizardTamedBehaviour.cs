@@ -114,12 +114,12 @@ namespace LethalMon.Behaviours
                 controller.EnemyStrength = 3f;
 
                 // Debug
-                ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Ride");
-                controller!.SetControlTriggerVisible(true);
+                controller!.SetControlTriggerVisible(true);*/
             }
         }
 
