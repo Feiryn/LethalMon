@@ -1,5 +1,4 @@
 ﻿using GameNetcodeStuff;
-using LethalLib.Modules;
 using System;
 using Unity.Netcode;
 using UnityEngine;
@@ -37,6 +36,7 @@ namespace LethalMon.Behaviours
         internal float EnemyStrength = 1f; // Defines how much the enemy stamina is affected by held items
         internal bool EnemyCanJump = false;
         internal bool EnemyCanFly = false;
+        internal float EnemyStaminaUseMultiplier = 1f;
         internal Vector3 EnemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
 
         internal InputAction moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
@@ -295,11 +295,11 @@ namespace LethalMon.Behaviours
             {
                 // Controlled
                 if (isMoving)
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (isSprinting ? 4f : 1f) / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (isSprinting ? 4f : 1f) * EnemyStaminaUseMultiplier / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
                 else if (EnemyCanFly && !playerControlledBy!.IsPlayerNearGround())
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
+                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * EnemyStaminaUseMultiplier / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
                 else
-                    enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f), 0f, 1f); // Gain stamina if grounded and not moving
+                    enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f) * EnemyStaminaUseMultiplier, 0f, 1f); // Gain stamina if grounded and not moving
 
                 controllingPlayerStamina = Mathf.Clamp(controllingPlayerStamina + Time.deltaTime / (playerControlledBy.sprintTime + 2f), 0f, 1f);
 
@@ -315,7 +315,7 @@ namespace LethalMon.Behaviours
             else
             {
                 // Not controlled
-                enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / 2f / EnemyDuration, 0f, 1f);
+                enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / 5f / EnemyDuration, 0f, 1f);
             }
 
             //LethalMon.Log($"Stamina player {(int)(100f*controllingPlayerStamina)}%, enemy{(int)(100f * enemyStamina)}%");

@@ -3,7 +3,6 @@ using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using LethalLib.Modules;
 using LethalMon.Behaviours;
 using LethalMon.Items;
 using LethalMon.Patches;

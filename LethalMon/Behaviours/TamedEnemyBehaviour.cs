@@ -203,7 +203,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnCallFromBall() { }
 
-    internal virtual void OnRetreiveInBall() { }
+    internal virtual void OnRetrieveInBall() { }
 
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
     #endregion
@@ -550,7 +550,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         isOutsideOfBall = false;
 
-        OnRetreiveInBall();
+        OnRetrieveInBall();
 
         return pokeballItem;
     }
