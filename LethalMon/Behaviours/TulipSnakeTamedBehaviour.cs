@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static UnityEngine.UI.Image;
 
 namespace LethalMon.Behaviours
 {
@@ -87,13 +86,6 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-
-            if (ownerPlayer != null)
-                ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: true);
-
-            //tulipSnake.clingingToPlayer = ownerPlayer;
-            //tulipSnake.creatureAnimator.SetInteger("clingType", 4);
-            tulipSnake.inSpecialAnimation = true;
         }
 
         internal void OnStopFlying()
@@ -103,13 +95,6 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-
-            if(ownerPlayer != null)
-                ownerPlayer.playerBodyAnimator.SetBool("Jumping", value: false);
-
-            //tulipSnake.clingingToPlayer = null;
-            //tulipSnake.creatureAnimator.SetInteger("clingType", 0);
-            tulipSnake.inSpecialAnimation = false;
         }
 
         internal void OnMove(Vector3 direction)
@@ -136,15 +121,15 @@ namespace LethalMon.Behaviours
                 controller.OnJump = OnJump;
                 controller.EnemySpeedOutside = 8f;
                 controller.EnemyDuration = 3f;
-                controller.EnemyOffsetWhileControlling = new Vector3(0.2f, 2.4f, 0f);
+                controller.EnemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
 
                 // Debug
-                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+                ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Fly");
-                controller!.SetControlTriggerVisible(true);*/
+                controller!.SetControlTriggerVisible(true);
             }
         }
 
@@ -174,7 +159,16 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedFollowing();
 
-            tulipSnake.CalculateAnimationSpeed();
+            if(!tulipSnake.flapping)
+            {
+                tulipSnake.clingPosition = 0;
+                tulipSnake.creatureAnimator.SetInteger("clingType", 0);
+                tulipSnake.SetFlappingLocalClient(true);
+            }
+            
+            //Enemy!.transform.position = new Vector3(Enemy!.transform.position.x, ownerPlayer!.gameplayCamera.transform.position.y, Enemy!.transform.position.z);
+
+            tulipSnake.CalculateAnimationSpeed(0.5f);
             tulipSnake.DoChuckleOnInterval();
         }
 

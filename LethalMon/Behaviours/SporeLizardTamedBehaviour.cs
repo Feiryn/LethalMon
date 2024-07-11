@@ -108,17 +108,18 @@ namespace LethalMon.Behaviours
                 controller.OnStartControlling = OnStartRiding;
                 controller.OnStopControlling = OnStopRiding;
                 controller.OnMove = OnMove;
-
-                controller.EnemyCanJump = true;
                 controller.OnJump = OnJump;
 
+                controller.EnemyCanJump = true;
+                controller.EnemyStrength = 3f;
+
                 // Debug
-                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+                ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
                 isOutsideOfBall = true;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 controller!.enemy = GetComponent<EnemyAI>();
                 controller!.AddTrigger("Ride");
-                controller!.SetControlTriggerVisible(true); */
+                controller!.SetControlTriggerVisible(true);
             }
         }
 
