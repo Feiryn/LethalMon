@@ -57,6 +57,12 @@ Here are the implementation status of monsters:
 |     Barber      |     No      |                                  TBD                                   |
 |  Kidnapper Fox  |     No      |                                  TBD                                   |
 
+## TODO
+
+- Make tulip snakes escape from ball behaviour
+- Improve tulip snake and spore lizard animations
+- Fix a bug that can make tulip snake freeze when unmounted high in the air
+
 ## Roadmap
 
 - Audio

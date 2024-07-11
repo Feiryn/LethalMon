@@ -1,3 +1,11 @@
+# 0.2.0
+
+- Catchable eyeless dog
+- Catchable tulip snake (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed a bug that could make some tamed monsters not working properly
+- Fixed bees audio and size
+- Fixed a bug that made the player's carry weight increased when balls were dropped
+
 # 0.1.1
 
 - Fixed a bug that can happen with mods that adds custom enemies
