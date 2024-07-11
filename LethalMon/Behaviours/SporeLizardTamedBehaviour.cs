@@ -138,9 +138,9 @@ namespace LethalMon.Behaviours
             controller!.SetControlTriggerVisible();
         }
 
-        internal override void OnRetreiveInBall()
+        internal override void OnRetrieveInBall()
         {
-            base.OnRetreiveInBall();
+            base.OnRetrieveInBall();
 
             controller!.SetControlTriggerVisible(false);
         }

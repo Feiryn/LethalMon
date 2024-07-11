@@ -107,6 +107,19 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
+
+        void Start()
+        {
+            base.Start();
+            
+            tulipSnake = (Enemy as FlowerSnakeEnemy)!;
+            
+            if (ownerPlayer != null)
+            {
+                tulipSnake.creatureVoice.volume = 0f;
+            }
+        }
+        
         void Awake()
         {
             tulipSnake = (Enemy as FlowerSnakeEnemy)!;
@@ -122,6 +135,7 @@ namespace LethalMon.Behaviours
                 controller.EnemySpeedOutside = 8f;
                 controller.EnemyDuration = 3f;
                 controller.EnemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
+                controller.EnemyStaminaUseMultiplier = 1.5f;
 
                 // Debug
                 /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
@@ -148,9 +162,9 @@ namespace LethalMon.Behaviours
             controller!.SetControlTriggerVisible();
         }
 
-        internal override void OnRetreiveInBall()
+        internal override void OnRetrieveInBall()
         {
-            base.OnRetreiveInBall();
+            base.OnRetrieveInBall();
 
             controller!.SetControlTriggerVisible(false);
         }
@@ -175,17 +189,6 @@ namespace LethalMon.Behaviours
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
-        }
-        #endregion
-
-        #region Methods
-
-        private IEnumerator PuffAndWait(PufferAI sporeLizard)
-        {
-            sporeLizard.ShakeTailServerRpc();
-            sporeLizard.enabled = false;
-            yield return new WaitForSeconds(1f);
-            sporeLizard.enabled = true;
         }
         #endregion
     }
