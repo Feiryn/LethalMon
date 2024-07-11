@@ -1,11 +1,13 @@
 using System.Collections;
 using GameNetcodeStuff;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours;
 
 public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 {
+    #region Properties
     internal MouthDogAI mouthDog  { get; private set; }
 
     private float CumulatedCheckDogsSeconds = 0f;
@@ -19,8 +21,9 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     private float HowlCooldown = 0f;
     
     private static readonly float HowlCooldownSeconds = 5f;
+    #endregion
     
-    
+    #region Base Methods
     internal override void Start()
     {
         base.Start();
@@ -31,12 +34,11 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
         if (ownerPlayer != null)
         {
-            mouthDog.agent.speed = 5f;
             mouthDog.gameObject.transform.localScale = new Vector3(0.28f, 0.28f, 0.28f);
-            mouthDog.creatureAnimator.Play("Base Layer.Idle1");
             mouthDog.creatureSFX.volume = 0f;
             mouthDog.creatureVoice.pitch = 1.4f;
             mouthDog.breathingSFX = null;
+            WalkMode();
         }
     }
 
@@ -51,17 +53,6 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         if (HowlCooldown > 0f)
         {
             HowlCooldown -= Time.deltaTime;
-        }
-    }
-
-    private IEnumerator EscapedFromBallCoroutine(PlayerControllerB playerWhoThrewBall)
-    {
-        int chaseTime = 5;
-        while (chaseTime > 0 && !playerWhoThrewBall.isPlayerDead)
-        {
-            chaseTime--;
-            mouthDog.DetectNoise(playerWhoThrewBall.transform.position, float.MaxValue);
-            yield return new WaitForSeconds(5f);
         }
     }
     
@@ -79,7 +70,54 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
             DefendOwnerFromCloseDogs();
         }
     }
+    
+    internal override void OnTamedDefending()
+    {
+        base.OnTamedDefending();
 
+        if (HowlTimer > 0f)
+        {
+            HowlTimer -= Time.deltaTime;
+            return;
+        }
+
+        if (howled)
+        {
+            if (targetEnemy != null)
+            {
+                ((MouthDogAI)targetEnemy!).suspicionLevel = 0;
+                targetEnemy = null;
+                WalkServerRpc();
+            }
+        }
+        else
+        {
+            if (Vector3.Distance(mouthDog.transform.position, mouthDog.destination) < 1f)
+            {
+                HowlServerRpc();
+                HowlTimer = mouthDog.screamSFX.length;
+                howled = true;
+                HowlCooldown = HowlCooldownSeconds;
+                var noisePosition = mouthDog.transform.position;
+                ((MouthDogAI)targetEnemy!).lastHeardNoisePosition = noisePosition;
+                ((MouthDogAI)targetEnemy!).DetectNoise(noisePosition, float.MaxValue);
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private IEnumerator EscapedFromBallCoroutine(PlayerControllerB playerWhoThrewBall)
+    {
+        int chaseTime = 5;
+        while (chaseTime > 0 && !playerWhoThrewBall.isPlayerDead)
+        {
+            chaseTime--;
+            mouthDog.DetectNoise(playerWhoThrewBall.transform.position, float.MaxValue);
+            yield return new WaitForSeconds(5f);
+        }
+    }
+    
     private void DefendOwnerFromCloseDogs()
     {
         CumulatedCheckDogsSeconds += Time.deltaTime;
@@ -109,8 +147,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
             if (foundPath)
             {
-                mouthDog.agent.speed = 13f;
-                mouthDog.creatureAnimator.Play("Base Layer.Chase");
+                ChaseServerRpc();
                 targetEnemy = mouthDogAI;
                 howled = false;
                 HowlTimer = 0f;
@@ -159,40 +196,60 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         return positionsArray;
     }
     
-    internal override void OnTamedDefending()
+    private void WalkMode()
     {
-        base.OnTamedDefending();
-
-        if (HowlTimer > 0f)
-        {
-            HowlTimer -= Time.deltaTime;
-            return;
-        }
-
-        if (howled)
-        {
-            if (targetEnemy != null)
-            {
-                ((MouthDogAI)targetEnemy!).suspicionLevel = 0;
-                targetEnemy = null;
-                mouthDog.agent.speed = 5f;
-                mouthDog.creatureAnimator.Play("Base Layer.Idle1");
-            }
-        }
-        else
-        {
-            string clipName = mouthDog.creatureAnimator.GetCurrentAnimatorClipInfo(0)[0].clip.name;
-            if (Vector3.Distance(mouthDog.transform.position, mouthDog.destination) < 1f)
-            {
-                mouthDog.creatureAnimator.Play("Base Layer.ChaseHowl");
-                mouthDog.creatureVoice.PlayOneShot(mouthDog.screamSFX);
-                HowlTimer = mouthDog.screamSFX.length;
-                howled = true;
-                HowlCooldown = HowlCooldownSeconds;
-                var noisePosition = mouthDog.transform.position;
-                ((MouthDogAI)targetEnemy!).lastHeardNoisePosition = noisePosition;
-                ((MouthDogAI)targetEnemy!).DetectNoise(noisePosition, float.MaxValue);
-            }
-        }
+        mouthDog.agent.speed = 5f;
+        mouthDog.creatureAnimator.Play("Base Layer.Idle1");
     }
+    
+    private void ChaseMode()
+    {
+        mouthDog.agent.speed = 13f;
+        mouthDog.creatureAnimator.Play("Base Layer.Chase");
+    }
+
+    private void Howl()
+    {
+        mouthDog.creatureAnimator.Play("Base Layer.ChaseHowl");
+        mouthDog.creatureVoice.PlayOneShot(mouthDog.screamSFX);
+    }
+    #endregion
+    
+    #region RPCs
+    [ServerRpc(RequireOwnership = false)]
+    public void WalkServerRpc()
+    {
+        WalkClientRpc();
+    }
+    
+    [ClientRpc]
+    public void WalkClientRpc()
+    {
+        WalkMode();
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void ChaseServerRpc()
+    {
+        ChaseClientRpc();
+    }
+    
+    [ClientRpc]
+    public void ChaseClientRpc()
+    {
+        ChaseMode();
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void HowlServerRpc()
+    {
+        HowlClientRpc();
+    }
+    
+    [ClientRpc]
+    public void HowlClientRpc()
+    {
+        Howl();
+    }
+    #endregion
 }
