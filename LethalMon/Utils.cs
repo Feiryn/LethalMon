@@ -105,6 +105,12 @@ public class Utils
         audioSource.PlayOneShot(clip, volume);
     }
 
+    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)
+    {
+        SoundManager.Instance.tempAudio1.transform.position = position;
+        SoundManager.Instance.tempAudio1.PlayOneShot(clip);
+    }
+
     #region Player
     public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();
     public static List<PlayerControllerB>? AlivePlayers => AllPlayers?.Where(pcb => !pcb.isPlayerDead).ToList();

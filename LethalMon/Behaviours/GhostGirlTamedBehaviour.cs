@@ -4,8 +4,6 @@ using System;
 using UnityEngine;
 using System.Collections;
 using Unity.Netcode;
-using static LethalMon.Utils.LayerMasks;
-
 namespace LethalMon.Behaviours
 {
     internal class GhostGirlTamedBehaviour : TamedEnemyBehaviour
@@ -110,7 +108,8 @@ namespace LethalMon.Behaviours
 
         internal override void LateUpdate()
         {
-            base.LateUpdate();
+            base.Start();
+
 
             AnimateWalking();
             GhostGirl.EnableEnemyMesh(true, true);
@@ -249,6 +248,19 @@ namespace LethalMon.Behaviours
             }
         }
 
+        internal IEnumerator FlickerLightsAndTurnDown()
+        {
+            RoundManager.Instance.FlickerLights(flickerFlashlights: true, disableFlashlights: true);
+            yield return new WaitForSeconds(1f);
+            FlipLightsBreakerServerRpc();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void FlipLightsBreakerServerRpc() // Original FlipLightsBreakerServerRpc isn't calling the correct ClientRpc.. zeekerss pls :p
+        {
+            GhostGirl.FlipLightsBreakerClientRpc();
+        }
+
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -286,6 +298,19 @@ namespace LethalMon.Behaviours
                 if(targetEnemy.isEnemyDead && targetEnemy.dieSFX != null)
                     Utils.PlaySoundAtPosition(GhostGirl.transform.position, targetEnemy.dieSFX, 0.5f);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
+            }*/
+
+            // Check if enemy in sight
+            foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
+            {
+                if (spawnedEnemy?.transform != null && spawnedEnemy != GhostGirl && !spawnedEnemy.isEnemyDead && GhostGirl.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10))
+                {
+                    targetEnemy = spawnedEnemy;
+                    //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>());
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+                    LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
+                    return;
+                }
             }
 
             GhostGirl.agent.Warp(newEnemyPosition);
@@ -296,6 +321,61 @@ namespace LethalMon.Behaviours
             targetEnemy = null;
 
             RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
+        }
+        #endregion
+
+        #region RPCs
+        [ServerRpc(RequireOwnership = false)]
+        public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
+        {
+            var position = RoundManager.Instance.GetRandomNavMeshPositionInRadius(GhostGirl.transform.position, 70f);
+            var distance = Vector3.Distance(position, GhostGirl.transform.position);
+            if (distance < 35f)
+                position = GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
+
+            OnHitTargetEnemyClientRpc(enemyRef, position);
+        }
+
+        [ClientRpc]
+        public void OnHitTargetEnemyClientRpc(NetworkObjectReference enemyRef, Vector3 newEnemyPosition)
+        {
+            if (!enemyRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out targetEnemy) || targetEnemy == null)
+            {
+                LethalMon.Log("OnHitTargetEnemyClientRpc: Unable to get enemy object.", LethalMon.LogType.Error);
+                return;
+            }
+
+            GhostGirl.creatureVoice.Stop();
+
+            if (TeleportingDamage > 0 && Enemy.enemyType.canDie)
+            {
+                targetEnemy.HitEnemyOnLocalClient(TeleportingDamage);
+                DropBlood();
+                Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
+            }
+
+            GhostGirl.agent.enabled = false;
+            GhostGirl.transform.position = newEnemyPosition;
+            GhostGirl.agent.enabled = true;
+
+            targetEnemy.agent.enabled = false;
+            targetEnemy.transform.position = newEnemyPosition;
+            /*if(Enemy is SandSpiderAI)
+            {
+                var spider = (Enemy as SandSpiderAI)!;
+                spider.meshContainer.position = newEnemyPosition;
+                spider.meshContainerPosition = newEnemyPosition;
+                spider.meshContainerServerPosition = newEnemyPosition;
+                spider.floorPosition = newEnemyPosition;
+            }*/
+            targetEnemy.agent.enabled = true;
+            // Doesn't work for spiders or blobs yet, due to meshContainer and other things
+
+            //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>(), false);
+
+            targetEnemy = null;
+
+            RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDown());
         }
         #endregion
     }
