@@ -71,5 +71,4 @@ Here are the implementation status of monsters:
 - Better (and working) tooltips
 - Implementation of more monsters
 - Better animations and models
-- Buyable balls in the shop
 - Configurable parameters
