@@ -1,3 +1,8 @@
+# 0.2.1
+
+- Balls are now buyable
+- Hoarder bug's flying sound has been changed to a less aggressive one (thanks to s1ckboy for the sound)
+
 # 0.2.0
 
 - Catchable eyeless dog
