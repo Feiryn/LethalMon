@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -83,6 +84,12 @@ public class Utils
         node.displayText = description + "\n\n";
         infoNodes.Add(name, node);
         return node;
+    }
+
+    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)
+    {
+        SoundManager.Instance.tempAudio1.transform.position = position;
+        SoundManager.Instance.tempAudio1.PlayOneShot(clip);
     }
 
     #region Player
