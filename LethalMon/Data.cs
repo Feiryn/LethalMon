@@ -31,6 +31,7 @@ public static class Data
         { Enemy.RedLocustBees.ToString(), new CatchableRedLocustBees() },
         { Enemy.Puffer.ToString(), new CatchableSporeLizard() },
         { Enemy.MouthDog.ToString(), new CatchableMouthDog() },
-        { Enemy.FlowerSnake.ToString(), new CatchableTulipSnake() }
+        { Enemy.FlowerSnake.ToString(), new CatchableTulipSnake() },
+        { Enemy.DressGirl.ToString(), new CatchableGhostGirl() }
     };
 }

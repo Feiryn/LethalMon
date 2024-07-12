@@ -23,7 +23,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
         { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
         { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
-        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) }
+        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) },
+        { typeof(DressGirlAI),      typeof(GhostGirlTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;

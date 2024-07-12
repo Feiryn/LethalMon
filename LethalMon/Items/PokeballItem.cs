@@ -76,9 +76,7 @@ public abstract class PokeballItem : ThrowableItem
         return;
 #endif
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
-        {
             base.ItemActivate(used, buttonDown);
-        }
     }
 
     private void OnTriggerEnter(Collider other)
