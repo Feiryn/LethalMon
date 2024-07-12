@@ -59,6 +59,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
+    public bool switchedBehaviour = false;
+
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
     {
@@ -101,6 +103,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to taming state: " + behaviour.ToString());
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
+        switchedBehaviour = true;
     }
 
     public void SwitchToCustomBehaviour(int behaviour)
@@ -110,6 +113,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
+        switchedBehaviour = true;
     }
 
     public void SwitchToDefaultBehaviour(int behaviour)
@@ -470,7 +474,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.agent.enabled = true;
     }
 
-    private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
+    public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
     {
         intersection1 = Vector3.zero;
         intersection2 = Vector3.zero;

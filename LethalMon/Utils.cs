@@ -9,6 +9,7 @@ using Unity.Netcode;
 using UnityEngine;
 using Object = UnityEngine.Object;
 using Random = System.Random;
+using UnityEngine.AI;
 
 namespace LethalMon;
 
@@ -84,6 +85,17 @@ public class Utils
         node.displayText = description + "\n\n";
         infoNodes.Add(name, node);
         return node;
+    }
+
+    public static Vector3 GetRandomNavMeshPositionOnRadius(Vector3 pos, float radius, NavMeshHit navHit = default(NavMeshHit))
+    {
+            float y = pos.y;
+            pos = UnityEngine.Random.onUnitSphere * radius + pos;
+            pos.y = y;
+            if (NavMesh.SamplePosition(pos, out navHit, radius, -1))
+                return navHit.position;
+
+            return pos;
     }
 
     public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)

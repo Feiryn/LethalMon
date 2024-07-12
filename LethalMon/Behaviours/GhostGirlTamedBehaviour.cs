@@ -29,6 +29,8 @@ namespace LethalMon.Behaviours
         internal bool isWalking = false;
         internal Vector3 previousPosition = Vector3.zero;
 
+        internal bool ownerInsideFactory = false;
+
         #region Custom behaviours
         private enum CustomBehaviour
         {
@@ -42,11 +44,18 @@ namespace LethalMon.Behaviours
         public void OnRunningBackToOwner()
         {
             LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
+
+            if(switchedBehaviour)
+            {
+                ownerInsideFactory = ownerPlayer!.isInsideFactory;
+                switchedBehaviour = false;
+            }
+
             AnimateWalking();
 
             if (ownerPlayer == null ||
-                Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position) < 6f // Reached owner
-                || Mathf.Abs(GhostGirl.transform.position.y - ownerPlayer.transform.position.y) > 100f) // Owner left/inserted factory
+                Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position) < 8f // Reached owner
+                || ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
             {
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
@@ -60,6 +69,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Action Keys
+#if DEBUG
         private List<ActionKey> _actionKeys = new List<ActionKey>()
         {
             new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Teleport to Ghost Girl" }
@@ -76,6 +86,7 @@ namespace LethalMon.Behaviours
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
         }
+#endif
         #endregion
 
         #region Base Methods
@@ -102,8 +113,13 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedFollowing();
 
+            GhostGirl.agent.speed = ownerPlayer!.isSprinting ? 6f : 3f;
+
             if (!GhostGirl.enemyMeshEnabled)
+            {
                 GhostGirl.EnableEnemyMesh(enable: true, overrideDoNotSet: true);
+                GhostGirl.enemyMeshEnabled = true;
+            }
 
             DefendOwnerFromClosestEnemy();
         }
@@ -114,10 +130,11 @@ namespace LethalMon.Behaviours
 
             if (ownerPlayer == null) return;
 
-            if( !GhostGirl.creatureVoice.isPlaying)
+            if(switchedBehaviour) // First run
             {
                 GhostGirl.creatureVoice.clip = GhostGirl.breathingSFX;
                 GhostGirl.creatureVoice.Play();
+                switchedBehaviour = false;
             }
 
             var distanceTowardsOwner = Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position);
@@ -177,6 +194,7 @@ namespace LethalMon.Behaviours
             {
                 bloodObject.transform.position = hit.point - Vector3.down * 0.45f;
                 ownerPlayer.RandomizeBloodRotationAndScale(bloodObject.transform);
+                bloodObject.transform.localScale *= 2f;
                 bloodObject.transform.gameObject.SetActive(value: true);
             }
             ownerPlayer.currentBloodIndex = (ownerPlayer.currentBloodIndex + 1) % ownerPlayer.playerBloodPooledObjects.Count;
@@ -201,11 +219,10 @@ namespace LethalMon.Behaviours
             var breakerBoxList = FindObjectsOfType<BreakerBox>();
             foreach(var breakerBox in breakerBoxList)
             {
-                if (breakerBox != null && Vector3.Distance(breakerBox.transform.position, GhostGirl.transform.position) < 15f)
+                if (breakerBox != null && Vector3.Distance(breakerBox.transform.position, GhostGirl.transform.position) < 35f)
                 {
                     breakerBox.SetSwitchesOff();
                     breakerBox.thisAudioSource.PlayOneShot(breakerBox.switchPowerSFX);
-                    RoundManager.Instance.TurnOnAllLights(on: false);
                 }
             }
         }
@@ -213,6 +230,10 @@ namespace LethalMon.Behaviours
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            GhostGirl.hauntingLocalPlayer = playerWhoThrewBall == Utils.CurrentPlayer;
+            GhostGirl.hauntingPlayer = playerWhoThrewBall;
+            GhostGirl.BeginChasing();
         }
 
         internal void DefendOwnerFromClosestEnemy()
@@ -234,7 +255,7 @@ namespace LethalMon.Behaviours
             // Check if enemy in sight
             foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
             {
-                if (spawnedEnemy?.transform != null && spawnedEnemy != GhostGirl && !spawnedEnemy.isEnemyDead && GhostGirl.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10))
+                if (spawnedEnemy?.transform != null && spawnedEnemy != GhostGirl && spawnedEnemy.gameObject.layer == (int)Utils.LayerMasks.Mask.Enemies && !spawnedEnemy.isEnemyDead && GhostGirl.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10))
                 {
                     targetEnemy = spawnedEnemy;
                     //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>());
@@ -250,12 +271,12 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
         {
-            var position = RoundManager.Instance.GetRandomNavMeshPositionInRadius(GhostGirl.transform.position, 70f);
-            var distance = Vector3.Distance(position, GhostGirl.transform.position);
-            if (distance < 35f)
-                position = GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
+            var randomPosition = Utils.GetRandomNavMeshPositionOnRadius(GhostGirl.transform.position, 70f);
+            var randomPositionDistance = Vector3.Distance(randomPosition, GhostGirl.transform.position);
+            var farthestNode = GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
+            var farthestNodeDistance = Vector3.Distance(farthestNode, GhostGirl.transform.position);
 
-            OnHitTargetEnemyClientRpc(enemyRef, position);
+            OnHitTargetEnemyClientRpc(enemyRef, randomPositionDistance > farthestNodeDistance ? randomPosition : farthestNode);
         }
 
         [ClientRpc]
@@ -276,22 +297,8 @@ namespace LethalMon.Behaviours
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
             }
 
-            GhostGirl.agent.enabled = false;
-            GhostGirl.transform.position = newEnemyPosition;
-            GhostGirl.agent.enabled = true;
-
-            targetEnemy.agent.enabled = false;
-            targetEnemy.transform.position = newEnemyPosition;
-            /*if(Enemy is SandSpiderAI)
-            {
-                var spider = (Enemy as SandSpiderAI)!;
-                spider.meshContainer.position = newEnemyPosition;
-                spider.meshContainerPosition = newEnemyPosition;
-                spider.meshContainerServerPosition = newEnemyPosition;
-                spider.floorPosition = newEnemyPosition;
-            }*/
-            targetEnemy.agent.enabled = true;
-            // Doesn't work for spiders or blobs yet, due to meshContainer and other things
+            GhostGirl.agent.Warp(newEnemyPosition);
+            targetEnemy.agent.Warp(newEnemyPosition);
 
             //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>(), false);
 
