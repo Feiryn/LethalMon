@@ -517,16 +517,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         switch (this.ballType)
         {
             case BallType.GREAT_BALL:
-                spawnPrefab = Greatball.spawnPrefab;
+                spawnPrefab = Greatball.SpawnPrefab;
                 break;
             case BallType.ULTRA_BALL:
-                spawnPrefab = Ultraball.spawnPrefab;
+                spawnPrefab = Ultraball.SpawnPrefab;
                 break;
             case BallType.MASTER_BALL:
-                spawnPrefab = Masterball.spawnPrefab;
+                spawnPrefab = Masterball.SpawnPrefab;
                 break;
             default:
-                spawnPrefab = Pokeball.spawnPrefab;
+                spawnPrefab = Pokeball.SpawnPrefab;
                 break;
         }
 

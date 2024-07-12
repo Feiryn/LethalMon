@@ -6,6 +6,7 @@ using GameNetcodeStuff;
 using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace LethalMon;
 
@@ -64,6 +65,21 @@ public class Utils
         }
         
         return null;
+    }
+    
+    private static Dictionary<string, TerminalNode> infoNodes = new Dictionary<string, TerminalNode>();
+    
+    public static TerminalNode CreateTerminalNode(string name, string description)
+    {
+        if (infoNodes.TryGetValue(name, out var terminalNode)) return terminalNode;
+        
+        TerminalNode node = ScriptableObject.CreateInstance<TerminalNode>();
+        Object.DontDestroyOnLoad(node);
+        node.clearPreviousText = true;
+        node.name = name + "InfoNode";
+        node.displayText = description + "\n\n";
+        infoNodes.Add(name, node);
+        return node;
     }
 
     #region Player

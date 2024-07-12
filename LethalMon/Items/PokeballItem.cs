@@ -39,7 +39,7 @@ public abstract class PokeballItem : ThrowableItem
         this.captureStrength = captureStrength;
     }
 
-    internal static GameObject? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : PokeballItem
+    internal static Item? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : PokeballItem
     {
         if (assetBundle == null) return null;
 
@@ -58,7 +58,7 @@ public abstract class PokeballItem : ThrowableItem
 
         LethalLib.Modules.Items.RegisterScrap(ballItem, scrapRarity, Levels.LevelTypes.All);
 
-        return ballItem.spawnPrefab;
+        return ballItem;
     }
     #endregion
 

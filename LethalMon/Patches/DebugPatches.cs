@@ -80,26 +80,26 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
             {
-                if (Pokeball.spawnPrefab != null)
-                    SpawnItemInFront(Pokeball.spawnPrefab);
+                if (Pokeball.SpawnPrefab != null)
+                    SpawnItemInFront(Pokeball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f10Key.wasPressedThisFrame)
             {
-                if (Greatball.spawnPrefab != null)
-                    SpawnItemInFront(Greatball.spawnPrefab);
+                if (Greatball.SpawnPrefab != null)
+                    SpawnItemInFront(Greatball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f11Key.wasPressedThisFrame)
             {
-                if (Ultraball.spawnPrefab != null)
-                    SpawnItemInFront(Ultraball.spawnPrefab);
+                if (Ultraball.SpawnPrefab != null)
+                    SpawnItemInFront(Ultraball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f12Key.wasPressedThisFrame)
             {
-                if (Masterball.spawnPrefab != null)
-                    SpawnItemInFront(Masterball.spawnPrefab);
+                if (Masterball.SpawnPrefab != null)
+                    SpawnItemInFront(Masterball.SpawnPrefab);
             }
 
             else
