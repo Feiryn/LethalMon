@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using System.Linq;
-using Steamworks;
 using System.Collections;
 using Unity.Netcode;
-using UnityEngine.UIElements;
 
 namespace LethalMon.Behaviours
 {
@@ -41,15 +39,24 @@ namespace LethalMon.Behaviours
             { new (CustomBehaviour.RunningBackToOwner.ToString(), OnRunningBackToOwner) }
         };
 
+        internal override void InitCustomBehaviour(int behaviour)
+        {
+            base.InitCustomBehaviour(behaviour);
+
+            switch((CustomBehaviour)behaviour)
+            {
+                case CustomBehaviour.RunningBackToOwner:
+                    ownerInsideFactory = ownerPlayer!.isInsideFactory;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
         public void OnRunningBackToOwner()
         {
             LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
-
-            if(switchedBehaviour)
-            {
-                ownerInsideFactory = ownerPlayer!.isInsideFactory;
-                switchedBehaviour = false;
-            }
 
             AnimateWalking();
 
@@ -109,6 +116,22 @@ namespace LethalMon.Behaviours
             AnimateWalking();
         }
 
+        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        {
+            base.InitTamingBehaviour(behaviour);
+
+            switch(behaviour)
+            {
+                case TamingBehaviour.TamedDefending:
+                    LethalMon.Log("GhostGirl: Play breathingSFX");
+                    GhostGirl.creatureVoice.clip = GhostGirl.breathingSFX;
+                    GhostGirl.creatureVoice.Play();
+                    break;
+
+                default: break;
+            }
+        }
+
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
@@ -129,13 +152,6 @@ namespace LethalMon.Behaviours
             base.OnTamedDefending();
 
             if (ownerPlayer == null) return;
-
-            if(switchedBehaviour) // First run
-            {
-                GhostGirl.creatureVoice.clip = GhostGirl.breathingSFX;
-                GhostGirl.creatureVoice.Play();
-                switchedBehaviour = false;
-            }
 
             var distanceTowardsOwner = Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position);
             if (targetEnemy == null || targetEnemy.isEnemyDead || distanceTowardsOwner > 30f)
@@ -290,10 +306,13 @@ namespace LethalMon.Behaviours
 
             GhostGirl.creatureVoice.Stop();
 
-            if (TeleportingDamage > 0 && Enemy.enemyType.canDie)
+            if (TeleportingDamage > 0 && targetEnemy.enemyType.canDie)
             {
+                LethalMon.Log("Damaging enemy before teleporting.");
                 targetEnemy.HitEnemyOnLocalClient(TeleportingDamage);
                 DropBlood();
+                if(targetEnemy.isEnemyDead && targetEnemy.dieSFX != null)
+                    ownerPlayer!.movementAudio.PlayOneShot(targetEnemy.dieSFX, 0.4f);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
             }
 

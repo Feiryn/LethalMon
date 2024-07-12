@@ -59,8 +59,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
-    public bool switchedBehaviour = false;
-
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
     {
@@ -103,7 +101,18 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to taming state: " + behaviour.ToString());
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
-        switchedBehaviour = true;
+        InitTamingBehaviour(behaviour);
+    }
+    internal virtual void InitTamingBehaviour(TamingBehaviour behaviour)
+    {
+        switch(behaviour)
+        {
+            case TamingBehaviour.TamedFollowing:
+                FollowOwner(true);
+                break;
+            default:
+                break;
+        }
     }
 
     public void SwitchToCustomBehaviour(int behaviour)
@@ -113,7 +122,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
-        switchedBehaviour = true;
+        InitCustomBehaviour(behaviour);
+    }
+    internal virtual void InitCustomBehaviour(int behaviour)
+    {
+
     }
 
     public void SwitchToDefaultBehaviour(int behaviour)
@@ -428,7 +441,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region Methods
-    public void FollowOwner()
+    public void FollowOwner(bool force = false)
     {
         if (ownerPlayer == null) return;
 
