@@ -248,17 +248,32 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal IEnumerator FlickerLightsAndTurnDown()
+        internal IEnumerator FlickerLightsAndTurnDownBreaker()
         {
             RoundManager.Instance.FlickerLights(flickerFlashlights: true, disableFlashlights: true);
             yield return new WaitForSeconds(1f);
-            FlipLightsBreakerServerRpc();
+            TurnOffBreakerNearbyServerRpc();
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void FlipLightsBreakerServerRpc() // Original FlipLightsBreakerServerRpc isn't calling the correct ClientRpc.. zeekerss pls :p
+        public void TurnOffBreakerNearbyServerRpc() // Original FlipLightsBreakerServerRpc isn't calling the correct ClientRpc.. zeekerss pls :p
         {
-            GhostGirl.FlipLightsBreakerClientRpc();
+            TurnOffBreakerNearbyClientRpc();
+        }
+
+        [ClientRpc]
+        public void TurnOffBreakerNearbyClientRpc()
+        {
+            var breakerBoxList = FindObjectsOfType<BreakerBox>();
+            foreach(var breakerBox in breakerBoxList)
+            {
+                if (breakerBox != null && Vector3.Distance(breakerBox.transform.position, GhostGirl.transform.position) < 15f)
+                {
+                    breakerBox.SetSwitchesOff();
+                    breakerBox.thisAudioSource.PlayOneShot(breakerBox.switchPowerSFX);
+                    RoundManager.Instance.TurnOnAllLights(on: false);
+                }
+            }
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -375,7 +390,7 @@ namespace LethalMon.Behaviours
 
             targetEnemy = null;
 
-            RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDown());
+            RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
         }
         #endregion
     }
