@@ -18,6 +18,8 @@ public class LethalMon : BaseUnityPlugin
     internal new static ManualLogSource Logger { get; private set; } = null!;
     internal static Harmony? Harmony { get; set; }
 
+    internal static AudioClip HoardingBugFlySfx;
+
     private void Awake()
     {
         Logger = base.Logger;
@@ -56,6 +58,7 @@ public class LethalMon : BaseUnityPlugin
         Greatball.Setup(assetBundle);
         Ultraball.Setup(assetBundle);
         Masterball.Setup(assetBundle);
+        HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("HoardingBug_Fly.ogg");
     }
 
     private void ApplyHarmonyPatches()

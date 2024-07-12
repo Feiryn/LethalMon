@@ -192,7 +192,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         // todo: maybe original one is re-useable till here
         
         hoarderBug.creatureAnimator.SetBool("Chase", true);
-        hoarderBug.creatureSFX.clip = hoarderBug.bugFlySFX;
+        hoarderBug.creatureSFX.clip = LethalMon.HoardingBugFlySfx;
         hoarderBug.creatureSFX.Play();
         RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
     }

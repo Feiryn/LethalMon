@@ -77,3 +77,4 @@ crashlytics-build.properties
 # Assets
 [Aa]ssets/Plugins/*
 [Aa]ssets/Scripts/*
+[Aa]ssets/BaseGame/*
