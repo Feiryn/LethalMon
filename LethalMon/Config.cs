@@ -56,7 +56,7 @@ namespace LethalMon
                 .Finish();
 
             
-            var actionKey1Keyboard = LethalMon.Instance.Config.Bind("Controls", "ActionKey1Keyboard", "<Keyboard>/" + KeyboardControl.V.ToString(), "Key for the first custom action on a tamed enemy. Requires a restart after changing.").Value;
+            var actionKey1Keyboard = LethalMon.Instance.Config.Bind("Controls", "ActionKey1Keyboard", "<Keyboard>/" + KeyboardControl.B.ToString(), "Key for the first custom action on a tamed enemy. Requires a restart after changing.").Value;
             var actionKey1Gamepad = LethalMon.Instance.Config.Bind("Controls", "ActionKey1Gamepad", "<Gamepad>/" + GamepadControl.RightShoulder.ToString(), "Gamepad key for the first custom action on a tamed enemy. Requires a restart after changing.").Value;
             builder.NewActionBinding()
                 .WithActionId("actionKey1")
