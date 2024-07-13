@@ -22,8 +22,6 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal readonly int TeleportingDamage = 20;
-
         internal bool isWalking = false;
         internal Vector3 previousPosition = Vector3.zero;
 
@@ -196,24 +194,30 @@ namespace LethalMon.Behaviours
             previousPosition = GhostGirl.transform.position;
         }
 
-        internal void DropBlood()
+        internal void DropBlood(int minAmount = 3, int maxAmount = 7)
         {
             if (ownerPlayer == null) return;
 
-            var bloodObject = ownerPlayer.playerBloodPooledObjects[ownerPlayer.currentBloodIndex];
-
-            bloodObject.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.up);
-            bloodObject.transform.SetParent(ownerPlayer.isInElevator ? StartOfRound.Instance.elevatorTransform : StartOfRound.Instance.bloodObjectsContainer);
-
-            var interactRay = new Ray(GhostGirl.transform.position + GhostGirl.transform.up * 2f, Vector3.down);
-            if (Physics.Raycast(interactRay, out RaycastHit hit, 6f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+            var amount = UnityEngine.Random.Range(minAmount, maxAmount);
+            while(amount > 0)
             {
-                bloodObject.transform.position = hit.point - Vector3.down * 0.45f;
-                ownerPlayer.RandomizeBloodRotationAndScale(bloodObject.transform);
-                bloodObject.transform.localScale *= 2f;
-                bloodObject.transform.gameObject.SetActive(value: true);
+                amount--;
+                ownerPlayer.currentBloodIndex = (ownerPlayer.currentBloodIndex + 1) % ownerPlayer.playerBloodPooledObjects.Count;
+                var bloodObject = ownerPlayer.playerBloodPooledObjects[ownerPlayer.currentBloodIndex];
+                if (bloodObject == null) continue;
+
+                bloodObject.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.up);
+                bloodObject.transform.SetParent(ownerPlayer.isInElevator ? StartOfRound.Instance.elevatorTransform : StartOfRound.Instance.bloodObjectsContainer);
+
+                var randomDirection = new Vector3(UnityEngine.Random.Range(-0.5f, 0.5f), UnityEngine.Random.Range(-1f, -0.5f), UnityEngine.Random.Range(-0.5f, 0.5f));
+                var interactRay = new Ray(GhostGirl.transform.position + Vector3.up * 2f, randomDirection);
+                if (Physics.Raycast(interactRay, out RaycastHit hit, 6f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+                {
+                    bloodObject.transform.position = hit.point - Vector3.down * 0.45f;
+                    ownerPlayer.RandomizeBloodRotationAndScale(bloodObject.transform);
+                    bloodObject.transform.gameObject.SetActive(value: true);
+                }
             }
-            ownerPlayer.currentBloodIndex = (ownerPlayer.currentBloodIndex + 1) % ownerPlayer.playerBloodPooledObjects.Count;
         }
 
         internal IEnumerator FlickerLightsAndTurnDownBreaker()
@@ -306,13 +310,13 @@ namespace LethalMon.Behaviours
 
             GhostGirl.creatureVoice.Stop();
 
-            if (TeleportingDamage > 0 && targetEnemy.enemyType.canDie)
+            if (targetEnemy.enemyType.canDie)
             {
                 LethalMon.Log("Damaging enemy before teleporting.");
-                targetEnemy.HitEnemyOnLocalClient(TeleportingDamage);
+                targetEnemy.HitEnemyOnLocalClient(force: 2);
                 DropBlood();
                 if(targetEnemy.isEnemyDead && targetEnemy.dieSFX != null)
-                    ownerPlayer!.movementAudio.PlayOneShot(targetEnemy.dieSFX, 0.4f);
+                    Utils.PlaySoundAtPosition(GhostGirl.transform.position, targetEnemy.dieSFX, 0.5f);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
             }
 

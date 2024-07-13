@@ -98,10 +98,11 @@ public class Utils
             return pos;
     }
 
-    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)
+    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip, float volume = 1f)
     {
-        SoundManager.Instance.tempAudio1.transform.position = position;
-        SoundManager.Instance.tempAudio1.PlayOneShot(clip);
+        var audioSource = SoundManager.Instance.tempAudio1.isPlaying ? SoundManager.Instance.tempAudio2 : SoundManager.Instance.tempAudio1;
+        audioSource.transform.position = position;
+        audioSource.PlayOneShot(clip, volume);
     }
 
     #region Player
