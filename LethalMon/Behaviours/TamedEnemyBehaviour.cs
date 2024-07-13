@@ -412,7 +412,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.allAINodes = GameObject.FindGameObjectsWithTag("AINode");
             Enemy.path1 = new NavMeshPath();
             Enemy.openDoorSpeedMultiplier = Enemy.enemyType.doorSpeedMultiplier;
-            Enemy.serverPosition = base.transform.position;
+            Enemy.serverPosition = Enemy.transform.position;
             if (base.IsOwner)
             {
                 Enemy.SyncPositionToClients();
@@ -445,33 +445,37 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (ownerPlayer == null) return;
 
-        if (Vector3.Distance(Enemy.destination, ownerPlayer.transform.position) < 2f) return;
+        var ownerPosition = ownerPlayer.transform.position;
+        if (Vector3.Distance(Enemy.destination, ownerPosition) < 2f) return;
 
         //LethalMon.Logger.LogInfo("Follow owner");
-        if (Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) > 30f)
-            TeleportBehindOwner();
-
-        else if (FindRaySphereIntersections(Enemy.transform.position, (ownerPlayer.transform.position - Enemy.transform.position).normalized, ownerPlayer.transform.position, 5f,
-                out Vector3 potentialPosition1,
-                out Vector3 potentialPosition2))
+        var enemyPosition = Enemy.transform.position;
+        if (Vector3.Distance(enemyPosition, ownerPosition) > 30f)
         {
-            var position = Enemy.transform.position;
+            TeleportBehindOwner();
+            return;
+        }
+        
+        if (Vector3.Distance(ownerPosition, enemyPosition) > 4f && FindRaySphereIntersections(enemyPosition, (ownerPosition - enemyPosition).normalized, ownerPosition, 4f,
+                     out Vector3 potentialPosition1,
+                     out Vector3 potentialPosition2))
+        {
+            var position = enemyPosition;
             float distance1 = Vector3.Distance(position, potentialPosition1);
             float distance2 = Vector3.Distance(position, potentialPosition2);
 
             if (distance1 > 4f && distance2 > 4f)
             {
                 Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
-            }
-            else
-            {
-                // Turn in the direction of the owner gradually
-                Transform enemyTransform = Enemy.transform;
-                Vector3 direction = ownerPlayer.transform.position - enemyTransform.position;
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
+                return;
             }
         }
+        
+        // Turn in the direction of the owner gradually
+        Transform enemyTransform = Enemy.transform;
+        Vector3 direction = ownerPosition - enemyPosition;
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
+        enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
     }
 
     private void TeleportBehindOwner()
