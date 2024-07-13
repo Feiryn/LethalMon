@@ -25,22 +25,6 @@ namespace LethalMon.Behaviours
         internal EnemyController? controller = null;
         #endregion
 
-        #region Action Keys
-        private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Stop riding" }
-        };
-        internal override List<ActionKey> ActionKeys => _actionKeys;
-
-        internal override void ActionKey1Pressed()
-        {
-            base.ActionKey1Pressed();
-
-            if (IsRiding && IsOwnerPlayer)
-                controller!.StopControllingServerRpc();
-        }
-        #endregion
-
         #region Custom behaviours
         private enum CustomBehaviour
         {

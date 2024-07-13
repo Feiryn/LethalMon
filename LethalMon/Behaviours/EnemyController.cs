@@ -56,6 +56,7 @@ namespace LethalMon.Behaviours
         internal Action? OnStartMoving;
         internal Action? OnStopMoving;
         internal Action OnJump;
+        internal Action OnCrouch;
         #endregion
 
         public EnemyController()
@@ -63,6 +64,7 @@ namespace LethalMon.Behaviours
             OnCalculateMovementVector = CalculateMovementVector;
             OnMove = Moving;
             OnJump = Jumping;
+            OnCrouch = Crouching;
         }
 
         void Awake()
@@ -214,6 +216,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("Binding inputs to control enemy " + enemy!.enemyType.name);
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").started += SprintStart;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled += SprintStop;
+            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started += Crouch;
 
             if (EnemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started += Jump;
@@ -228,6 +231,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("Unbinding inputs -> " + enemy!.enemyType.name);
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").started -= SprintStart;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled -= SprintStop;
+            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started -= Crouch;
 
             if (EnemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started -= Jump;
@@ -325,6 +329,8 @@ namespace LethalMon.Behaviours
         internal void Jump(InputAction.CallbackContext callbackContext) => OnJump();
         internal void SprintStart(InputAction.CallbackContext callbackContext) => isSprinting = true;
         internal void SprintStop(InputAction.CallbackContext callbackContext) => isSprinting = false;
+        
+        internal void Crouch(InputAction.CallbackContext callbackContext) => OnCrouch();
 
         // Virtual methods
         internal Vector3 CalculateMovementVector(Vector2 moveInputVector)
@@ -383,6 +389,11 @@ namespace LethalMon.Behaviours
             }
         }
 
+        internal virtual void Crouching()
+        {
+            StopControllingServerRpc();
+        }
+        
         internal virtual void Jumping()
         {
 

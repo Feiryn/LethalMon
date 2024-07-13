@@ -22,24 +22,6 @@ namespace LethalMon.Behaviours
         internal EnemyController? controller = null;
         #endregion
 
-        #region Action Keys
-        private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Stop flying" }
-        };
-        internal override List<ActionKey> ActionKeys => _actionKeys;
-
-        internal override void ActionKey1Pressed()
-        {
-            base.ActionKey1Pressed();
-            LethalMon.Log((CurrentCustomBehaviour == (int)CustomBehaviour.Flying).ToString());
-            LethalMon.Log(IsOwnerPlayer.ToString());
-
-            if (CurrentCustomBehaviour == (int)CustomBehaviour.Flying && IsOwnerPlayer)
-                controller!.StopControllingServerRpc();
-        }
-        #endregion
-
         #region Custom behaviours
         private enum CustomBehaviour
         {
