@@ -28,6 +28,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     };
 
     private EnemyAI? _enemy = null;
+    
     public EnemyAI Enemy
     {
         get

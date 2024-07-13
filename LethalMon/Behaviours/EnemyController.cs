@@ -181,6 +181,12 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         public void StopControllingClientRpc()
         {
+            StopControlling();
+        }
+        #endregion
+
+        internal void StopControlling(bool beingDestroyed = false)
+        {
             if (playerControlledBy != null)
             {
                 playerControlledBy.disableMoveInput = false;
@@ -203,12 +209,14 @@ namespace LethalMon.Behaviours
                 playerControlledBy!.sprintMeterUI.color = staminaDefaultColor;
             }
 
-            OnStopControlling?.Invoke();
+            if (!beingDestroyed)
+            {
+                OnStopControlling?.Invoke();
+            }
 
             playerControlledBy = null;
         }
-        #endregion
-
+        
         internal void BindInputs()
         {
             if (inputsBinded || !IsControlledByUs) return;
@@ -397,6 +405,13 @@ namespace LethalMon.Behaviours
         internal virtual void Jumping()
         {
 
+        }
+
+        public override void OnDestroy()
+        {
+            Destroy(controlTrigger);
+            
+            base.OnDestroy();
         }
     }
 }

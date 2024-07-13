@@ -2,8 +2,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace LethalMon.Behaviours
 {
@@ -49,7 +49,6 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
             {
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
                 nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
                 ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retreive in ball when going outside, so that it gets disabled again
             }
@@ -62,7 +61,6 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
             {
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
                 ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
             }
 
@@ -125,7 +123,7 @@ namespace LethalMon.Behaviours
         internal override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
-
+            
             controller!.SetControlTriggerVisible(false);
         }
 
@@ -141,6 +139,22 @@ namespace LethalMon.Behaviours
             base.OnEscapedFromBall(playerWhoThrewBall);
 
             sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
+        }
+
+        public override void OnDestroy()
+        {
+            if (IsOwnerPlayer)
+            {
+                ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
+            }
+
+            sporeLizard.agentLocalVelocity = Vector3.zero;
+            sporeLizard.CalculateAnimationDirection(0f);
+            
+            controller!.StopControlling(true);
+            Destroy(controller!);
+            
+            base.OnDestroy();
         }
         #endregion
 

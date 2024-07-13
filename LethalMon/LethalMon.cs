@@ -73,6 +73,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
         Harmony.PatchAll(typeof(SporeLizardTamedBehaviour));
         Harmony.PatchAll(typeof(MouthDogPatch));
+        Harmony.PatchAll(typeof(EnemyAIPatch));
 
         // Static RPCs
         PlayerControllerBPatch.InitializeRPCS();

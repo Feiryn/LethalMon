@@ -1,8 +1,6 @@
 ﻿using GameNetcodeStuff;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -65,18 +63,12 @@ namespace LethalMon.Behaviours
         {
             if (Utils.IsHost)
                 SwitchToCustomBehaviour((int)CustomBehaviour.Flying);
-
-            if (IsOwnerPlayer)
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
         }
 
         internal void OnStopFlying()
         {
             if(Utils.IsHost)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-
-            if (IsOwnerPlayer)
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
 
             tulipSnake.flapping = false;
             tulipSnake.SetFlappingLocalClient(false);
@@ -152,7 +144,7 @@ namespace LethalMon.Behaviours
         internal override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
-
+            
             controller!.SetControlTriggerVisible(false);
         }
 
@@ -176,6 +168,14 @@ namespace LethalMon.Behaviours
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
+        }
+        
+        public override void OnDestroy()
+        {
+            controller!.StopControlling(true);
+            Destroy(controller!);
+            
+            base.OnDestroy();
         }
         #endregion
     }
