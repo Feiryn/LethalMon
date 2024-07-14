@@ -25,7 +25,7 @@ public abstract class PokeballItem : ThrowableItem
 
     private int currentCaptureRound = 0;
 
-    private bool enemyCaptured = false;
+    internal bool enemyCaptured = false;
 
     private int captureStrength;
 

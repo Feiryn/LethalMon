@@ -21,6 +21,8 @@ public class PlayerControllerBPatch
 
     private static string[] testEnemyTypes = new List<string>(Data.CatchableMonsters.Keys).ToArray();
     
+    private static bool SentBallScanTip = false;
+    
     internal static void InitializeRPCS()
     {
         NetworkManager.__rpc_func_table.Add(346187524u, __rpc_handler_346187524u);
@@ -231,6 +233,25 @@ public class PlayerControllerBPatch
             {
                 tamedBehaviour.targetPlayer = playerWhoHitControllerB;
                 tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SwitchToItemSlot))]
+    [HarmonyPostfix]
+    private static void SwitchToItemSlotPostFix(PlayerControllerB __instance, int slot,
+        GrabbableObject fillSlotWithItem = null)
+    {
+        if (SentBallScanTip || !StartOfRound.Instance.shipHasLanded) return;
+        
+        GrabbableObject currentItem = __instance.ItemSlots[slot];
+        if (currentItem != null)
+        {
+            LethalMon.Log("Current item type: " + currentItem.GetType());
+            if (currentItem.GetType().IsSubclassOf(typeof(PokeballItem)) && !((PokeballItem) currentItem).enemyCaptured)
+            {
+                HUDManager.Instance.DisplayTip("LethalMon Tip", "Scan enemies to know if they are catchable or not");
+                SentBallScanTip = true;
             }
         }
     }
