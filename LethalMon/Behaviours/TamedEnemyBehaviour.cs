@@ -404,6 +404,17 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
         }
+
+        if (ownerPlayer == null)
+        {
+            ScanNodeProperties scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
+            if (scanNode != null)
+            {
+                scanNode.subText = Data.CatchableMonsters.ContainsKey(Enemy.enemyType.name)
+                    ? "Catchable"
+                    : "Not catchable";
+            }
+        }
     }
 
     internal virtual void DoAIInterval()
