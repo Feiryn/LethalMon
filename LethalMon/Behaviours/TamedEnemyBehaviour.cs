@@ -399,39 +399,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
         AddCustomBehaviours();
 
-        try
-        {
-            LethalMon.Logger.LogInfo("Set enemy variables for " + GetType().Name);
-            Enemy.agent = base.gameObject.GetComponentInChildren<NavMeshAgent>();
-
-            // todo: check if all these are needed
-            Enemy.skinnedMeshRenderers = base.gameObject.GetComponentsInChildren<SkinnedMeshRenderer>();
-            Enemy.meshRenderers = base.gameObject.GetComponentsInChildren<MeshRenderer>();
-            Enemy.creatureAnimator = base.gameObject.GetComponentInChildren<Animator>();
-            Enemy.thisNetworkObject = base.gameObject.GetComponentInChildren<NetworkObject>();
-            Enemy.allAINodes = GameObject.FindGameObjectsWithTag("AINode");
-            Enemy.path1 = new NavMeshPath();
-            Enemy.openDoorSpeedMultiplier = Enemy.enemyType.doorSpeedMultiplier;
-            Enemy.serverPosition = Enemy.transform.position;
-            if (base.IsOwner)
-            {
-                Enemy.SyncPositionToClients();
-            }
-            else
-            {
-                Enemy.SetClientCalculatingAI(enable: false);
-            }
-
-            if (Enemy.creatureAnimator != null)
-            {
-                Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
-            }
-        }
-        catch (Exception arg)
-        {
-            LethalMon.Log($"Error when initializing enemy variables for {base.gameObject.name} : {arg}", LethalMon.LogType.Error);
-            Destroy(this);
-        }
+        Enemy.Start();
     }
 
     internal virtual void DoAIInterval()
