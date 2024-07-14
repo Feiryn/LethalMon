@@ -1,3 +1,11 @@
+# 0.2.2
+
+- Changed the key to unmount a monster to the crouch key
+- Hoarding bug will now scan items more ofter (from every 5s to every 1s)
+- Fixed a bug where the player could be softlocked if they retrieved a monster while riding it
+- Fixed a bug that made clients unable to retrieve monsters
+- Fixed a bug that could make hoarding bug softlocked
+
 # 0.2.1
 
 - Balls are now buyable

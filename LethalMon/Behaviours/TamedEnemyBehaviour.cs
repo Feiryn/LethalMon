@@ -400,6 +400,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         AddCustomBehaviours();
 
         Enemy.Start();
+        if (Enemy.creatureAnimator != null)
+        {
+            Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
+        }
     }
 
     internal virtual void DoAIInterval()
