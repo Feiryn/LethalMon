@@ -130,11 +130,11 @@ namespace LethalMon.Behaviours
         public void StartControllingServerRpc(NetworkObjectReference playerNetworkReference)
         {
             LethalMon.Log("StartControllingServerRpc");
-            StartControllingClientRpc(playerNetworkReference);
+            StartControllingClientRpc(playerNetworkReference, enemy!.transform.position);
         }
 
         [ClientRpc]
-        public void StartControllingClientRpc(NetworkObjectReference playerNetworkReference)
+        public void StartControllingClientRpc(NetworkObjectReference playerNetworkReference, Vector3 enemyPos)
         {
             LethalMon.Log("StartControllingClientRpc");
             if(!playerNetworkReference.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out PlayerControllerB player))
@@ -156,6 +156,11 @@ namespace LethalMon.Behaviours
 
             if (IsControlledByUs)
             {
+                // Reposition on navMesh
+                enemy.agent.Warp(enemyPos);
+                enemy.agent.enabled = false;
+                enemy.agent.enabled = true;
+
                 controllingPlayerStamina = player.sprintMeter;
                 player.sprintMeter = enemyStamina;
                 staminaDefaultColor = player.sprintMeterUI.color;
