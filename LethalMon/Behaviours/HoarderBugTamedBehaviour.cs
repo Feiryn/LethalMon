@@ -14,7 +14,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     public float currentTimer = 0f;
 
-    public const float searchTimer = 5f; // in seconds
+    public const float searchTimer = 1f; // in seconds
     #endregion
 
     #region Custom behaviours
@@ -43,10 +43,14 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        if (hoarderBug?.targetItem != null)
+        if (hoarderBug.targetItem != null)
         {
             LethalMon.Log("HoarderBugAI found an object and move towards it");
             hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
+        }
+        else
+        {
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
     }
 
@@ -96,7 +100,6 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         currentTimer += Time.deltaTime;
         if (currentTimer > searchTimer)
         {
-            // Do not search too often
             //LethalMon.Log("HoarderBugAI searches for items");
             currentTimer = 0f;
             var colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);

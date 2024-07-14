@@ -46,6 +46,7 @@ namespace LethalMon.Behaviours
 
         internal InteractTrigger? controlTrigger = null;
         internal Vector3 triggerCenterDistance = Vector3.zero; // TODO: transform parenting
+        internal GameObject? triggerObject = null;
         #endregion
 
         #region Controlling methods
@@ -86,7 +87,7 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            var triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
             triggerObject.transform.position = bounds.Value.center;
             triggerCenterDistance = enemy!.transform.position - bounds.Value.center;
             triggerObject.transform.localScale = bounds.Value.size;
@@ -414,6 +415,7 @@ namespace LethalMon.Behaviours
 
         public override void OnDestroy()
         {
+            Destroy(triggerObject);
             Destroy(controlTrigger);
             
             base.OnDestroy();
