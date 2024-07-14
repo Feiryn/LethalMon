@@ -107,7 +107,8 @@ namespace LethalMon.Behaviours
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            base.OnUpdate(update, !IsRiding); // Don't attempt to SetDestination in Riding mode
+            if(!IsRiding)
+                base.OnUpdate(); // Don't attempt to SetDestination in Riding mode
         }
 
         internal override void OnCallFromBall()
