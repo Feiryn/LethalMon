@@ -128,7 +128,7 @@ public abstract class PokeballItem : ThrowableItem
             if (Utils.GetPlayerPet(this.playerThrownBy) != null)
             {
                 LethalMon.Logger.LogInfo("You already have a monster out!");
-                HUDManager.Instance.AddTextMessageClientRpc("You already have a monster out!");
+                HUDManager.Instance.DisplayTip("LethalMon", "You already have a monster out!");
             }
             else
             {
@@ -151,6 +151,9 @@ public abstract class PokeballItem : ThrowableItem
                 tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
                 tamedBehaviour.isOutsideOfBall = true;
                 tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+                var enemyPosition = tamedBehaviour.Enemy.transform.position;
+                tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
+                tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
 
                 gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
                 CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
