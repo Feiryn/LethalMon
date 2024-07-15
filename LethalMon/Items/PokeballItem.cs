@@ -140,10 +140,11 @@ public abstract class PokeballItem : ThrowableItem
                 }
             }
         }
-        else if(this.enemyAI != null)
+        else if(enemyAI != null)
         {
-            RoundManager.Instance.SpawnedEnemies.Remove(this.enemyAI);
-            this.enemyAI.GetComponent<NetworkObject>().Despawn(true);
+            RoundManager.Instance.SpawnedEnemies.Remove(enemyAI);
+            if(Utils.IsHost && enemyAI.IsSpawned)
+                enemyAI.GetComponent<NetworkObject>().Despawn(true);
         }
 
         base.OnDestroy();
