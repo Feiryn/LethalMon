@@ -83,10 +83,8 @@ namespace LethalMon.Throw
         public Vector3 GetItemThrowDestination()
         {
             Vector3 position = base.transform.position;
-            Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
             itemThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
-            position = ((!Physics.Raycast(itemThrowRay, out itemHit, 12f, 268437761, QueryTriggerInteraction.Ignore)) ? itemThrowRay.GetPoint(10f) : itemThrowRay.GetPoint(itemHit.distance - 0.05f));
-            Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
+            position = !Physics.Raycast(itemThrowRay, out itemHit, 12f, 268437761, QueryTriggerInteraction.Ignore) ? itemThrowRay.GetPoint(10f) : itemThrowRay.GetPoint(itemHit.distance - 0.05f);
             itemThrowRay = new Ray(position, Vector3.down);
             if (Physics.Raycast(itemThrowRay, out itemHit, 30f, 268437761, QueryTriggerInteraction.Ignore))
             {

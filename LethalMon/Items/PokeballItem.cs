@@ -96,7 +96,9 @@ public abstract class PokeballItem : ThrowableItem
                 out CatchableEnemy.CatchableEnemy catchable))
         {
             if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
+            {
                 this.CaptureEnemy(enemyToCapture, catchable);
+            }
             else
                 LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable by the player who threw the ball");
         }
@@ -114,10 +116,9 @@ public abstract class PokeballItem : ThrowableItem
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
 
+                this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
                 if (Utils.IsHost)
                 {
-                    this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
-
                     if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
                     {
                         GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
@@ -274,6 +275,7 @@ public abstract class PokeballItem : ThrowableItem
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
         
+        Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
 
         this.PlayCaptureAnimationAnimator();

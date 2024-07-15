@@ -139,7 +139,8 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
+            if (sporeLizard.IsOwner)
+                sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
         }
 
         public override void OnDestroy()

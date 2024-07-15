@@ -198,7 +198,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        bracken.AddToAngerMeter(float.MaxValue);
+        if (bracken.IsOwner)
+            bracken.AddToAngerMeter(float.MaxValue);
     }
 
     internal override void DoAIInterval()
