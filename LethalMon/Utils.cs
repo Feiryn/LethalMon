@@ -7,11 +7,14 @@ using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Random = System.Random;
 
 namespace LethalMon;
 
 public class Utils
 {
+    public static readonly Random Random = new Random();
+    
     public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
         return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownClientId == player.playerClientId && tamedBehaviour.isOutsideOfBall);

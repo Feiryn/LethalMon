@@ -501,21 +501,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         GameObject? spawnPrefab = null;
         LethalMon.Log("balltype: " + ballType.ToString());
-        switch (this.ballType)
-        {
-            case BallType.GREAT_BALL:
-                spawnPrefab = Greatball.SpawnPrefab;
-                break;
-            case BallType.ULTRA_BALL:
-                spawnPrefab = Ultraball.SpawnPrefab;
-                break;
-            case BallType.MASTER_BALL:
-                spawnPrefab = Masterball.SpawnPrefab;
-                break;
-            default:
-                spawnPrefab = Pokeball.SpawnPrefab;
-                break;
-        }
+        spawnPrefab = BallTypeMethods.GetPrefab(ballType);
 
         if (spawnPrefab == null)
         {

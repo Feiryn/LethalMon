@@ -111,6 +111,26 @@ public abstract class PokeballItem : ThrowableItem
                 if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
                 {
                     this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
+
+                    if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
+                    {
+                        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
+                        
+                        if (spawnPrefab == null)
+                        {
+                            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
+                        }
+                        else
+                        {
+                            GameObject? ball = Instantiate(spawnPrefab, this.enemyAI.transform.position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+                            PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+                            pokeballItem.fallTime = 0f;
+                            pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds;
+                            pokeballItem.SetScrapValue(scrapValue);
+                            ball.GetComponent<NetworkObject>().Spawn(false);
+                            pokeballItem.FallToGround();
+                        }
+                    }
                 }
             }
         }
