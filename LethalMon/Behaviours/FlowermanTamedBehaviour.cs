@@ -138,9 +138,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         base.OnTamedFollowing();
 
         if (canGrabAfter < DateTime.Now)
-        {
-            DefendOwnerFromClosestEnemy();
-        }
+            TargetNearestEnemy();
     }
 
     internal override void OnTamedDefending()
@@ -154,7 +152,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
                 ReleaseEnemy();
                 ReleaseEnemyServerRpc();
 
-                this.CalmDownAndFollow();
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
             else
             {
@@ -170,7 +168,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             {
                 LethalMon.Log("Target is dead, stop targeting it");
                 targetEnemy = null;
-                this.CalmDownAndFollow();
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
                 return;
             }
@@ -193,7 +191,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             }
         }
         else
-            this.CalmDownAndFollow();
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -226,26 +224,20 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     #endregion
 
     #region Methods
-    internal void DefendOwnerFromClosestEnemy()
+    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
-        // Check if enemy in sight
-        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-        {
-            if (spawnedEnemy != null && spawnedEnemy != bracken && !spawnedEnemy.isEnemyDead && grabbedMonstersPositions.ContainsKey(spawnedEnemy.GetType().Name) && spawnedEnemy.transform != null && bracken.CheckLineOfSightForPosition(spawnedEnemy.transform.position))
-            {
-                targetEnemy = spawnedEnemy;
-                this.DefendOwner();
-                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
-                return;
-            }
-        }
-    }
+        base.InitTamingBehaviour(behaviour);
 
-    public void DefendOwner()
-    {
-        StandUp();
-        StandUpServerRpc();
-        SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+        switch(behaviour)
+        {
+            case TamingBehaviour.TamedFollowing:
+                CalmDownServerRpc();
+                break;
+            case TamingBehaviour.TamedDefending:
+                StandUpServerRpc();
+                break;
+            default: break;
+        }
     }
 
     public void StandUp()
@@ -254,13 +246,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
         bracken.creatureAnimator.SetBool("anger", true);
         bracken.creatureAnimator.SetBool("sneak", false);
-    }
-
-    public void CalmDownAndFollow()
-    {
-        CalmDown();
-        CalmDownServerRpc();
-        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     public void CalmDown()

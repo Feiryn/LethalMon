@@ -7,6 +7,7 @@ using LethalMon.Behaviours;
 using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
+using static LethalMon.Utils;
 
 namespace LethalMon.Items;
 
@@ -138,6 +139,11 @@ public abstract class PokeballItem : ThrowableItem
                     }
                 }
             }
+        }
+        else if(this.enemyAI != null)
+        {
+            RoundManager.Instance.SpawnedEnemies.Remove(this.enemyAI);
+            this.enemyAI.GetComponent<NetworkObject>().Despawn(true);
         }
 
         base.OnDestroy();
@@ -319,10 +325,8 @@ public abstract class PokeballItem : ThrowableItem
         {
             LethalMon.Log("Capture failed");
 
-            if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
-            {
+            if (Utils.IsHost)
                 this.GetComponent<NetworkObject>().Despawn(true);
-            }
         }
     }
     #endregion

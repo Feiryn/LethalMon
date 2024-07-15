@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-using System.Linq;
 using System.Collections;
 using Unity.Netcode;
+using static LethalMon.Utils.LayerMasks;
 
 namespace LethalMon.Behaviours
 {
@@ -99,12 +99,13 @@ namespace LethalMon.Behaviours
         {
             base.Start();
 
-#if DEBUG
-            ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-            ownClientId = 0ul;
-            isOutsideOfBall = true;
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-#endif
+            /*#if DEBUG
+                        ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+                        ownClientId = 0ul;
+                        isOutsideOfBall = true;
+                        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            #endif*/
+            GhostGirl.EnableEnemyMesh(true, true);
         }
 
         internal override void LateUpdate()
@@ -112,6 +113,7 @@ namespace LethalMon.Behaviours
             base.LateUpdate();
 
             AnimateWalking();
+            GhostGirl.EnableEnemyMesh(true, true);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -142,7 +144,7 @@ namespace LethalMon.Behaviours
                 GhostGirl.enemyMeshEnabled = true;
             }
 
-            DefendOwnerFromClosestEnemy();
+            TargetNearestEnemy();
         }
 
         internal override void OnTamedDefending()
@@ -255,48 +257,14 @@ namespace LethalMon.Behaviours
             GhostGirl.hauntingPlayer = playerWhoThrewBall;
             GhostGirl.BeginChasing();
         }
-
-        internal void DefendOwnerFromClosestEnemy()
-        {
-            if (ownerPlayer == null) return;
-
-            // Check if enemy in sight
-            /*var enemiesInRange = Physics.SphereCastAll(ownerPlayer.transform.position, 10f, Vector3.zero, 0f, ToInt([Mask.Enemies]), QueryTriggerInteraction.Ignore);
-            foreach (var enemy in enemiesInRange)
-            {
-                LethalMon.Log("Found enemy");
-                if (enemy.collider == null || !GhostGirl.CheckLineOfSightForPosition(enemy.collider.transform.position, 180f, 10)) continue;
-
-                LethalMon.Log("Enemy in line of sight");
-                if (enemy.collider.TryGetComponent(out targetEnemy))
-                    SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
-            }*/
-
-            // Check if enemy in sight
-            foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-            {
-                if (spawnedEnemy?.transform != null && spawnedEnemy != GhostGirl && spawnedEnemy.gameObject.layer == (int)Utils.LayerMasks.Mask.Enemies && !spawnedEnemy.isEnemyDead && GhostGirl.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10))
-                {
-                    targetEnemy = spawnedEnemy;
-                    //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>());
-                    SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
-                    LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
-                    return;
-                }
-            }
-        }
         #endregion
 
         #region RPCs
         [ServerRpc(RequireOwnership = false)]
         public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
         {
-            var randomPosition = Utils.GetRandomNavMeshPositionOnRadius(GhostGirl.transform.position, 70f);
-            var randomPositionDistance = Vector3.Distance(randomPosition, GhostGirl.transform.position);
             var farthestNode = GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
-            var farthestNodeDistance = Vector3.Distance(farthestNode, GhostGirl.transform.position);
-
-            OnHitTargetEnemyClientRpc(enemyRef, randomPositionDistance > farthestNodeDistance ? randomPosition : farthestNode);
+            OnHitTargetEnemyClientRpc(enemyRef, farthestNode);
         }
 
         [ClientRpc]

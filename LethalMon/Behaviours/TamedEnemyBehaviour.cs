@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -7,6 +8,7 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours;
 
@@ -105,14 +107,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     internal virtual void InitTamingBehaviour(TamingBehaviour behaviour)
     {
-        switch(behaviour)
-        {
-            case TamingBehaviour.TamedFollowing:
-                FollowOwner(true);
-                break;
-            default:
-                break;
-        }
     }
 
     public void SwitchToCustomBehaviour(int behaviour)
@@ -219,7 +213,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnCallFromBall() { }
+    internal virtual void OnCallFromBall()
+    {
+        for (int i = 0; i <= 29; i++)
+        {
+            if (LayerMask.LayerToName(i) != "")
+                LethalMon.Log(LayerMask.LayerToName(i) + " = " + i + ",");
+        }
+    }
 
     internal virtual void OnRetrieveInBall() { }
 
@@ -441,7 +442,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region Methods
-    public void FollowOwner(bool force = false)
+    public void FollowOwner()
     {
         if (ownerPlayer == null) return;
 
@@ -466,6 +467,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (distance1 > 4f && distance2 > 4f)
             {
+                if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
+                {
+                    LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
+                    Enemy.agent.enabled = false;
+                    Enemy.agent.enabled = true;
+                }
+
                 Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
                 return;
             }
@@ -485,6 +493,40 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.agent.enabled = false;
         Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
         Enemy.agent.enabled = true;
+    }
+
+    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    {
+        if (ownerPlayer == null) return;
+
+        EnemyAI? target = null;
+        float distance = float.MaxValue;
+        // Check if enemy in sight
+        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
+        {            
+            if (spawnedEnemy?.transform == null || spawnedEnemy == Enemy || spawnedEnemy.gameObject.layer == (int)Utils.LayerMasks.Mask.EnemiesNotRendered || spawnedEnemy.isEnemyDead) continue;
+
+            if (requireLOS && !Enemy.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10)) continue;
+
+            float distanceTowardsEnemy;
+            if(fromOwnerPerspective)
+                distanceTowardsEnemy = Vector3.Distance(ownerPlayer.transform.position, spawnedEnemy.transform.position);
+            else
+                distanceTowardsEnemy = Vector3.Distance(Enemy.transform.position, spawnedEnemy.transform.position);
+            if (distanceTowardsEnemy < distance)
+            {
+                LethalMon.Log("Can target enemy " + spawnedEnemy + "at distance " + distanceTowardsEnemy);
+                distance = distanceTowardsEnemy;
+                target = spawnedEnemy;
+            }
+        }
+
+        if(target != null)
+        {
+            targetEnemy = target;
+            SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+            LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
+        }
     }
 
     public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
@@ -515,12 +557,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public virtual PokeballItem RetrieveInBall(Vector3 position)
+    public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
-        GameObject? spawnPrefab = null;
         LethalMon.Log("balltype: " + ballType.ToString());
-        spawnPrefab = BallTypeMethods.GetPrefab(ballType);
-
+        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
         if (spawnPrefab == null)
         {
             LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
@@ -537,7 +577,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 	    pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
 	    pokeballItem.FallToGround();
 
-		Enemy.GetComponent<NetworkObject>().Despawn(true);
+        Enemy.GetComponent<NetworkObject>().Despawn(true);
 
         isOutsideOfBall = false;
 
