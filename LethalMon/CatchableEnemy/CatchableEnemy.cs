@@ -51,4 +51,6 @@ public abstract class CatchableEnemy
         if (enemyAI.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
             tamedEnemyBehaviour.OnEscapedFromBall(player);
     }
+
+    public virtual bool CanBeCapturedBy(EnemyAI enemyAI, PlayerControllerB player) { return true; }
 }

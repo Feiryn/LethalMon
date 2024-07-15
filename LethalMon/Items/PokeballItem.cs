@@ -79,12 +79,12 @@ public abstract class PokeballItem : ThrowableItem
 
     private void OnTriggerEnter(Collider other)
     {
+        if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
+
         LethalMon.Log("Collided with " + other.gameObject.name);
 
-        LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
+        //LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
         LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
-
-        if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
 
         EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
         if (enemyToCapture == null) return;
@@ -92,7 +92,10 @@ public abstract class PokeballItem : ThrowableItem
         if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
                 out CatchableEnemy.CatchableEnemy catchable))
         {
-            this.CaptureEnemy(enemyToCapture, catchable);   
+            if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
+                this.CaptureEnemy(enemyToCapture, catchable);
+            else
+                LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable by the player who threw the ball");
         }
         else
         {
@@ -108,7 +111,7 @@ public abstract class PokeballItem : ThrowableItem
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
 
-                if (base.NetworkManager.IsServer || base.NetworkManager.IsHost)
+                if (Utils.IsHost)
                 {
                     this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
 

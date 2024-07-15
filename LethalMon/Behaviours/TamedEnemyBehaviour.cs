@@ -205,7 +205,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnRetrieveInBall() { }
 
-    internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { }
+    internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
     #endregion
 
     #region ActionKeys
