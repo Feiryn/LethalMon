@@ -287,9 +287,32 @@ public abstract class PokeballItem : ThrowableItem
         this.catchableEnemy = catchable;
         this.enemyAI = enemyAI;
         this.enemyType = enemyAI.enemyType;
-        double captureProbability = catchable.GetCaptureProbability(this.captureStrength);
-        this.captureSuccess = Data.Random.NextDouble() < captureProbability;
-        this.captureRounds = this.captureSuccess ? 3 : Data.Random.Next(1, 4);
+        
+        float captureProbability = catchable.GetCaptureProbability(this.captureStrength);
+        float shakeProbability = Mathf.Pow(captureProbability, 1f / 3f); // Cube root
+        LethalMon.Log("Total capture probability: " + captureProbability + ". Each shake has probability of " + shakeProbability);
+        this.captureRounds = 1;
+        this.captureSuccess = false;
+        for (int i = 0; i < 3; ++i)
+        {
+            float randomValue = (float)Data.Random.NextDouble();
+            LethalMon.Log("Got random value " + randomValue + " for shake n°" + (i + 2));
+            if (randomValue < shakeProbability)
+            {
+                if (i == 2)
+                {
+                    this.captureSuccess = true;
+                }
+                else
+                {
+                    this.captureRounds++;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
         
         PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }

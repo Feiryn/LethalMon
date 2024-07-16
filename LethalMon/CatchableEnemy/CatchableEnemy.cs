@@ -31,7 +31,7 @@ public abstract class CatchableEnemy
         this._catchDifficulty = catchDifficulty;
     }
 
-    public double GetCaptureProbability(int ballStrength)
+    public float GetCaptureProbability(int ballStrength)
     {
         if (ballStrength < 0 || ballStrength >= Data.CaptureProbabilities.Length || this._catchDifficulty < 0 || this._catchDifficulty >= Data.CaptureProbabilities[0].Length)
         {
