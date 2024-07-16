@@ -478,10 +478,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                 return;
             }
         }
-        
+
         // Turn in the direction of the owner gradually
+        TurnTowardsPosition(ownerPosition);
+    }
+
+    internal void TurnTowardsPosition(Vector3 position)
+    {
         Transform enemyTransform = Enemy.transform;
-        Vector3 direction = ownerPosition - enemyPosition;
+        Vector3 direction = position - enemyTransform.position;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
     }
