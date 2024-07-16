@@ -71,6 +71,10 @@ public abstract class PokeballItem : ThrowableItem
     }
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
+#if DEBUG
+        base.ItemActivate(used, buttonDown);
+        return;
+#endif
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
         {
             base.ItemActivate(used, buttonDown);

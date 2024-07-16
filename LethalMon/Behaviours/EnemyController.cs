@@ -158,9 +158,12 @@ namespace LethalMon.Behaviours
             if (IsControlledByUs)
             {
                 // Reposition on navMesh
-                enemy.agent.Warp(enemyPos);
-                enemy.agent.enabled = false;
-                enemy.agent.enabled = true;
+                if (!EnemyCanFly)
+                {
+                    enemy.agent.Warp(enemyPos);
+                    enemy.agent.enabled = false;
+                    enemy.agent.enabled = true;
+                }
 
                 controllingPlayerStamina = player.sprintMeter;
                 player.sprintMeter = enemyStamina;
