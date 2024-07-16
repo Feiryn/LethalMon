@@ -200,6 +200,12 @@ namespace LethalMon.Behaviours
             #endregion
         }
 
+        [ServerRpc(RequireOwnership = false)]
+        public void EnableEnemyMeshForTargetServerRpc(ulong targetPlayerID, bool enable = true)
+        {
+            EnableEnemyMeshForTargetClientRpc(targetPlayerID, enable);
+        }
+
         [ClientRpc]
         public void EnableEnemyMeshForTargetClientRpc(ulong targetPlayerID, bool enable = true)
         {
@@ -284,7 +290,7 @@ namespace LethalMon.Behaviours
 
             if (!GhostGirl.enemyMeshEnabled)
             {
-                GhostGirl.EnableEnemyMesh(enable: ownerPlayer == Utils.CurrentPlayer, overrideDoNotSet: true);
+                EnableEnemyMeshForTargetServerRpc(ownClientId, true);
                 GhostGirl.enemyMeshEnabled = true;
             }
 
