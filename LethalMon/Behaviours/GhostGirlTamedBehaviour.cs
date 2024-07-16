@@ -107,7 +107,7 @@ namespace LethalMon.Behaviours
             var targetingUs = targetPlayer == Utils.CurrentPlayer;
 
             // Phase 1: Stare and turn towards player
-            LethalMon.Log("PHASE 1", LethalMon.LogType.Warning);
+            #region Phase 1
             GhostGirl.agent.speed = 0f;
             if (targetingUs)
                 GameNetworkManager.Instance.localPlayerController.JumpToFearLevel(0.2f);
@@ -122,9 +122,10 @@ namespace LethalMon.Behaviours
                 yield return null;
             }
             RoundManager.Instance.FlickerLights(true, true);
+            #endregion
 
             // Phase 2: Fake attempts to scare the player
-            LethalMon.Log("PHASE 2", LethalMon.LogType.Warning);
+            #region Phase 2
             GhostGirl.hauntingPlayer = targetPlayer;
             GhostGirl.hauntingLocalPlayer = targetPlayer == Utils.CurrentPlayer;
 
@@ -169,11 +170,11 @@ namespace LethalMon.Behaviours
 
                 int num = UnityEngine.Random.Range(0, GhostGirl.appearStaringSFX.Length);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, GhostGirl.appearStaringSFX[num]);
-
             }
+            #endregion
 
             // Phase 3: Hunt
-            LethalMon.Log("PHASE 3", LethalMon.LogType.Warning);
+            #region Phase 3
             GhostGirl.agent.speed = 0f;
             GameNetworkManager.Instance.localPlayerController.JumpToFearLevel(1.9f);
             RoundManager.Instance.FlickerLights(true, true);
@@ -191,9 +192,9 @@ namespace LethalMon.Behaviours
                 yield return null;
             }
 
-
             GhostGirl.enabled = true;
             GhostGirl.BeginChasing();
+            #endregion
         }
 
         internal bool WarpToHauntPosition()
