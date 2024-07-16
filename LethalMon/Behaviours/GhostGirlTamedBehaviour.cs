@@ -51,8 +51,11 @@ namespace LethalMon.Behaviours
 
                 case CustomBehaviour.ScareThrowerAndHunt:
                     LethalMon.Log("InitCustomBehaviour ScareThrowerAndHunt", LethalMon.LogType.Warning);
-                    if (Utils.IsHost)
+                    if (Utils.IsHost && targetPlayer != null)
+                    {
+                        EnableEnemyMeshForTargetClientRpc(targetPlayer.playerClientId, true);
                         ScareAndHuntCoroutine = GhostGirl.StartCoroutine(ScareThrowerAndHunt());
+                    }
                     break;
 
                 default:
@@ -100,7 +103,7 @@ namespace LethalMon.Behaviours
         {
             if (targetPlayer == null) yield break;
 
-            GhostGirl.EnableEnemyMesh(true, true);
+            EnableEnemyMeshForTargetClientRpc(targetPlayer.playerClientId, true);
             GhostGirl.creatureSFX.Stop();
             GhostGirl.enabled = false;
 
@@ -197,6 +200,12 @@ namespace LethalMon.Behaviours
             #endregion
         }
 
+        [ClientRpc]
+        public void EnableEnemyMeshForTargetClientRpc(ulong targetPlayerID, bool enable = true)
+        {
+            GhostGirl.EnableEnemyMesh(enable && targetPlayerID == Utils.CurrentPlayerID, true);
+        }
+
         internal bool WarpToHauntPosition()
         {
             var newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: true);
@@ -238,9 +247,9 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
-#if DEBUG
+/*#if DEBUG
             GhostGirl.EnableEnemyMesh(true, true);
-#endif
+#endif*/
         }
 
         internal override void LateUpdate()
@@ -268,11 +277,14 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedFollowing();
 
-            GhostGirl.agent.speed = ownerPlayer!.isSprinting ? 6f : 3f;
+            if (ownerPlayer == null) return;
+
+            var distanceTowardsOwner = Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position);
+            GhostGirl.agent.speed = (ownerPlayer!.isSprinting || distanceTowardsOwner > 5f) ? 6f : 3f;
 
             if (!GhostGirl.enemyMeshEnabled)
             {
-                GhostGirl.EnableEnemyMesh(enable: true, overrideDoNotSet: true);
+                GhostGirl.EnableEnemyMesh(enable: ownerPlayer == Utils.CurrentPlayer, overrideDoNotSet: true);
                 GhostGirl.enemyMeshEnabled = true;
             }
 
