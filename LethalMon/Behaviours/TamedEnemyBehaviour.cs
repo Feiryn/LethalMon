@@ -127,7 +127,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public void SwitchToDefaultBehaviour(int behaviour)
     {
         Enemy.SwitchToBehaviourState(behaviour);
-        Enemy.enabled = behaviour > LastDefaultBehaviourIndex;
+        Enemy.enabled = behaviour <= LastDefaultBehaviourIndex;
     }
 
     // The last vanilla behaviour index for each enemy type

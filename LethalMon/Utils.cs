@@ -86,7 +86,7 @@ public class Utils
         infoNodes.Add(name, node);
         return node;
     }
-
+    
     public static Vector3 GetRandomNavMeshPositionOnRadius(Vector3 pos, float radius, NavMeshHit navHit = default(NavMeshHit))
     {
             float y = pos.y;
@@ -109,6 +109,18 @@ public class Utils
     {
         SoundManager.Instance.tempAudio1.transform.position = position;
         SoundManager.Instance.tempAudio1.PlayOneShot(clip);
+    }
+    
+    public static void EnableShotgunHeldByEnemyAi(EnemyAI enemyAI, bool enable)
+    {
+        ShotgunItem[] shotguns = GameObject.FindObjectsOfType<ShotgunItem>();
+        foreach (ShotgunItem shotgunItem in shotguns)
+        {
+            if (shotgunItem.heldByEnemy == enemyAI)
+            {
+                shotgunItem.EnableItemMeshes(enable);
+            }
+        }
     }
 
     #region Player

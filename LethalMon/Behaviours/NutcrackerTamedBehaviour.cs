@@ -37,9 +37,9 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         float distanceToPlayer = Vector3.Distance(nutcracker.transform.position, targetPlayerPos);
         if (distanceToPlayer > 50f)
         {
-            SwitchToDefaultBehaviour(1);
+            SwitchToDefaultBehaviour(0);
         }
-        else if (distanceToPlayer < 3f || nutcracker.CheckLineOfSightForPosition(targetPlayerPos))
+        else if (distanceToPlayer < 5f && !Physics.Linecast(transform.position, targetPlayerPos, out _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
         {
             nutcracker.SetDestinationToPosition(nutcracker.transform.position);
             SwitchToCustomBehaviour((int) CustomBehaviour.Rampage);
@@ -47,7 +47,9 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         }
         else
         {
+            nutcracker.SetTargetDegreesToPosition(targetPlayerPos);
             nutcracker.SetDestinationToPosition(targetPlayerPos);
+            nutcracker.TurnTorsoToTargetDegrees();
         }
     }
     
@@ -61,7 +63,10 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
             yield return new WaitForSeconds(0.05f);
             nutcracker.FireGunServerRpc();
         }
-        SwitchToDefaultBehaviour(1);
+
+        nutcracker.gun.shellsLoaded = 2;
+        
+        SwitchToDefaultBehaviour(0);
     }
     #endregion
 
@@ -78,15 +83,13 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        if (nutcracker.gun != null)
-        {
-            nutcracker.gun.gameObject.SetActive(true);
-            nutcracker.gun.GetComponent<MeshRenderer>().enabled = true;
-        }
+        Utils.EnableShotgunHeldByEnemyAi(nutcracker, true);
 
         if (nutcracker.IsOwner)
         {
             targetPlayer = playerWhoThrewBall;
+            nutcracker.agent.speed = 10f;
+            nutcracker.timeSinceHittingPlayer = 0f; // Prevents nutcracker from leg kicking a player and become stuck
 
             SwitchToCustomBehaviour((int)CustomBehaviour.LookForPlayer);
         }

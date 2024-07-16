@@ -1,4 +1,5 @@
 using GameNetcodeStuff;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.CatchableEnemy;
@@ -13,11 +14,6 @@ public class CatchableNutcracker : CatchableEnemy
     {
         base.BeforeCapture(enemyAI, player);
 
-        NutcrackerEnemyAI nutcrackerEnemyAI = (NutcrackerEnemyAI)enemyAI;
-        if (nutcrackerEnemyAI.gun != null)
-        {
-            nutcrackerEnemyAI.gun.GetComponent<MeshRenderer>().enabled = false;
-            nutcrackerEnemyAI.gun.gameObject.SetActive(false);
-        }
+        Utils.EnableShotgunHeldByEnemyAi(enemyAI, false);
     }
 }
