@@ -32,6 +32,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
         { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
         { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) }
+        { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
+        { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
+        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
+        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
+        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
+        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) },
+        { typeof(DressGirlAI),      typeof(GhostGirlTamedBehaviour) }
+        { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) }
+        { typeof(BushWolfEnemy),    typeof(KidnapperFoxTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
