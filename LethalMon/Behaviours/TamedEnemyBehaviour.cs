@@ -549,7 +549,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                     Enemy.agent.enabled = true;
                 }
 
-                Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
+                MoveTowards(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
                 return;
             }
         }
@@ -564,6 +564,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Vector3 direction = position - enemyTransform.position;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
+    }
+
+    public virtual void MoveTowards(Vector3 position)
+    {
+        Enemy.SetDestinationToPosition(position);
     }
 
     private void TeleportBehindOwner()
