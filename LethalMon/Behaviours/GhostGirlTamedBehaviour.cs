@@ -27,6 +27,7 @@ namespace LethalMon.Behaviours
         internal bool ownerInsideFactory = false;
 
         internal Coroutine? ScareAndHuntCoroutine = null;
+        internal float checkNearestEnemyInterval = 0f;
         #endregion
 
         #region Custom behaviours
@@ -261,7 +262,12 @@ namespace LethalMon.Behaviours
                 GhostGirl.enemyMeshEnabled = true;
             }
 
-            TargetNearestEnemy();
+            checkNearestEnemyInterval -= Time.deltaTime;
+            if(checkNearestEnemyInterval <= 0)
+            {
+                checkNearestEnemyInterval = 1f;
+                TargetNearestEnemy();
+            }
         }
 
         internal override void OnTamedDefending()
