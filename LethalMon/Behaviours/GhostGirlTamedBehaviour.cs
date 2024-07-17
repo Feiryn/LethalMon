@@ -305,10 +305,13 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            if (playerWhoThrewBall == null) return;
+            if (GhostGirl.IsOwner)
+            {
+                if (playerWhoThrewBall == null) return;
 
-            targetPlayer = playerWhoThrewBall;
-            SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
+                targetPlayer = playerWhoThrewBall;
+                SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
+            }
         }
         #endregion
 
@@ -401,7 +404,7 @@ namespace LethalMon.Behaviours
                 }
             }
         }
-
+        
         [ServerRpc(RequireOwnership = false)]
         public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
         {

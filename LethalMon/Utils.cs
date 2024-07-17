@@ -122,6 +122,18 @@ public class Utils
             }
         }
     }
+    
+    public static void DestroyShotgunHeldByEnemyAi(EnemyAI enemyAI)
+    {
+        ShotgunItem[] shotguns = GameObject.FindObjectsOfType<ShotgunItem>();
+        foreach (ShotgunItem shotgunItem in shotguns)
+        {
+            if (shotgunItem.heldByEnemy == enemyAI)
+            {
+                shotgunItem.GetComponent<NetworkObject>().Despawn(true);
+            }
+        }
+    }
 
     #region Player
     public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();

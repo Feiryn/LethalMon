@@ -12,13 +12,17 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     
     internal NutcrackerEnemyAI nutcracker { get; private set; }
     
+    private float lookTimer = 0f;
+
+    private readonly float lookTimerInterval = 1f;
+    
     #endregion
     
     #region Custom behaviours
     private enum CustomBehaviour
     {
         LookForPlayer = 1,
-        Rampage = 2,
+        Rampage = 2
     }
     internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
     {
@@ -68,6 +72,78 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         
         SwitchToDefaultBehaviour(0);
     }
+
+    internal override void OnTamedFollowing()
+    {
+        base.OnTamedFollowing();
+
+        lookTimer += Time.deltaTime;
+
+        if (lookTimer >= lookTimerInterval)
+        {
+            lookTimer = 0f;
+            
+            LookForEnemies();
+        }
+    }
+
+    private void LookForEnemies()
+    {
+        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
+        {
+            if (spawnedEnemy != null && spawnedEnemy.transform != null && spawnedEnemy != nutcracker && !spawnedEnemy.isEnemyDead && nutcracker.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 70f, 60, 1f))
+            {
+                targetEnemy = spawnedEnemy;
+                SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
+                return;
+            }
+        }
+    }
+
+    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    {
+        base.InitTamingBehaviour(behaviour);
+
+        if (behaviour == TamingBehaviour.TamedDefending)
+        {
+            if (targetEnemy == null)
+            {
+                LethalMon.Log("No nutcracker target enemy set", LethalMon.LogType.Warning);
+            }
+            else
+            {
+                nutcracker.creatureAnimator.SetInteger("State", 1);
+                nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);   
+            }
+        }
+    }
+
+    internal override void OnTamedDefending()
+    {
+        base.OnTamedDefending();
+        
+        nutcracker.TurnTorsoToTargetDegrees();
+        if (nutcracker is { aimingGun: false, reloadingGun: false, torsoTurning: false })
+        {
+            LethalMon.Log("Is not aiming nor reloading.");
+            if (targetEnemy != null && !targetEnemy.isEnemyDead && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
+            {
+                LethalMon.Log(targetEnemy + " is in LOS, aiming gun");
+                nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);
+                nutcracker.AimGunServerRpc(targetEnemy!.transform.position);
+            }
+            else
+            {
+                LethalMon.Log("Enemy lost or dead, switch back to following");
+                nutcracker.creatureVoice.Stop();
+                nutcracker.creatureAnimator.SetInteger("State", 0);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                targetEnemy = null;
+            }
+        }
+    }
+
     #endregion
 
     #region Base Methods
@@ -77,6 +153,11 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         base.Start();
             
         nutcracker = (Enemy as NutcrackerEnemyAI)!;
+
+        if (ownerPlayer != null)
+        {
+            nutcracker.creatureVoice.volume = 0.5f;
+        }
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -109,6 +190,15 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         {
             nutcracker.walkCheckInterval -= Time.deltaTime;
         }
+        
+        nutcracker.creatureAnimator.SetBool("Aiming", nutcracker.aimingGun);
+    }
+
+    internal override void OnRetrieveInBall()
+    {
+        base.OnRetrieveInBall();
+
+        Utils.DestroyShotgunHeldByEnemyAi(nutcracker);
     }
 
     #endregion
