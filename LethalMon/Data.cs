@@ -12,7 +12,7 @@ public static class Data
     public static readonly float[][] CaptureProbabilities =
     {
         // Normal ball
-        new[] { 0.95f, 0.9f, 0.8f, 0.65f, 0.5f, 0.3f, 0.1f, 0.0f, 0.0f, 0.0f },
+        new[] { 0.95f, 0.9f, 0.8f, 0.65f, 0.5f, 0.3f, 0.1f, 0.05f, 0.02f, 0.01f },
         
         // Great ball
         new[] { 1.0f, 0.97f, 0.95f, 0.85f, 0.7f, 0.5f, 0.3f, 0.2f, 0.15f, 0.1f },
