@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -7,6 +8,7 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours;
 
@@ -23,7 +25,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
         { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
         { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
-        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) }
+        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) },
+        { typeof(DressGirlAI),      typeof(GhostGirlTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -100,6 +103,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to taming state: " + behaviour.ToString());
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
+        InitTamingBehaviour(behaviour);
+    }
+    internal virtual void InitTamingBehaviour(TamingBehaviour behaviour)
+    {
     }
 
     public void SwitchToCustomBehaviour(int behaviour)
@@ -109,6 +116,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
         Enemy.enabled = false;
+        InitCustomBehaviour(behaviour);
+    }
+    internal virtual void InitCustomBehaviour(int behaviour)
+    {
+
     }
 
     public void SwitchToDefaultBehaviour(int behaviour)
@@ -201,7 +213,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnCallFromBall() { }
+    internal virtual void OnCallFromBall()
+    {
+        for (int i = 0; i <= 29; i++)
+        {
+            if (LayerMask.LayerToName(i) != "")
+                LethalMon.Log(LayerMask.LayerToName(i) + " = " + i + ",");
+        }
+    }
 
     internal virtual void OnRetrieveInBall() { }
 
@@ -448,14 +467,26 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (distance1 > 4f && distance2 > 4f)
             {
+                if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
+                {
+                    LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
+                    Enemy.agent.enabled = false;
+                    Enemy.agent.enabled = true;
+                }
+
                 Enemy.SetDestinationToPosition(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
                 return;
             }
         }
-        
+
         // Turn in the direction of the owner gradually
+        TurnTowardsPosition(ownerPosition);
+    }
+
+    internal void TurnTowardsPosition(Vector3 position)
+    {
         Transform enemyTransform = Enemy.transform;
-        Vector3 direction = ownerPosition - enemyPosition;
+        Vector3 direction = position - enemyTransform.position;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
     }
@@ -469,7 +500,41 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.agent.enabled = true;
     }
 
-    private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
+    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    {
+        if (ownerPlayer == null) return;
+
+        EnemyAI? target = null;
+        float distance = float.MaxValue;
+        // Check if enemy in sight
+        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
+        {            
+            if (spawnedEnemy?.transform == null || spawnedEnemy == Enemy || spawnedEnemy.gameObject.layer == (int)Utils.LayerMasks.Mask.EnemiesNotRendered || spawnedEnemy.isEnemyDead) continue;
+
+            if (requireLOS && !Enemy.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10)) continue;
+
+            float distanceTowardsEnemy;
+            if(fromOwnerPerspective)
+                distanceTowardsEnemy = Vector3.Distance(ownerPlayer.transform.position, spawnedEnemy.transform.position);
+            else
+                distanceTowardsEnemy = Vector3.Distance(Enemy.transform.position, spawnedEnemy.transform.position);
+            if (distanceTowardsEnemy < distance)
+            {
+                LethalMon.Log("Can target enemy " + spawnedEnemy + "at distance " + distanceTowardsEnemy);
+                distance = distanceTowardsEnemy;
+                target = spawnedEnemy;
+            }
+        }
+
+        if(target != null)
+        {
+            targetEnemy = target;
+            SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+            LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
+        }
+    }
+
+    public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
     {
         intersection1 = Vector3.zero;
         intersection2 = Vector3.zero;
@@ -497,12 +562,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public virtual PokeballItem RetrieveInBall(Vector3 position)
+    public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
-        GameObject? spawnPrefab = null;
         LethalMon.Log("balltype: " + ballType.ToString());
-        spawnPrefab = BallTypeMethods.GetPrefab(ballType);
-
+        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
         if (spawnPrefab == null)
         {
             LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
@@ -519,7 +582,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 	    pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
 	    pokeballItem.FallToGround();
 
-		Enemy.GetComponent<NetworkObject>().Despawn(true);
+        Enemy.GetComponent<NetworkObject>().Despawn(true);
 
         isOutsideOfBall = false;
 
