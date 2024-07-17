@@ -8,6 +8,7 @@ namespace LethalMon.Behaviours
 {
     internal class GhostGirlTamedBehaviour : TamedEnemyBehaviour
     {
+        #region Properties
         internal DressGirlAI? _ghostGirl = null;
         internal DressGirlAI GhostGirl
         {
@@ -26,6 +27,7 @@ namespace LethalMon.Behaviours
         internal bool ownerInsideFactory = false;
 
         internal Coroutine? ScareAndHuntCoroutine = null;
+        #endregion
 
         #region Custom behaviours
         internal enum CustomBehaviour
@@ -199,33 +201,6 @@ namespace LethalMon.Behaviours
             GhostGirl.BeginChasing();
             #endregion
         }
-
-        [ServerRpc(RequireOwnership = false)]
-        public void EnableEnemyMeshForTargetServerRpc(ulong targetPlayerID, bool enable = true)
-        {
-            EnableEnemyMeshForTargetClientRpc(targetPlayerID, enable);
-        }
-
-        [ClientRpc]
-        public void EnableEnemyMeshForTargetClientRpc(ulong targetPlayerID, bool enable = true)
-        {
-            GhostGirl.EnableEnemyMesh(enable && targetPlayerID == Utils.CurrentPlayerID, true);
-        }
-
-        internal bool WarpToHauntPosition()
-        {
-            var newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: true);
-            if (newPosition == Vector3.zero)
-                newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: false);
-
-            if (newPosition != Vector3.zero)
-            {
-                GhostGirl.agent.Warp(newPosition);
-                return true;
-            }
-
-            return false;
-        }
         #endregion
 
         #region Action Keys
@@ -250,14 +225,6 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
-        {
-            base.Start();
-/*#if DEBUG
-            GhostGirl.EnableEnemyMesh(true, true);
-#endif*/
-        }
-
         internal override void LateUpdate()
         {
             AnimateWalking();
@@ -328,12 +295,18 @@ namespace LethalMon.Behaviours
                 GhostGirl.creatureVoice.volume = Mathf.Max((20f - distanceTowardsTarget) / 15f, 0f);
             }
         }
-
-        public void OnTriggerEnter(Collider other)
+        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
-            LethalMon.Log("OnTriggerEnter: " + other.name, LethalMon.LogType.Warning);
-        }
+            base.OnEscapedFromBall(playerWhoThrewBall);
 
+            if (playerWhoThrewBall == null) return;
+
+            targetPlayer = playerWhoThrewBall;
+            SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
+        }
+        #endregion
+
+        #region Methods
         internal void AnimateWalking()
         {
             var currentlyWalking = Vector3.Distance(previousPosition, GhostGirl.transform.position) > Mathf.Epsilon;
@@ -378,7 +351,31 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(1f);
             TurnOffBreakerNearbyServerRpc();
         }
+        internal Vector3 ChooseFarthestPosition()
+        {
+            if (GhostGirl.allAINodes == null || GhostGirl.allAINodes.Length == 0)
+                return RoundManager.Instance.GetRandomNavMeshPositionInRadius(GhostGirl.transform.position, 80f);
 
+            return GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
+        }
+
+        internal bool WarpToHauntPosition()
+        {
+            var newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: true);
+            if (newPosition == Vector3.zero)
+                newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: false);
+
+            if (newPosition != Vector3.zero)
+            {
+                GhostGirl.agent.Warp(newPosition);
+                return true;
+            }
+
+            return false;
+        }
+        #endregion
+
+        #region RPCs
         [ServerRpc(RequireOwnership = false)]
         public void TurnOffBreakerNearbyServerRpc() // Original FlipLightsBreakerServerRpc isn't calling the correct ClientRpc.. zeekerss pls :p
         {
@@ -399,22 +396,10 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
-        {
-            base.OnEscapedFromBall(playerWhoThrewBall);
-
-            if (playerWhoThrewBall == null) return;
-
-            targetPlayer = playerWhoThrewBall;
-            SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
-        }
-        #endregion
-
-        #region RPCs
         [ServerRpc(RequireOwnership = false)]
         public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
         {
-            var farthestNode = GhostGirl.ChooseFarthestNodeFromPosition(GhostGirl.transform.position).position;
+            var farthestNode = ChooseFarthestPosition();
             OnHitTargetEnemyClientRpc(enemyRef, farthestNode);
         }
 
@@ -439,19 +424,6 @@ namespace LethalMon.Behaviours
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
             }
 
-            // Check if enemy in sight
-            foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-            {
-                if (spawnedEnemy?.transform != null && spawnedEnemy != GhostGirl && !spawnedEnemy.isEnemyDead && GhostGirl.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10))
-                {
-                    targetEnemy = spawnedEnemy;
-                    //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>());
-                    SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
-                    LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
-                    return;
-                }
-            }
-
             GhostGirl.agent.Warp(newEnemyPosition);
             targetEnemy.agent.Warp(newEnemyPosition);
 
@@ -460,6 +432,18 @@ namespace LethalMon.Behaviours
             targetEnemy = null;
 
             RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void EnableEnemyMeshForTargetServerRpc(ulong targetPlayerID, bool enable = true)
+        {
+            EnableEnemyMeshForTargetClientRpc(targetPlayerID, enable);
+        }
+
+        [ClientRpc]
+        public void EnableEnemyMeshForTargetClientRpc(ulong targetPlayerID, bool enable = true)
+        {
+            GhostGirl.EnableEnemyMesh(enable && targetPlayerID == Utils.CurrentPlayerID, true);
         }
         #endregion
     }
