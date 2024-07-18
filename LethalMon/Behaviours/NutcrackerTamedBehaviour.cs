@@ -166,7 +166,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 
         Utils.EnableShotgunHeldByEnemyAi(nutcracker, true);
 
-        if (nutcracker.IsOwner)
+        if (Utils.IsHost)
         {
             targetPlayer = playerWhoThrewBall;
             nutcracker.agent.speed = 10f;

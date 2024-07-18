@@ -198,7 +198,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        if (bracken.IsOwner)
+        if (Utils.IsHost)
             bracken.AddToAngerMeter(float.MaxValue);
     }
 

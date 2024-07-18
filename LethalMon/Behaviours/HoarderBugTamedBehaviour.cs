@@ -130,7 +130,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        if (hoarderBug.IsOwner)
+        if (Utils.IsHost)
         {
             hoarderBug.angryTimer = 10f;
             hoarderBug.angryAtPlayer = playerWhoThrewBall;

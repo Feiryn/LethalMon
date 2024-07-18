@@ -305,7 +305,7 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            if (GhostGirl.IsOwner)
+            if (Utils.IsHost)
             {
                 if (playerWhoThrewBall == null) return;
 

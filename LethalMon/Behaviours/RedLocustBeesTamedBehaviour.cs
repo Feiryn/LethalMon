@@ -105,7 +105,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        if (bees.IsOwner)
+        if (Utils.IsHost)
         {
             bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
             bees.SwitchToBehaviourState(2);

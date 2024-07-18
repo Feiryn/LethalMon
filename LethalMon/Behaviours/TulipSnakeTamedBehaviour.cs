@@ -169,7 +169,7 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            if (tulipSnake.IsOwner)
+            if (Utils.IsHost)
             {
                 if (playerWhoThrewBall == null || !playerWhoThrewBall.isPlayerControlled ||
                     playerWhoThrewBall.isPlayerDead) return;

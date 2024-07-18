@@ -139,7 +139,7 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            if (sporeLizard.IsOwner)
+            if (Utils.IsHost)
                 sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
         }
 
