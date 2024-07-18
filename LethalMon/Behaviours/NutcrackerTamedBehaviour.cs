@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using GameNetcodeStuff;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours;
@@ -30,10 +31,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         new Tuple<string, Action>(CustomBehaviour.Rampage.ToString(), OnRampage)
     };
 
-    void OnRampage()
-    {
-        nutcracker.TurnTorsoToTargetDegrees();
-    }
+    void OnRampage() { }
 
     void OnLookForPlayer()
     {
@@ -52,8 +50,8 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         else
         {
             nutcracker.SetTargetDegreesToPosition(targetPlayerPos);
+            SetTorsoTargetDegreesServerRPC();
             nutcracker.SetDestinationToPosition(targetPlayerPos);
-            nutcracker.TurnTorsoToTargetDegrees();
         }
     }
     
@@ -64,6 +62,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         for (int degrees = 0; degrees < 360; degrees += 10)
         {
             nutcracker.targetTorsoDegrees = (initialAngle + degrees - 90 /* Initial nutcracker rotation is 90 degrees */) % 360;
+            SetTorsoTargetDegreesServerRPC();
             yield return new WaitForSeconds(0.05f);
             nutcracker.FireGunServerRpc();
         }
@@ -107,37 +106,41 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 
         if (behaviour == TamingBehaviour.TamedDefending)
         {
-            if (targetEnemy == null)
+            LethalMon.Log("Enter defending mode");
+            nutcracker.creatureAnimator.SetInteger("State", 1);
+            if (Utils.IsHost && targetEnemy != null)
             {
-                LethalMon.Log("No nutcracker target enemy set", LethalMon.LogType.Warning);
-            }
-            else
-            {
-                nutcracker.creatureAnimator.SetInteger("State", 1);
                 nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);   
+                SetTorsoTargetDegreesServerRPC();
             }
         }
+        else if (nutcracker != null && nutcracker.creatureVoice != null)
+        {
+            LethalMon.Log("Enter following mode");
+            nutcracker.creatureVoice.Stop();
+            nutcracker.creatureAnimator.SetInteger("State", 0);
+        }
     }
+    
+    
 
     internal override void OnTamedDefending()
     {
         base.OnTamedDefending();
         
-        nutcracker.TurnTorsoToTargetDegrees();
         if (nutcracker is { aimingGun: false, reloadingGun: false, torsoTurning: false })
         {
             LethalMon.Log("Is not aiming nor reloading.");
-            if (targetEnemy != null && !targetEnemy.isEnemyDead && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
+            if (targetEnemy != null && (!targetEnemy.isEnemyDead || !targetEnemy.agent.enabled) && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
             {
                 LethalMon.Log(targetEnemy + " is in LOS, aiming gun");
                 nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);
+                SetTorsoTargetDegreesServerRPC();
                 nutcracker.AimGunServerRpc(targetEnemy!.transform.position);
             }
             else
             {
                 LethalMon.Log("Enemy lost or dead, switch back to following");
-                nutcracker.creatureVoice.Stop();
-                nutcracker.creatureAnimator.SetInteger("State", 0);
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 targetEnemy = null;
             }
@@ -179,6 +182,11 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(false, false);
+
+        nutcracker.TurnTorsoToTargetDegrees();
+        
+        if (!nutcracker.isEnemyDead && !nutcracker.GrabGunIfNotHolding())
+            return;
         
         if (nutcracker.walkCheckInterval <= 0f)
         {
@@ -201,5 +209,20 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         Utils.DestroyShotgunHeldByEnemyAi(nutcracker);
     }
 
+    #endregion
+    
+    #region RPCs
+    [ServerRpc(RequireOwnership = false)]
+    public void SetTorsoTargetDegreesServerRPC()
+    {
+        SetTorsoTargetDegreesClientRPC(nutcracker.targetTorsoDegrees, nutcracker.torsoTurnSpeed);
+    }
+    
+    [ClientRpc]
+    public void SetTorsoTargetDegreesClientRPC(int targetDegrees, float turnSpeed)
+    {
+        nutcracker.targetTorsoDegrees = targetDegrees;
+        LethalMon.Log("Target degrees received: " + nutcracker.targetTorsoDegrees + " at speed " + turnSpeed);
+    }
     #endregion
 }

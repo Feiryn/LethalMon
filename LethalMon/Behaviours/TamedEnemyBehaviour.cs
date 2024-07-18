@@ -81,7 +81,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         TamedFollowing = 1,
         TamedDefending = 2
     }
-    private readonly int tamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
+    public static readonly int TamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
 
     private Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>(); // List of behaviour state indices and their custom handler
 
@@ -96,7 +96,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
-    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - tamedBehaviourCount;
+    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -104,7 +104,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo("Switch to taming state: " + behaviour.ToString());
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
-        InitTamingBehaviour(behaviour);
     }
     internal virtual void InitTamingBehaviour(TamingBehaviour behaviour)
     {
@@ -115,9 +114,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (CurrentCustomBehaviour == behaviour) return;
 
         LethalMon.Logger.LogInfo("Switch to custom state: " + behaviour);
-        Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + tamedBehaviourCount + behaviour);
+        Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + TamedBehaviourCount + behaviour);
         Enemy.enabled = false;
-        InitCustomBehaviour(behaviour);
     }
     internal virtual void InitCustomBehaviour(int behaviour)
     {
@@ -282,9 +280,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (Enemy.IsOwner)
         {
-            if (customBehaviour > tamedBehaviourCount)
+            if (customBehaviour > TamedBehaviourCount)
             {
-                customBehaviour -= tamedBehaviourCount;
+                customBehaviour -= TamedBehaviourCount;
                 if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
                     CustomBehaviours[customBehaviour]();
                 else
