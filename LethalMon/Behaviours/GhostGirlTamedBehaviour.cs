@@ -415,24 +415,35 @@ namespace LethalMon.Behaviours
 
             GhostGirl.creatureVoice.Stop();
 
-            if (targetEnemy.enemyType.canDie)
+            GhostGirl.StartCoroutine(TeleportAndDamage(targetEnemy, newEnemyPosition, () => targetEnemy = null));
+
+            RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
+        }
+
+        private IEnumerator TeleportAndDamage(EnemyAI enemyAI, Vector3 newPosition, Action onComplete = null)
+        {
+            // Effects
+            if(enemyAI.enemyType.canDie)
             {
-                LethalMon.Log("Damaging enemy before teleporting.");
-                targetEnemy.HitEnemyOnLocalClient(force: 2);
                 DropBlood();
-                if(targetEnemy.isEnemyDead && targetEnemy.dieSFX != null)
-                    Utils.PlaySoundAtPosition(GhostGirl.transform.position, targetEnemy.dieSFX, 0.5f);
+                if (enemyAI.isEnemyDead && enemyAI.dieSFX != null)
+                    Utils.PlaySoundAtPosition(GhostGirl.transform.position, enemyAI.dieSFX, 0.5f);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);
             }
 
-            GhostGirl.agent.Warp(newEnemyPosition);
-            targetEnemy.agent.Warp(newEnemyPosition);
+            // Teleport
+            TeleportEnemy(GhostGirl, newPosition);
+            TeleportEnemy(enemyAI, newPosition);
 
-            //Physics.IgnoreCollision(GhostGirl.GetComponent<Collider>(), targetEnemy.GetComponent<Collider>(), false);
+            // Damage
+            if (enemyAI.enemyType.canDie)
+            {
+                yield return new WaitForSeconds(0.1f);
+                LethalMon.Log("Damaging enemy after teleporting.");
+                enemyAI.HitEnemyOnLocalClient(force: 1);
+            }
 
-            targetEnemy = null;
-
-            RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
+            onComplete?.Invoke();
         }
 
         [ServerRpc(RequireOwnership = false)]

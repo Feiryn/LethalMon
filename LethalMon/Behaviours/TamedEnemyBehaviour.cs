@@ -604,4 +604,33 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         return pokeballItem;
     }
     #endregion
+
+    #region Teleporting
+    // Actions after teleporting an enemy
+    private static Dictionary<string, Action<EnemyAI, Vector3>> afterTeleportFunctions = new()
+    {
+        {
+            nameof(SandSpiderAI), (enemyAI, position) =>
+            {
+                var spider = (enemyAI as SandSpiderAI)!;
+                spider.meshContainerPosition = position;
+                spider.meshContainerTarget = position;
+            }
+        },
+        {
+            nameof(BlobAI), (enemyAI, position) => (enemyAI as BlobAI)!.centerPoint.position = position
+        }
+    };
+
+    public void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
+    {
+        if (!Utils.IsHost) return;
+
+        enemyAI.agent.Warp(position);
+        enemyAI.serverPosition = position;
+
+        if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
+            afterTeleportFunction.Invoke(enemyAI, position);
+    }
+    #endregion
 }

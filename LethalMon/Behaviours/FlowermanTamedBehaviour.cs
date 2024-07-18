@@ -215,7 +215,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         bracken.CalculateAnimationDirection();
     }
 
-    public override PokeballItem RetrieveInBall(Vector3 position)
+    public override PokeballItem? RetrieveInBall(Vector3 position)
     {
         this.ReleaseEnemy();
         ReleaseEnemyServerRpc();
@@ -309,6 +309,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         enemyAiTransform.localRotation = selfTransform.localRotation;
         grabbedEnemyAi.enabled = true;
         grabbedEnemyAi.agent.enabled = true;
+        TeleportEnemy(grabbedEnemyAi, selfTransform.position);
         grabbedEnemyAi = null;
         canGrabAfter = DateTime.Now.AddSeconds(GrabCooldownSeconds);
             
