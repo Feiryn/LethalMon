@@ -302,7 +302,8 @@ namespace LethalMon.Behaviours
             if (playerWhoThrewBall == null) return;
 
             targetPlayer = playerWhoThrewBall;
-            SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
+            if(Utils.IsHost)
+                SwitchToCustomBehaviour((int)CustomBehaviour.ScareThrowerAndHunt);
         }
         #endregion
 
