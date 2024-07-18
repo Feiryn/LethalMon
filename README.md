@@ -35,12 +35,12 @@ Here are the implementation status of monsters:
 |     Spider      |     No      |                                  TBD                                   |
 |     Butler      |     No      |                                  TBD                                   |
 |    Coil-head    |     No      |                                  TBD                                   |
-|   Ghost Girl    |     No      |                                  TBD                                   |
+|   Ghost Girl    |     Yes     |                   Teleports enemies and damages them                   |
 |  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |
 |    Hygrodere    |     No      |                                  TBD                                   |
 |     Jester      |     No      |                                  TBD                                   |
 |     Masked      |     No      |                                  TBD                                   |
-|   Nutcracker    |     No      |                                  TBD                                   |
+|   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |
 |   Snare Flea    |     No      |                                  TBD                                   |
 |  Spore Lizard   |     Yes     |                          Can be used as mount                          |
 |     Thumper     |     No      |                                  TBD                                   |

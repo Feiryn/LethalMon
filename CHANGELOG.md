@@ -1,3 +1,17 @@
+# 0.3.0
+
+- Ghost girl is now catchable
+- Nutcracker is now catchable
+- Clients can now control the Spore Lizard
+- Added an 1/2 chance to not consume the ball when a capture fails
+- Monsters can now be scanned in order to know if they are catchable (implemented) or not
+- Tulip snake will now fight back when a capture fails
+- Improved the balls shakes algorithm to be more accurate
+- Tamed monsters will no longer walk away when you invoke them and they will look at you directly
+- The message that says "You already have a monster out" is now more visible
+- Tulip snakes can no longer be captured by the player they are clinging to
+- Fixed a bug that could make the rider of a tulip snake go under the ground
+
 # 0.2.2
 
 - Changed the key to unmount a monster to the crouch key
