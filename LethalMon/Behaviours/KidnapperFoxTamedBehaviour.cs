@@ -1,6 +1,5 @@
 ﻿using GameNetcodeStuff;
 using LethalMon.Items;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -9,7 +8,6 @@ using Vector3 = UnityEngine.Vector3;
 
 namespace LethalMon.Behaviours
 {
-#if DEBUG
     internal class KidnapperFoxTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
@@ -37,8 +35,6 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal bool controlTipEnabled = false;
-
         internal List<GameObject> hidingSpores = [];
         internal readonly int MaximumHidingSpores = 3;
         internal Vector3 lastHidingSporePosition = Vector3.zero;
@@ -47,23 +43,7 @@ namespace LethalMon.Behaviours
         internal float idleTime = 0f;
         #endregion
 
-    #region Action Keys
-    private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Spawn hiding shroud" }
-        };
-        internal override List<ActionKey> ActionKeys => _actionKeys;
-
-        internal override void ActionKey1Pressed()
-        {
-            base.ActionKey1Pressed();
-
-            GenerateHidingMoldAt(Fox.transform.position);
-        }
-        #endregion
-
         #region Base Methods
-
         internal void Awake()
         {
 #if DEBUG
@@ -91,12 +71,10 @@ namespace LethalMon.Behaviours
             switch (behaviour)
             {
                 case TamingBehaviour.TamedFollowing:
-                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-                    controlTipEnabled = true;
-
+                    Fox.inSpecialAnimation = false;
                     Fox.EnableEnemyMesh(enable: true);
                     Fox.agent.enabled = true;
-                    Fox.agent.speed = 6f;
+                    Fox.agent.speed = 5f;
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -124,12 +102,8 @@ namespace LethalMon.Behaviours
                         GenerateHidingMoldAt(Fox.transform.position);
                 }
             }
-        }
-
-        public override void MoveTowards(Vector3 position)
-        {
-            LethalMon.Log("MoveTowards " + position);
-            base.MoveTowards(position);
+            else
+                idleTime = 0f;
         }
 
         internal override void OnTamedDefending()
@@ -142,18 +116,6 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
-        }
-
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
-        {
-            // ANY CLIENT
-            base.OnUpdate(update, doAIInterval);
-        }
-
-        internal override void DoAIInterval()
-        {
-            // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
-            base.DoAIInterval();
         }
 
         public override PokeballItem? RetrieveInBall(Vector3 position)
@@ -198,22 +160,6 @@ namespace LethalMon.Behaviours
             RoundManager.Instance.PlayAudibleNoise(MoldSpreadManager.destroyAudio.transform.position, 6f, 0.5f, 0, noiseIsInsideClosedShip: false, 99611);
         }
         #endregion
-
-        #region RPCs
-        /*[ServerRpc(RequireOwnership = false)]
-        public void TestServerRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // HOST ONLY
-            TestClientRpc(someParameter, anotherParameter);
-        }
-
-        [ClientRpc]
-        public void TestClientRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // ANY CLIENT (HOST INCLUDED)
-        }*/
-        #endregion
     }
-#endif
 }
 
