@@ -130,8 +130,11 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        hoarderBug.angryTimer = 10f;
-        hoarderBug.angryAtPlayer = playerWhoThrewBall;
+        if (Utils.IsHost)
+        {
+            hoarderBug.angryTimer = 10f;
+            hoarderBug.angryAtPlayer = playerWhoThrewBall;
+        }
     }
 
     internal override void DoAIInterval()

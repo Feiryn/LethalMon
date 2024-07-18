@@ -396,7 +396,7 @@ namespace LethalMon.Behaviours
                 }
             }
         }
-
+        
         [ServerRpc(RequireOwnership = false)]
         public void OnHitTargetEnemyServerRpc(NetworkObjectReference enemyRef)
         {

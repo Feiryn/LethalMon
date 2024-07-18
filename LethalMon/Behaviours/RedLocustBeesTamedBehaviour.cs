@@ -105,9 +105,13 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
-        bees.SwitchToBehaviourState(2);
-        RedLocustBeesPatch.AngryUntil.Add(bees.GetInstanceID(), DateTime.Now.AddSeconds(10)); // todo: solve locally here instead of patch
+        if (Utils.IsHost)
+        {
+            bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
+            bees.SwitchToBehaviourState(2);
+            RedLocustBeesPatch.AngryUntil.Add(bees.GetInstanceID(),
+                DateTime.Now.AddSeconds(10)); // todo: solve locally here instead of patch
+        }
     }
     #endregion
 

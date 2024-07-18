@@ -1,6 +1,8 @@
+using System;
+using System.Linq;
 using HarmonyLib;
 using LethalMon.Behaviours;
-using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
 
@@ -19,6 +21,31 @@ public class EnemyAIPatch
         else
         {
             LethalMon.Log("No TamedEnemyBehaviour component found before EnemyAI OnDestroy", LethalMon.LogType.Warning);
+        }
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.SwitchToBehaviourStateOnLocalClient))]
+    [HarmonyPostfix]
+    private static void SwitchToBehaviourStateOnLocalClientPostfix(EnemyAI __instance, int stateIndex)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        if (tamedEnemyBehaviour != null)
+        {
+            if (stateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
+            {
+                if (stateIndex <= tamedEnemyBehaviour.LastDefaultBehaviourIndex + TamedEnemyBehaviour.TamedBehaviourCount)
+                {
+                    tamedEnemyBehaviour.InitTamingBehaviour((TamedEnemyBehaviour.TamingBehaviour) stateIndex - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
+                }
+                else
+                {
+                    tamedEnemyBehaviour.InitCustomBehaviour(stateIndex - TamedEnemyBehaviour.TamedBehaviourCount - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
+                }
+            }
+        }
+        else
+        {
+            LethalMon.Log("No TamedEnemyBehaviour component found before EnemyAI SwitchToBehaviourStateOnLocalClient", LethalMon.LogType.Warning);
         }
     }
 }

@@ -53,4 +53,6 @@ public abstract class CatchableEnemy
     }
 
     public virtual bool CanBeCapturedBy(EnemyAI enemyAI, PlayerControllerB player) { return true; }
+    
+    public virtual void BeforeCapture(EnemyAI enemyAI, PlayerControllerB player) { }
 }

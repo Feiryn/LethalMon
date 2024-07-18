@@ -204,7 +204,7 @@ public class PlayerControllerBPatch
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
 
-            if (enemyAI != null)
+            if (enemyAI != null && enemyAI != tamedBehaviour.Enemy)
             {
                 tamedBehaviour.targetEnemy = enemyAI;
                 tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);

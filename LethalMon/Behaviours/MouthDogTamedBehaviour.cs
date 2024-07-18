@@ -58,7 +58,8 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
-        StartCoroutine(EscapedFromBallCoroutine(playerWhoThrewBall));
+        if (Utils.IsHost)
+            StartCoroutine(EscapedFromBallCoroutine(playerWhoThrewBall));
     }
 
     internal override void OnTamedFollowing()

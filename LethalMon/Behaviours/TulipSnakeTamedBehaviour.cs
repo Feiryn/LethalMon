@@ -169,31 +169,36 @@ namespace LethalMon.Behaviours
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            if (playerWhoThrewBall == null || !playerWhoThrewBall.isPlayerControlled || playerWhoThrewBall.isPlayerDead) return;
-
-            var distance = Vector3.Distance(playerWhoThrewBall.transform.position, tulipSnake.transform.position);
-            if (distance > 50f) return;
-
-            var hasLineOfSight = tulipSnake.CheckLineOfSightForPosition(playerWhoThrewBall.transform.position, 180f);
-
-            LethalMon.Log("TulipSnake.OnEscapedFromBall distance: " + distance + " / LOS: " + hasLineOfSight);
-            if (distance > 15f || !hasLineOfSight)
+            if (Utils.IsHost)
             {
-                // DOAIInterval case 0
-                tulipSnake.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
-                tulipSnake.timeSinceSeeingTarget = 0f;
-                tulipSnake.SwitchToBehaviourServerRpc(1);
-                return;
-            }
+                if (playerWhoThrewBall == null || !playerWhoThrewBall.isPlayerControlled ||
+                    playerWhoThrewBall.isPlayerDead) return;
 
-            // DOAIInterval case 1
-            tulipSnake.targetPlayer = playerWhoThrewBall;
-            Vector3 vector = tulipSnake.targetPlayer.transform.position - base.transform.position;
-            vector += UnityEngine.Random.insideUnitSphere * UnityEngine.Random.Range(0.05f, 0.15f);
-            vector.y = Mathf.Clamp(vector.y, -16f, 16f);
-            vector = Vector3.Normalize(vector * 1000f);
-            tulipSnake.StartLeapOnLocalClient(vector);
-            tulipSnake.StartLeapClientRpc(vector);
+                var distance = Vector3.Distance(playerWhoThrewBall.transform.position, tulipSnake.transform.position);
+                if (distance > 50f) return;
+
+                var hasLineOfSight =
+                    tulipSnake.CheckLineOfSightForPosition(playerWhoThrewBall.transform.position, 180f);
+
+                LethalMon.Log("TulipSnake.OnEscapedFromBall distance: " + distance + " / LOS: " + hasLineOfSight);
+                if (distance > 15f || !hasLineOfSight)
+                {
+                    // DOAIInterval case 0
+                    tulipSnake.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
+                    tulipSnake.timeSinceSeeingTarget = 0f;
+                    tulipSnake.SwitchToBehaviourServerRpc(1);
+                    return;
+                }
+
+                // DOAIInterval case 1
+                tulipSnake.targetPlayer = playerWhoThrewBall;
+                Vector3 vector = tulipSnake.targetPlayer.transform.position - base.transform.position;
+                vector += UnityEngine.Random.insideUnitSphere * UnityEngine.Random.Range(0.05f, 0.15f);
+                vector.y = Mathf.Clamp(vector.y, -16f, 16f);
+                vector = Vector3.Normalize(vector * 1000f);
+                tulipSnake.StartLeapOnLocalClient(vector);
+                tulipSnake.StartLeapClientRpc(vector);
+            }
         }
         
         public override void OnDestroy()
