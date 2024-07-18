@@ -1,7 +1,11 @@
 ﻿using GameNetcodeStuff;
+using HarmonyLib;
+using LethalLib;
 using LethalMon.Items;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Netcode;
+using Unity.Services.Authentication;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
@@ -48,7 +52,8 @@ namespace LethalMon.Behaviours
         {
 #if DEBUG
             ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-            MoldSpreadManager.GenerateMold(ownerPlayer.transform.position, 2); // Needed so it doesn't get yeeted again at Start
+            if(Utils.IsHost)
+                MoldSpreadManager.GenerateMold(ownerPlayer.transform.position, 2); // Needed so it doesn't get yeeted again at Start
 #endif
         }
         internal override void Start()
@@ -99,7 +104,7 @@ namespace LethalMon.Behaviours
                 {
                     idleTime = 0f;
                     if(Vector3.Distance(lastHidingSporePosition, Fox.transform.position) > 3f)
-                        GenerateHidingMoldAt(Fox.transform.position);
+                        SpawnHidingMoldServerRpc(Fox.transform.position);
                 }
             }
             else
@@ -129,35 +134,119 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Methods
-        internal void GenerateHidingMoldAt(Vector3 position)
-        {
-            var moldSpore = Instantiate(MoldSpreadManager.moldPrefab, position, Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(-180f, 180f), 0f)), MoldSpreadManager.moldContainer);
-            foreach(var meshRenderer in moldSpore.GetComponentsInChildren<MeshRenderer>())
-            {
-                foreach(var material in meshRenderer.materials)
-                {
-                    material.color = new Color(UnityEngine.Random.Range(0f, 0.8f), UnityEngine.Random.Range(0.3f, 1f), 1f);
-                    LethalMon.Log("Changing material: " + material.color.ToString());
-                    LethalMon.Log("Intended material: " + Color.blue.ToString());
-                }
-            }
-            MoldSpreadManager.generatedMold.Add(moldSpore);
-            hidingSpores.Add(moldSpore);
-            if(hidingSpores.Count > MaximumHidingSpores)
-                DestroyHidingSpore(hidingSpores.First());
+        #endregion
 
+        #region HideSpores
+        [ServerRpc(RequireOwnership = false)]
+        public void SpawnHidingMoldServerRpc(Vector3 position)
+        {
+            SpawnHidingMoldClientRpc(position);
             lastHidingSporePosition = position;
         }
 
-        internal void DestroyHidingSpore(GameObject hidingSpore)
+        [ClientRpc]
+        public void SpawnHidingMoldClientRpc(Vector3 position)
         {
-            hidingSpores.Remove(hidingSpore);
+            LethalMon.Log("SpawnHidingMoldClientRpc");
+
+            var moldSpore = Instantiate(MoldSpreadManager.moldPrefab, position, Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(-180f, 180f), 0f)), MoldSpreadManager.moldContainer);
+            foreach (var meshRenderer in moldSpore.GetComponentsInChildren<MeshRenderer>())
+            {
+                foreach (var material in meshRenderer.materials)
+                    material.color = new Color(Random.Range(0f, 0.8f), Random.Range(0.3f, 1f), 1f);
+            }
+
+            moldSpore.AddComponent<HidingMoldTrigger>();
+            MoldSpreadManager.generatedMold.Add(moldSpore);
+            hidingSpores.Add(moldSpore);
+            if(hidingSpores.Count > MaximumHidingSpores)
+                DestroyHidingSpore(hidingSpores[0]);
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void DestroyHidingSporeServerRpc(int index)
+        {
+            DestroyHidingSporeClientRpc(index);
+        }
+
+        [ClientRpc]
+        public void DestroyHidingSporeClientRpc(int index)
+        {
+            if(hidingSpores.Count >= index)
+            {
+                LethalMon.Log("Syncing error for hidingSpores. Index out of range.", LethalMon.LogType.Warning);
+                return;
+            }
+
+            DestroyHidingSpore(hidingSpores[index]);
+        }
+
+        public void DestroyHidingSpore(GameObject hidingSpore)
+        {
             hidingSpore.SetActive(value: false);
+            hidingSpores.Remove(hidingSpore);
             Instantiate(MoldSpreadManager.destroyParticle, hidingSpore.transform.position + Vector3.up * 0.5f, Quaternion.identity, null);
             MoldSpreadManager.destroyAudio.Stop();
             MoldSpreadManager.destroyAudio.transform.position = hidingSpore.transform.position + Vector3.up * 0.5f;
             MoldSpreadManager.destroyAudio.Play();
             RoundManager.Instance.PlayAudibleNoise(MoldSpreadManager.destroyAudio.transform.position, 6f, 0.5f, 0, noiseIsInsideClosedShip: false, 99611);
+        }
+
+        internal class HidingMoldTrigger : MonoBehaviour
+        {
+            public static List<PlayerControllerB> hidingPlayers = new List<PlayerControllerB>();
+
+            private void OnTriggerEnter(Collider other)
+            {
+                LethalMon.Log("HidingMoldTrigger.OnTriggerEnter: " + other.name);
+
+                if (!other.gameObject.TryGetComponent(out PlayerControllerB player))
+                    return;
+
+                if(player == Utils.CurrentPlayer)
+                {
+                    // todo: some visual effect
+                }
+
+                hidingPlayers.Add(player);
+                LethalMon.Log($"Player {player.name} is now hiding.");
+            }
+            private void OnTriggerExit(Collider other)
+            {
+                LethalMon.Log("HidingMoldTrigger.OnTriggerExit: " + other.name);
+
+                if (!other.gameObject.TryGetComponent(out PlayerControllerB player))
+                    return;
+
+                if (player == Utils.CurrentPlayer)
+                {
+                    // todo: revert the visual effect
+                }
+
+                hidingPlayers.Remove(player);
+                LethalMon.Log($"Player {player.name} is not hiding anymore.");
+            }
+        }
+        #endregion
+        
+        #region Patches
+        [HarmonyPatch(typeof(MoldSpreadManager), "GenerateMold")]
+        [HarmonyPostfix]
+        public static void test()
+        {
+            LethalMon.Log("MoldSpreadManager.GenerateMold");
+        }
+        [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.PlayerIsTargetable))]
+        [HarmonyPostfix] // could potentially use PlayerControllerB.inAnimationWithEnemy instead, but Hit() won't work on the player then
+        public static bool PlayerIsTargetablePrefab(bool __result, EnemyAI __instance, PlayerControllerB playerScript)
+        {
+            if (HidingMoldTrigger.hidingPlayers.Contains(playerScript) && Vector3.Distance(__instance.transform.position, playerScript.transform.position) > 3f)
+            {
+                LethalMon.Log("Player inside hiding spore. Not targetable.");
+                return false;
+            }
+
+            return __result;
         }
         #endregion
     }

@@ -95,7 +95,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
         Harmony.PatchAll(typeof(DebugPatches));
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
-        Harmony.PatchAll(typeof(SporeLizardTamedBehaviour));
+        Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
         Harmony.PatchAll(typeof(MouthDogPatch));
         Harmony.PatchAll(typeof(EnemyAIPatch));
         Harmony.PatchAll(typeof(HUDManagerPatch));
