@@ -1,11 +1,8 @@
 ﻿using GameNetcodeStuff;
-using HarmonyLib;
 using LethalMon.Items;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
-using Unity.Netcode;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
@@ -16,7 +13,17 @@ namespace LethalMon.Behaviours
     internal class KidnapperFoxTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        internal BushWolfEnemy fox { get; private set; }
+        private BushWolfEnemy? _fox = null;
+        internal BushWolfEnemy Fox
+        {
+            get
+            {
+                if (_fox == null)
+                    _fox = (Enemy as BushWolfEnemy)!;
+
+                return _fox;
+            }
+        }
 
         private MoldSpreadManager? _moldSpreadManager = null;
         internal MoldSpreadManager MoldSpreadManager
@@ -32,42 +39,13 @@ namespace LethalMon.Behaviours
 
         internal bool controlTipEnabled = false;
 
-        internal List<GameObject> hidingSpores = new List<GameObject>();
+        internal List<GameObject> hidingSpores = [];
         internal readonly int MaximumHidingSpores = 3;
+        internal Vector3 lastHidingSporePosition = Vector3.zero;
+
+        internal readonly float IdleTimeTillSpawningSpore = 3f;
+        internal float idleTime = 0f;
         #endregion
-
-        #region Custom behaviours
-        internal enum CustomBehaviour
-        {
-            TestBehavior = 1
-        }
-        internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
-        {
-            { new (CustomBehaviour.TestBehavior.ToString(), OnTestBehavior) }
-        };
-
-        /*internal override void InitCustomBehaviour(int behaviour)
-        {
-            // OWNER ONLY
-            base.InitCustomBehaviour(behaviour);
-
-            switch ((CustomBehaviour)behaviour)
-            {
-                case CustomBehaviour.TestBehavior:
-                    break;
-
-                default:
-                    break;
-            }
-        }*/
-
-        internal void OnTestBehavior()
-        {
-            /* USE THIS SOMEWHERE TO ACTIVATE THE CUSTOM BEHAVIOR
-                *   SwitchToCustomBehaviour((int)CustomBehaviour.TestBehavior);
-            */
-    }
-    #endregion
 
     #region Action Keys
     private List<ActionKey> _actionKeys = new List<ActionKey>()
@@ -80,7 +58,7 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            GenerateHidingMoldAt(fox.transform.position);
+            GenerateHidingMoldAt(Fox.transform.position);
         }
         #endregion
 
@@ -96,9 +74,6 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
-
-            fox = (Enemy as BushWolfEnemy)!;
-
 #if DEBUG
             // Debug
             isOutsideOfBall = true;
@@ -108,7 +83,7 @@ namespace LethalMon.Behaviours
 #endif
         }
 
-        /*internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // OWNER ONLY
             base.InitTamingBehaviour(behaviour);
@@ -116,6 +91,12 @@ namespace LethalMon.Behaviours
             switch (behaviour)
             {
                 case TamingBehaviour.TamedFollowing:
+                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+                    controlTipEnabled = true;
+
+                    Fox.EnableEnemyMesh(enable: true);
+                    Fox.agent.enabled = true;
+                    Fox.agent.speed = 6f;
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -123,27 +104,26 @@ namespace LethalMon.Behaviours
 
                 default: break;
             }
-        }*/
+        }
 
         internal override void OnTamedFollowing()
         {
             // OWNER ONLY
             base.OnTamedFollowing();
 
-            fox.CalculateAnimationDirection(fox.maxAnimSpeed);
-            fox.AddProceduralOffsetToLimbsOverTerrain();
+            Fox.CalculateAnimationDirection(Fox.maxAnimSpeed);
+            Fox.AddProceduralOffsetToLimbsOverTerrain();
 
-#if DEBUG
-            if (!controlTipEnabled)
+            if(Fox.agentLocalVelocity.x == 0f && Fox.agentLocalVelocity.z == 0f) // Idle
             {
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true); // Move to InitTamingBehaviour later
-                controlTipEnabled = true;
-
-                fox.EnableEnemyMesh(enable: true);
-                fox.agent.enabled = true;
-                fox.agent.speed = 6f;
+                idleTime += Time.deltaTime;
+                if(idleTime > IdleTimeTillSpawningSpore)
+                {
+                    idleTime = 0f;
+                    if(Vector3.Distance(lastHidingSporePosition, Fox.transform.position) > 3f)
+                        GenerateHidingMoldAt(Fox.transform.position);
+                }
             }
-#endif
         }
 
         public override void MoveTowards(Vector3 position)
@@ -160,7 +140,7 @@ namespace LethalMon.Behaviours
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
-            // HOST ONLY
+            // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
         }
 
@@ -176,7 +156,7 @@ namespace LethalMon.Behaviours
             base.DoAIInterval();
         }
 
-        public override PokeballItem RetrieveInBall(Vector3 position)
+        public override PokeballItem? RetrieveInBall(Vector3 position)
         {
             // ANY CLIENT
             for (int i = hidingSpores.Count - 1; i >= 0; --i)
@@ -194,7 +174,7 @@ namespace LethalMon.Behaviours
             {
                 foreach(var material in meshRenderer.materials)
                 {
-                    material.color = new Color(UnityEngine.Random.Range(0f, 0.5f), UnityEngine.Random.Range(0.3f, 0.9f), 1f);
+                    material.color = new Color(UnityEngine.Random.Range(0f, 0.8f), UnityEngine.Random.Range(0.3f, 1f), 1f);
                     LethalMon.Log("Changing material: " + material.color.ToString());
                     LethalMon.Log("Intended material: " + Color.blue.ToString());
                 }
@@ -203,6 +183,8 @@ namespace LethalMon.Behaviours
             hidingSpores.Add(moldSpore);
             if(hidingSpores.Count > MaximumHidingSpores)
                 DestroyHidingSpore(hidingSpores.First());
+
+            lastHidingSporePosition = position;
         }
 
         internal void DestroyHidingSpore(GameObject hidingSpore)
@@ -210,17 +192,15 @@ namespace LethalMon.Behaviours
             hidingSpores.Remove(hidingSpore);
             hidingSpore.SetActive(value: false);
             Instantiate(MoldSpreadManager.destroyParticle, hidingSpore.transform.position + Vector3.up * 0.5f, Quaternion.identity, null);
-            // todo: Use Utils.Play ...
             MoldSpreadManager.destroyAudio.Stop();
             MoldSpreadManager.destroyAudio.transform.position = hidingSpore.transform.position + Vector3.up * 0.5f;
             MoldSpreadManager.destroyAudio.Play();
-
             RoundManager.Instance.PlayAudibleNoise(MoldSpreadManager.destroyAudio.transform.position, 6f, 0.5f, 0, noiseIsInsideClosedShip: false, 99611);
         }
         #endregion
 
         #region RPCs
-        [ServerRpc(RequireOwnership = false)]
+        /*[ServerRpc(RequireOwnership = false)]
         public void TestServerRpc(float someParameter, Vector3 anotherParameter)
         {
             // HOST ONLY
@@ -231,7 +211,7 @@ namespace LethalMon.Behaviours
         public void TestClientRpc(float someParameter, Vector3 anotherParameter)
         {
             // ANY CLIENT (HOST INCLUDED)
-        }
+        }*/
         #endregion
     }
 #endif
