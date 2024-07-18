@@ -8,7 +8,7 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static LethalMon.Utils;
+using static LethalMon.Utils.LayerMasks;
 
 namespace LethalMon.Behaviours;
 
@@ -73,6 +73,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     public bool isOutsideOfBall = false;
+
+    internal float targetNearestEnemyInterval = 0f;
 
     #region Behaviours
     public enum TamingBehaviour
@@ -502,36 +504,48 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
     {
-        if (ownerPlayer == null) return;
+        targetNearestEnemyInterval -= Time.deltaTime;
+        if (targetNearestEnemyInterval > 0)
+            return;
 
-        EnemyAI? target = null;
-        float distance = float.MaxValue;
-        // Check if enemy in sight
-        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-        {            
-            if (spawnedEnemy?.transform == null || spawnedEnemy == Enemy || spawnedEnemy.gameObject.layer == (int)Utils.LayerMasks.Mask.EnemiesNotRendered || spawnedEnemy.isEnemyDead) continue;
-
-            if (requireLOS && !Enemy.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 180f, 10)) continue;
-
-            float distanceTowardsEnemy;
-            if(fromOwnerPerspective)
-                distanceTowardsEnemy = Vector3.Distance(ownerPlayer.transform.position, spawnedEnemy.transform.position);
-            else
-                distanceTowardsEnemy = Vector3.Distance(Enemy.transform.position, spawnedEnemy.transform.position);
-            if (distanceTowardsEnemy < distance)
-            {
-                LethalMon.Log("Can target enemy " + spawnedEnemy + "at distance " + distanceTowardsEnemy);
-                distance = distanceTowardsEnemy;
-                target = spawnedEnemy;
-            }
-        }
-
+        targetNearestEnemyInterval = 1f;
+        
+        var target = NearestEnemy(requireLOS, fromOwnerPerspective);
         if(target != null)
         {
             targetEnemy = target;
             SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
             LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
         }
+    }
+
+    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    {
+        EnemyAI? target = null;
+        float distance = float.MaxValue;
+
+        if (fromOwnerPerspective && ownerPlayer == null) return null;
+
+        var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
+        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, ToInt([Mask.Enemies]), QueryTriggerInteraction.Collide);
+        foreach (var enemyHit in enemiesInRange)
+        {
+            var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
+            if (enemyInRange?.transform == null) continue;
+
+            if (enemyInRange == Enemy || enemyInRange.gameObject.layer == (int)Mask.EnemiesNotRendered || enemyInRange.isEnemyDead) continue;
+
+            if (requireLOS && !enemyInRange.CheckLineOfSightForPosition(startPosition, 180f, 10)) continue;
+
+            float distanceTowardsEnemy = Vector3.Distance(startPosition, enemyInRange.transform.position);
+            if (distanceTowardsEnemy < distance)
+            {
+                distance = distanceTowardsEnemy;
+                target = enemyInRange;
+            }
+        }
+
+        return target;
     }
 
     public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
