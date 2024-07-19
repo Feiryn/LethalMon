@@ -1,16 +1,21 @@
+# 0.3.1
+
+- Fixed a bug that made the Nutcracker uncatchable
+- Fixed a bug that allowed to capture dead monsters
+
 # 0.3.0
 
-- Ghost girl is now catchable
+- Ghost girl is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
 - Nutcracker is now catchable
-- Clients can now control the Spore Lizard
+- Clients can now control the Spore Lizard (thanks to [@NiroDev](https://github.com/NiroDev))
 - Added an 1/2 chance to not consume the ball when a capture fails
 - Monsters can now be scanned in order to know if they are catchable (implemented) or not
-- Tulip snake will now fight back when a capture fails
+- Tulip snake will now fight back when a capture fails (thanks to [@NiroDev](https://github.com/NiroDev))
 - Improved the balls shakes algorithm to be more accurate
 - Tamed monsters will no longer walk away when you invoke them and they will look at you directly
 - The message that says "You already have a monster out" is now more visible
-- Tulip snakes can no longer be captured by the player they are clinging to
-- Fixed a bug that could make the rider of a tulip snake go under the ground
+- Tulip snakes can no longer be captured by the player they are clinging to (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed a bug that could make the rider of a tulip snake go under the ground (thanks to [@NiroDev](https://github.com/NiroDev))
 
 # 0.2.2
 
