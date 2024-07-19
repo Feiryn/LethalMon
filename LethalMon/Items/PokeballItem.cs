@@ -90,7 +90,7 @@ public abstract class PokeballItem : ThrowableItem
         LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
 
         EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
-        if (enemyToCapture == null) return;
+        if (enemyToCapture == null || enemyToCapture.isEnemyDead) return;
 
         if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
                 out CatchableEnemy.CatchableEnemy catchable))
