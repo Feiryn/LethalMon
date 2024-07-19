@@ -6,7 +6,7 @@ namespace LethalMon.CatchableEnemy;
 
 public class CatchableNutcracker : CatchableEnemy
 {
-    public CatchableNutcracker() : base(8, "Nutcracker", 10)
+    public CatchableNutcracker() : base(8, "Nutcracker", 9)
     {
     }
 
