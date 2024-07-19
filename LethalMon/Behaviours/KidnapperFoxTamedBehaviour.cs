@@ -1,11 +1,10 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
-using LethalLib;
+using LethalLib.Modules;
 using LethalMon.Items;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
-using Unity.Services.Authentication;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
@@ -39,6 +38,8 @@ namespace LethalMon.Behaviours
             }
         }
 
+        internal static NetworkList<ulong> hidingPlayers = new NetworkList<ulong>();
+
         internal List<GameObject> hidingSpores = [];
         internal readonly int MaximumHidingSpores = 3;
         internal Vector3 lastHidingSporePosition = Vector3.zero;
@@ -47,20 +48,49 @@ namespace LethalMon.Behaviours
         internal float idleTime = 0f;
         #endregion
 
+        #region Action Keys
+        private List<ActionKey> _actionKeys = new List<ActionKey>()
+        {
+            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Spawn hiding shroud" }
+        };
+        internal override List<ActionKey> ActionKeys => _actionKeys;
+
+        internal bool tongueOut = false;
+        internal override void ActionKey1Pressed()
+        {
+            base.ActionKey1Pressed();
+
+            Fox.creatureAnimator.SetBool("ShootTongue", value: tongueOut);
+            tongueOut = !tongueOut;
+            Fox.creatureAnimator.SetBool("mouthOpen", Vector3.Distance(Fox.transform.position, ownerPlayer!.transform.position) < 3f);
+           // Fox.creatureAnimator.SetBool("ReelingPlayerIn", value: true);
+
+            /*Fox.creatureAnimator.SetTrigger("MatingCall");
+            int num = Random.Range(0, Fox.callsClose.Length);
+            Fox.callClose.PlayOneShot(Fox.callsClose[num]);
+            Fox.callFar.PlayOneShot(Fox.callsFar[num]);
+            RoundManager.Instance.PlayAudibleNoise(base.transform.position, 20f, 0.6f, 0, noiseIsInsideClosedShip: false, 245403);*/
+        }
+        #endregion
+
         #region Base Methods
         internal void Awake()
         {
 #if DEBUG
             ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+            ownClientId = 0ul;
             if(Utils.IsHost)
                 MoldSpreadManager.GenerateMold(ownerPlayer.transform.position, 2); // Needed so it doesn't get yeeted again at Start
 #endif
         }
+
         internal override void Start()
         {
             base.Start();
 #if DEBUG
             // Debug
+            ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+            ownClientId = 0ul;
             isOutsideOfBall = true;
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             if (Utils.IsHost)
@@ -78,8 +108,11 @@ namespace LethalMon.Behaviours
                 case TamingBehaviour.TamedFollowing:
                     Fox.inSpecialAnimation = false;
                     Fox.EnableEnemyMesh(enable: true);
-                    Fox.agent.enabled = true;
-                    Fox.agent.speed = 5f;
+                    if (Fox.agent != null)
+                    {
+                        Fox.agent.enabled = true;
+                        Fox.agent.speed = 5f;
+                    }
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -94,17 +127,22 @@ namespace LethalMon.Behaviours
             // OWNER ONLY
             base.OnTamedFollowing();
 
+            if(Fox.backedUpFromWatchingPlayer )
+
             Fox.CalculateAnimationDirection(Fox.maxAnimSpeed);
             Fox.AddProceduralOffsetToLimbsOverTerrain();
 
             if(Fox.agentLocalVelocity.x == 0f && Fox.agentLocalVelocity.z == 0f) // Idle
             {
                 idleTime += Time.deltaTime;
-                if(idleTime > IdleTimeTillSpawningSpore)
+                if (idleTime > IdleTimeTillSpawningSpore)
                 {
                     idleTime = 0f;
-                    if(Vector3.Distance(lastHidingSporePosition, Fox.transform.position) > 3f)
+                    if (Vector3.Distance(lastHidingSporePosition, Fox.transform.position) > 3f)
+                    {
                         SpawnHidingMoldServerRpc(Fox.transform.position);
+                        lastHidingSporePosition = Fox.transform.position;
+                    }
                 }
             }
             else
@@ -141,7 +179,6 @@ namespace LethalMon.Behaviours
         public void SpawnHidingMoldServerRpc(Vector3 position)
         {
             SpawnHidingMoldClientRpc(position);
-            lastHidingSporePosition = position;
         }
 
         [ClientRpc]
@@ -156,7 +193,15 @@ namespace LethalMon.Behaviours
                     material.color = new Color(Random.Range(0f, 0.8f), Random.Range(0.3f, 1f), 1f);
             }
 
-            moldSpore.AddComponent<HidingMoldTrigger>();
+            moldSpore.AddComponent<HidingMoldTrigger>().moldOwner = this;
+            var scanNode = moldSpore.GetComponentInChildren<ScanNodeProperties>();
+            if(scanNode != null)
+            {
+                scanNode.headerText = "Hiding Shroud";
+                scanNode.subText = "Crouch to hide from enemies";
+                scanNode.nodeType = 2;
+            }
+
             MoldSpreadManager.generatedMold.Add(moldSpore);
             hidingSpores.Add(moldSpore);
             if(hidingSpores.Count > MaximumHidingSpores)
@@ -192,55 +237,86 @@ namespace LethalMon.Behaviours
             RoundManager.Instance.PlayAudibleNoise(MoldSpreadManager.destroyAudio.transform.position, 6f, 0.5f, 0, noiseIsInsideClosedShip: false, 99611);
         }
 
+        [ServerRpc(RequireOwnership = false)]
+        internal void SetPlayerHiddenInMoldServerRpc(ulong playerID, bool hide = true)
+        {
+            if (hide)
+            {
+                hidingPlayers.Add(playerID);
+                LethalMon.Log($"Player {playerID} is now hiding.");
+            }
+            else
+            {
+                hidingPlayers.Remove(playerID);
+                LethalMon.Log($"Player {playerID} is not hiding anymore.");
+            }
+        }
+
+
         internal class HidingMoldTrigger : MonoBehaviour
         {
-            public static List<PlayerControllerB> hidingPlayers = new List<PlayerControllerB>();
+            internal KidnapperFoxTamedBehaviour? moldOwner = null;
+            internal bool localPlayerInsideMold = false, localPlayerHiding = false;
 
             private void OnTriggerEnter(Collider other)
             {
-                LethalMon.Log("HidingMoldTrigger.OnTriggerEnter: " + other.name);
-
-                if (!other.gameObject.TryGetComponent(out PlayerControllerB player))
+                if (!other.gameObject.TryGetComponent(out PlayerControllerB player) || player != Utils.CurrentPlayer)
                     return;
 
-                if(player == Utils.CurrentPlayer)
-                {
-                    // todo: some visual effect
-                }
+                foreach (var hidingPlayer in hidingPlayers)
+                    LethalMon.Log("Hiding player: " + hidingPlayer, LethalMon.LogType.Warning);
 
-                hidingPlayers.Add(player);
-                LethalMon.Log($"Player {player.name} is now hiding.");
+                localPlayerInsideMold = true;
+
+                if (player.isCrouching)
+                    HideLocalPlayer();
             }
+
+            private void OnTriggerStay()
+            {
+                if (!localPlayerInsideMold)
+                    return;
+
+                var isCrouching = Utils.CurrentPlayer.isCrouching;
+                if (localPlayerHiding && !isCrouching)
+                    UnhideLocalPlayer();
+                else if (!localPlayerHiding && isCrouching)
+                    HideLocalPlayer();
+            }
+
             private void OnTriggerExit(Collider other)
             {
-                LethalMon.Log("HidingMoldTrigger.OnTriggerExit: " + other.name);
-
-                if (!other.gameObject.TryGetComponent(out PlayerControllerB player))
+                if (!other.gameObject.TryGetComponent(out PlayerControllerB player) || player != Utils.CurrentPlayer)
                     return;
 
-                if (player == Utils.CurrentPlayer)
-                {
-                    // todo: revert the visual effect
-                }
+                localPlayerInsideMold = false;
 
-                hidingPlayers.Remove(player);
-                LethalMon.Log($"Player {player.name} is not hiding anymore.");
+                if(localPlayerHiding)
+                    UnhideLocalPlayer();
+            }
+
+            private void HideLocalPlayer()
+            {
+                localPlayerHiding = true;
+                Utils.CurrentPlayer.drunkness = 0.3f;
+                moldOwner!.SetPlayerHiddenInMoldServerRpc(Utils.CurrentPlayerID!.Value, true);
+            }
+
+            private void UnhideLocalPlayer()
+            {
+                localPlayerHiding = false;
+                Utils.CurrentPlayer.drunkness = 0f;
+                moldOwner!.SetPlayerHiddenInMoldServerRpc(Utils.CurrentPlayerID!.Value, false);
             }
         }
         #endregion
-        
+
         #region Patches
-        [HarmonyPatch(typeof(MoldSpreadManager), "GenerateMold")]
-        [HarmonyPostfix]
-        public static void test()
-        {
-            LethalMon.Log("MoldSpreadManager.GenerateMold");
-        }
         [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.PlayerIsTargetable))]
-        [HarmonyPostfix] // could potentially use PlayerControllerB.inAnimationWithEnemy instead, but Hit() won't work on the player then
-        public static bool PlayerIsTargetablePrefab(bool __result, EnemyAI __instance, PlayerControllerB playerScript)
+        [HarmonyPostfix]
+        public static bool PlayerIsTargetablePostfix(bool __result, EnemyAI __instance, PlayerControllerB playerScript)
         {
-            if (HidingMoldTrigger.hidingPlayers.Contains(playerScript) && Vector3.Distance(__instance.transform.position, playerScript.transform.position) > 3f)
+            if (hidingPlayers.Contains(playerScript.playerClientId) && Vector3.Distance(__instance.transform.position, playerScript.transform.position) > 3f)
             {
                 LethalMon.Log("Player inside hiding spore. Not targetable.");
                 return false;
