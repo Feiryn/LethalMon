@@ -51,7 +51,7 @@ namespace LethalMon.Behaviours
                     if (targetEnemy == null) return;
 
                     Butler.agent.speed = 9f;
-                    Butler.creatureAnimator.SetBool("Running", true);
+                    Butler.SetButlerRunningServerRpc(true);
                     Butler.lookTarget = targetEnemy.transform;
                     Butler.headLookTarget = targetEnemy.transform;
                     Butler.SetDestinationToPosition(targetEnemy!.transform.position);
@@ -59,7 +59,7 @@ namespace LethalMon.Behaviours
                 case CustomBehaviour.CleanUpEnemy:
                     timeCleaning = 0f;
                     Butler.agent.speed = 0f;
-                    Butler.creatureAnimator.SetBool("Running", false);
+                    Butler.SetButlerRunningServerRpc(false);
                     Butler.SetSweepingAnimServerRpc(true);
                     break;
 
@@ -135,7 +135,7 @@ namespace LethalMon.Behaviours
                     if (ownerPlayer == null) return;
 
                     Butler.agent.speed = 6f;
-                    Butler.creatureAnimator.SetBool("Running", false);
+                    Butler.SetButlerRunningServerRpc(false);
                     Butler.lookTarget = ownerPlayer.transform;
                     Butler.headLookTarget = ownerPlayer.playerGlobalHead;
                     break;
@@ -144,7 +144,7 @@ namespace LethalMon.Behaviours
                     if (targetEnemy == null) return;
 
                     Butler.agent.speed = 9f;
-                    Butler.creatureAnimator.SetBool("Running", true);
+                    Butler.SetButlerRunningServerRpc(true);
                     Butler.lookTarget = targetEnemy.transform;
                     Butler.headLookTarget = targetEnemy.transform;
                     break;
@@ -180,6 +180,12 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            Butler.watchingPlayer = playerWhoThrewBall;
+            Butler.targetPlayer = playerWhoThrewBall;
+            Butler.syncedTargetPlayer = playerWhoThrewBall;
+            if (IsOwner)
+                SwitchToDefaultBehaviour(2);
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
