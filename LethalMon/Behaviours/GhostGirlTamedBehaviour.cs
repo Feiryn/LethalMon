@@ -346,32 +346,6 @@ namespace LethalMon.Behaviours
             previousPosition = GhostGirl.transform.position;
         }
 
-        internal void DropBlood(int minAmount = 3, int maxAmount = 7)
-        {
-            if (ownerPlayer == null) return;
-
-            var amount = UnityEngine.Random.Range(minAmount, maxAmount);
-            while(amount > 0)
-            {
-                amount--;
-                ownerPlayer.currentBloodIndex = (ownerPlayer.currentBloodIndex + 1) % ownerPlayer.playerBloodPooledObjects.Count;
-                var bloodObject = ownerPlayer.playerBloodPooledObjects[ownerPlayer.currentBloodIndex];
-                if (bloodObject == null) continue;
-
-                bloodObject.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.up);
-                bloodObject.transform.SetParent(ownerPlayer.isInElevator ? StartOfRound.Instance.elevatorTransform : StartOfRound.Instance.bloodObjectsContainer);
-
-                var randomDirection = new Vector3(UnityEngine.Random.Range(-0.5f, 0.5f), UnityEngine.Random.Range(-1f, -0.5f), UnityEngine.Random.Range(-0.5f, 0.5f));
-                var interactRay = new Ray(GhostGirl.transform.position + Vector3.up * 2f, randomDirection);
-                if (Physics.Raycast(interactRay, out RaycastHit hit, 6f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
-                {
-                    bloodObject.transform.position = hit.point - Vector3.down * 0.45f;
-                    ownerPlayer.RandomizeBloodRotationAndScale(bloodObject.transform);
-                    bloodObject.transform.gameObject.SetActive(value: true);
-                }
-            }
-        }
-
         internal IEnumerator FlickerLightsAndTurnDownBreaker()
         {
             RoundManager.Instance.FlickerLights(flickerFlashlights: true, disableFlashlights: true);
@@ -453,7 +427,7 @@ namespace LethalMon.Behaviours
             // Effects
             if(enemyAI.enemyType.canDie)
             {
-                DropBlood();
+                DropBlood(GhostGirl.transform.position);
                 if (enemyAI.isEnemyDead && enemyAI.dieSFX != null)
                     Utils.PlaySoundAtPosition(GhostGirl.transform.position, enemyAI.dieSFX, 0.5f);
                 Utils.PlaySoundAtPosition(GhostGirl.transform.position, StartOfRound.Instance.bloodGoreSFX);

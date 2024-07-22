@@ -228,10 +228,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnCallFromBall()
     {
-        for (int i = 0; i <= 29; i++)
+        var scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
+        if (scanNode != null)
         {
-            if (LayerMask.LayerToName(i) != "")
-                LethalMon.Log(LayerMask.LayerToName(i) + " = " + i + ",");
+            scanNode.headerText = "Tamed " + Enemy.enemyType.enemyName;
+            scanNode.subText = "Owner: " + ownerPlayer!.name;
+            scanNode.nodeType = 2;
         }
     }
 
@@ -514,51 +516,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             HUDManagerPatch.EnableHUD(false);
         }
     }
-    #endregion
 
-    #region Methods
-    public void FollowOwner()
-    {
-        if (ownerPlayer == null) return;
-
-        var ownerPosition = ownerPlayer.transform.position;
-        if (Vector3.Distance(Enemy.destination, ownerPosition) < 2f) return;
-
-        //LethalMon.Logger.LogInfo("Follow owner");
-        var enemyPosition = Enemy.transform.position;
-        if (Vector3.Distance(enemyPosition, ownerPosition) > 30f)
-        {
-            TeleportBehindOwner();
-            return;
-        }
-        
-        if (Vector3.Distance(ownerPosition, enemyPosition) > 4f && FindRaySphereIntersections(enemyPosition, (ownerPosition - enemyPosition).normalized, ownerPosition, 4f,
-                     out Vector3 potentialPosition1,
-                     out Vector3 potentialPosition2))
-        {
-            var position = enemyPosition;
-            float distance1 = Vector3.Distance(position, potentialPosition1);
-            float distance2 = Vector3.Distance(position, potentialPosition2);
-
-            if (distance1 > 4f && distance2 > 4f)
-            {
-                if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
-                {
-                    LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
-                    Enemy.agent.enabled = false;
-                    Enemy.agent.enabled = true;
-                }
-
-                MoveTowards(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
-                return;
-            }
-        }
-
-        // Turn in the direction of the owner gradually
-        TurnTowardsPosition(ownerPosition);
-    }
-
-    internal void TurnTowardsPosition(Vector3 position)
+    internal virtual void TurnTowardsPosition(Vector3 position)
     {
         Transform enemyTransform = Enemy.transform;
         Vector3 direction = position - enemyTransform.position;
@@ -569,6 +528,78 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public virtual void MoveTowards(Vector3 position)
     {
         Enemy.SetDestinationToPosition(position);
+    }
+
+    public virtual PokeballItem? RetrieveInBall(Vector3 position)
+    {
+        LethalMon.Log("balltype: " + ballType.ToString());
+        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
+        if (spawnPrefab == null)
+        {
+            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
+            return null;
+        }
+
+        var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+
+        PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+        DateTime now = SystemClock.now;
+        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
+        pokeballItem.fallTime = 0f;
+        pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
+        pokeballItem.SetScrapValue(ballValue);
+        ball.GetComponent<NetworkObject>().Spawn(false);
+        pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
+        pokeballItem.FallToGround();
+
+        OnRetrieveInBall();
+        
+        Enemy.GetComponent<NetworkObject>().Despawn(true);
+
+        return pokeballItem;
+    }
+    #endregion
+
+    #region Methods
+    public void FollowOwner()
+    {
+        if (ownerPlayer == null) return;
+
+        var ownerPosition = ownerPlayer.transform.position;
+        if (Vector3.Distance(Enemy.destination, ownerPosition) > 2f)
+        {
+            //LethalMon.Logger.LogInfo("Follow owner");
+            var enemyPosition = Enemy.transform.position;
+            if (Vector3.Distance(enemyPosition, ownerPosition) > 30f)
+            {
+                TeleportBehindOwner();
+                return;
+            }
+
+            if (Vector3.Distance(ownerPosition, enemyPosition) > 4f && FindRaySphereIntersections(enemyPosition, (ownerPosition - enemyPosition).normalized, ownerPosition, 4f,
+                         out Vector3 potentialPosition1,
+                         out Vector3 potentialPosition2))
+            {
+                var position = enemyPosition;
+                float distance1 = Vector3.Distance(position, potentialPosition1);
+                float distance2 = Vector3.Distance(position, potentialPosition2);
+
+                if (distance1 > 4f && distance2 > 4f)
+                {
+                    if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
+                    {
+                        LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
+                        Enemy.agent.enabled = false;
+                        Enemy.agent.enabled = true;
+                    }
+
+                    MoveTowards(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
+                }
+            }
+        }
+
+        // Turn in the direction of the owner gradually
+        TurnTowardsPosition(ownerPosition);
     }
 
     private void TeleportBehindOwner()
@@ -605,7 +636,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (fromOwnerPerspective && ownerPlayer == null) return null;
 
         var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
-        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, ToInt(new Mask[] { Mask.Enemies }), QueryTriggerInteraction.Collide);
+        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, ToInt([Mask.Enemies]), QueryTriggerInteraction.Collide);
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
@@ -655,33 +686,30 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public virtual PokeballItem? RetrieveInBall(Vector3 position)
+    internal void DropBlood(Vector3 position, int minAmount = 3, int maxAmount = 7)
     {
-        LethalMon.Log("balltype: " + ballType.ToString());
-        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
-        if (spawnPrefab == null)
+        if (ownerPlayer == null) return;
+
+        var amount = UnityEngine.Random.Range(minAmount, maxAmount);
+        while (amount > 0)
         {
-            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
-            return null;
+            amount--;
+            ownerPlayer.currentBloodIndex = (ownerPlayer.currentBloodIndex + 1) % ownerPlayer.playerBloodPooledObjects.Count;
+            var bloodObject = ownerPlayer.playerBloodPooledObjects[ownerPlayer.currentBloodIndex];
+            if (bloodObject == null) continue;
+
+            bloodObject.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.up);
+            bloodObject.transform.SetParent(ownerPlayer.isInElevator ? StartOfRound.Instance.elevatorTransform : StartOfRound.Instance.bloodObjectsContainer);
+
+            var randomDirection = new Vector3(UnityEngine.Random.Range(-0.5f, 0.5f), UnityEngine.Random.Range(-1f, -0.5f), UnityEngine.Random.Range(-0.5f, 0.5f));
+            var interactRay = new Ray(position + Vector3.up * 2f, randomDirection);
+            if (Physics.Raycast(interactRay, out RaycastHit hit, 6f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+            {
+                bloodObject.transform.position = hit.point - Vector3.down * 0.45f;
+                ownerPlayer.RandomizeBloodRotationAndScale(bloodObject.transform);
+                bloodObject.transform.gameObject.SetActive(value: true);
+            }
         }
-
-        var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-
-        PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
-        DateTime now = SystemClock.now;
-        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
-	    pokeballItem.fallTime = 0f;
-	    pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
-	    pokeballItem.SetScrapValue(ballValue);
-	    ball.GetComponent<NetworkObject>().Spawn(false);
-	    pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
-	    pokeballItem.FallToGround();
-
-        OnRetrieveInBall();
-        
-        Enemy.GetComponent<NetworkObject>().Despawn(true);
-
-        return pokeballItem;
     }
 
     public void SetCooldownTimers(Dictionary<string, Tuple<float, DateTime>> cooldownsTimers)
@@ -728,10 +756,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
     {
-        if (!Utils.IsHost) return;
+        if (!Utils.IsHost || enemyAI?.agent == null) return;
 
-        enemyAI.agent.Warp(position);
+        if (enemyAI.agent.enabled)
+            enemyAI.agent.Warp(position);
+        else
+            enemyAI.transform.position = position;
         enemyAI.serverPosition = position;
+
+        //enemyAI.SyncPositionToClients();
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);

@@ -214,18 +214,19 @@ public class Utils
         SpringMan
     }
 
-    public static Bounds? RealEnemyBounds(EnemyAI enemy)
+    public static bool TryGetRealEnemyBounds(EnemyAI enemy, out Bounds bounds)
     {
-        if (enemy == null) return null;
+        bounds = new Bounds();
+        if (enemy == null) return false;
 
         var renderers = enemy.gameObject.GetComponentsInChildren<Renderer>();
-        if (renderers == null) return null;
+        if (renderers == null) return false;
 
-        var bounds = renderers[0].bounds;
+        bounds = renderers[0].bounds;
         for (var i = 1; i < renderers.Length; ++i)
             bounds.Encapsulate(renderers[i].bounds);
 
-        return bounds;
+        return true;
     }
     #endregion
 
