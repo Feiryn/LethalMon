@@ -630,13 +630,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
     {
+        const int layerMask = 1 << (int) Mask.Enemies;
         EnemyAI? target = null;
         float distance = float.MaxValue;
 
         if (fromOwnerPerspective && ownerPlayer == null) return null;
 
         var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
-        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, ToInt([Mask.Enemies]), QueryTriggerInteraction.Collide);
+        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, layerMask, QueryTriggerInteraction.Collide);
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
