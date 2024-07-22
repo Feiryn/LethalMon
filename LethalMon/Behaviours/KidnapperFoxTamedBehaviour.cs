@@ -121,7 +121,7 @@ namespace LethalMon.Behaviours
                     break;
 
                 case TamingBehaviour.TamedDefending:
-                    ShootTongueAtEnemyServerRpc();
+                    ShootTongueAtEnemy();
                     break;
 
                 default: break;
@@ -210,8 +210,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region TongueShooting
-        [ServerRpc(RequireOwnership = false)]
-        internal void ShootTongueAtEnemyServerRpc()
+        internal void ShootTongueAtEnemy()
         {
             if (targetEnemy == null || tongueShootCoroutine != null || canTongueHitAfter >= DateTime.Now) return;
 
@@ -260,20 +259,20 @@ namespace LethalMon.Behaviours
                 int hits = 0;
                 while (!targetEnemy.isEnemyDead && hits < 3)
                 {
-                    PushTargetEnemyWithTongueClientRpc(1);
+                    PushTargetEnemyWithTongueServerRpc(targetEnemy.NetworkObject, 1);
                     yield return new WaitWhile(() => pushTargetCoroutine != null);
                     hits++;
                 }
 
                 if (!targetEnemy.isEnemyDead) // Finisher
                 {
-                    PushTargetEnemyWithTongueClientRpc(targetEnemy.enemyHP);
+                    PushTargetEnemyWithTongueServerRpc(targetEnemy.NetworkObject, targetEnemy.enemyHP);
                     yield return new WaitWhile(() => pushTargetCoroutine != null);
                 }
             }
             else
             {
-                PushTargetEnemyWithTongueClientRpc(); // warning shot
+                PushTargetEnemyWithTongueServerRpc(targetEnemy.NetworkObject); // warning shot
                 yield return new WaitWhile(() => pushTargetCoroutine != null);
             }
 
@@ -286,9 +285,23 @@ namespace LethalMon.Behaviours
 
         }
 
-        [ClientRpc]
-        internal void PushTargetEnemyWithTongueClientRpc(int damageOnHit = 0)
+        [ServerRpc(RequireOwnership = false)]
+        internal void PushTargetEnemyWithTongueServerRpc(NetworkObjectReference enemyRef, int damageOnHit = 0)
         {
+            LethalMon.Log("PushTargetEnemyWithTongueServerRpc");
+            PushTargetEnemyWithTongueClientRpc(enemyRef, damageOnHit);
+        }
+
+        [ClientRpc]
+        internal void PushTargetEnemyWithTongueClientRpc(NetworkObjectReference enemyRef, int damageOnHit = 0)
+        {
+            if (!enemyRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out targetEnemy) || targetEnemy == null)
+            {
+                LethalMon.Log("PushTargetEnemyWithTongueClientRpc: Unable to get enemy object.", LethalMon.LogType.Error);
+                return;
+            }
+
+            LethalMon.Log("PushTargetEnemyWithTongueClientRpc");
             if (pushTargetCoroutine != null)
                 StopCoroutine(pushTargetCoroutine);
 
