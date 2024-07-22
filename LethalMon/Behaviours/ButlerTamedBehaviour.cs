@@ -115,11 +115,19 @@ namespace LethalMon.Behaviours
 
             RoundManager.Instance.DespawnEnemyOnServer(targetEnemy.NetworkObject);
 
+            EnemyCleanedUpClientRpc();
+
             Butler.SetSweepingAnimServerRpc(false);
 
             targetEnemy = null;
 
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        }
+
+        [ClientRpc]
+        internal void EnemyCleanedUpClientRpc()
+        {
+            Butler.popParticle.Play();
         }
         #endregion
 
@@ -210,21 +218,6 @@ namespace LethalMon.Behaviours
         internal override void TurnTowardsPosition(Vector3 position)
         {
             //base.TurnTowardsPosition(position);
-        }
-        #endregion
-
-        #region RPCs
-        [ServerRpc(RequireOwnership = false)]
-        public void TestServerRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // HOST ONLY
-            TestClientRpc(someParameter, anotherParameter);
-        }
-
-        [ClientRpc]
-        public void TestClientRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // ANY CLIENT (HOST INCLUDED)
         }
         #endregion
     }
