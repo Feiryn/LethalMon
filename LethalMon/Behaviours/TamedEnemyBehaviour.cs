@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -16,6 +15,8 @@ namespace LethalMon.Behaviours;
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
     internal virtual bool Controllable => false;
+    
+    internal virtual Cooldown[] Cooldowns => Array.Empty<Cooldown>();
 
     // Add your custom behaviour classes here
     internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
@@ -160,6 +161,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (tamedBehaviour.Controllable)
                 enemyType.enemyPrefab.gameObject.AddComponent<EnemyController>();
+
+            for (int _ = 0; _ < tamedBehaviour.Cooldowns.Length; ++_)
+            {
+                enemyType.enemyPrefab.gameObject.AddComponent<CooldownNetworkBehaviour>();
+            }
 
             // Behaviour states
             if (enemyAI.enemyBehaviourStates == null)
@@ -413,6 +419,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void LateUpdate() { }
 
+    internal void Awake()
+    {
+        CooldownNetworkBehaviour[] cooldownComponents = GetComponents<CooldownNetworkBehaviour>();
+        if (cooldownComponents.Length != Cooldowns.Length)
+        {
+            LethalMon.Log("Parameterized cooldowns count (" + Cooldowns.Length + ") doesn't match cooldowns network behaviour count (" + cooldownComponents.Length + ")", LethalMon.LogType.Error);
+        }
+        else
+        {
+            for (int i = 0; i < Cooldowns.Length; ++i)
+            {
+                cooldownComponents[i].Setup(Cooldowns[i]);
+            }
+        }
+    }
+
     internal virtual void Start()
     {
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
@@ -588,6 +610,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
         PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => item.CurrentTimer);
 	    pokeballItem.fallTime = 0f;
 	    pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(ballValue);
@@ -602,6 +625,19 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         OnRetrieveInBall();
 
         return pokeballItem;
+    }
+
+    public void SetCooldownTimers(Dictionary<string, float> cooldownsTimers)
+    {
+        foreach (KeyValuePair<string, float> cooldownTimer in cooldownsTimers)
+        {
+            GetComponents<CooldownNetworkBehaviour>().First(cooldown => cooldown.Id.Value.Value == cooldownTimer.Key).InitTimer(cooldownTimer.Value);
+        }
+    }
+
+    public CooldownNetworkBehaviour GetCooldownWithId(string id)
+    {
+        return GetComponents<CooldownNetworkBehaviour>().First(cooldown => cooldown.Id.Value.Value == id);
     }
     #endregion
 

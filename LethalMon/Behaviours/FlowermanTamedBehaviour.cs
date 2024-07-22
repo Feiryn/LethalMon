@@ -16,8 +16,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     private EnemyAI? grabbedEnemyAi;
 
-    private DateTime canGrabAfter = new DateTime(0);
-
     // Left arm
     private Transform? arm1L;
     
@@ -81,11 +79,18 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     };
 
     private readonly float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
-
-    // todo cooldown once there will be an HUD. For now, it will be weird if the bracken doesn't do anything without indication
-    private readonly int GrabCooldownSeconds = 0;
     
     internal float DistanceTowardsOwner => ownerPlayer != null ? Vector3.Distance(ownerPlayer.transform.position, bracken.transform.position) : 0f;
+    #endregion
+    
+    #region Cooldowns
+
+    private static readonly string GrabCooldownId = "bracken_grab";
+    
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(GrabCooldownId, "Grab enemy", 20f) };
+
+    private CooldownNetworkBehaviour grabCooldown;
+
     #endregion
 
     #region Base Methods
@@ -97,6 +102,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         if (bracken == null)
             bracken = gameObject.AddComponent<FlowermanAI>();
 
+        grabCooldown = GetCooldownWithId(GrabCooldownId);
+        
         if (ownerPlayer != null)
         {
             bracken.creatureAnimator.SetBool("sneak", value: true);
@@ -137,7 +144,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (canGrabAfter < DateTime.Now)
+        if (grabCooldown.IsFinished())
             TargetNearestEnemy();
     }
 
@@ -311,7 +318,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         grabbedEnemyAi.agent.enabled = true;
         TeleportEnemy(grabbedEnemyAi, selfTransform.position);
         grabbedEnemyAi = null;
-        canGrabAfter = DateTime.Now.AddSeconds(GrabCooldownSeconds);
+        grabCooldown.Reset();
             
         LethalMon.Log("Enemy release");
     }

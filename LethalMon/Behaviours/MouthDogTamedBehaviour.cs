@@ -13,14 +13,20 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     private float CumulatedCheckDogsSeconds = 0f;
     
     private static readonly float CheckDogsSecondsInterval = 1f;
-
-    private float HowlTimer = 0f;
     
     private bool howled = false;
 
-    private float HowlCooldown = 0f;
+    internal float HowlTimer;
+    #endregion
     
-    private static readonly float HowlCooldownSeconds = 5f;
+    #region Cooldowns
+
+    private static readonly string HowlCooldownId = "mouthdog_howl";
+    
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(HowlCooldownId, "Howl", 5f) };
+
+    private CooldownNetworkBehaviour howlCooldown;
+
     #endregion
     
     #region Base Methods
@@ -32,6 +38,8 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         if (mouthDog == null)
             mouthDog = gameObject.AddComponent<MouthDogAI>();
 
+        howlCooldown = GetCooldownWithId(HowlCooldownId);
+        
         if (ownerPlayer != null)
         {
             mouthDog.gameObject.transform.localScale = new Vector3(0.28f, 0.28f, 0.28f);
@@ -49,11 +57,6 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         var position = mouthDog.transform.position;
         mouthDog.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(position - mouthDog.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
         mouthDog.previousPosition = position;
-
-        if (HowlCooldown > 0f)
-        {
-            HowlCooldown -= Time.deltaTime;
-        }
     }
     
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -66,7 +69,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (HowlCooldown <= 0f)
+        if (howlCooldown.IsFinished())
         {
             DefendOwnerFromCloseDogs();
         }
@@ -98,7 +101,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
                 HowlServerRpc();
                 HowlTimer = mouthDog.screamSFX.length;
                 howled = true;
-                HowlCooldown = HowlCooldownSeconds;
+                howlCooldown.Reset();
                 var noisePosition = mouthDog.transform.position;
                 ((MouthDogAI)targetEnemy!).lastHeardNoisePosition = noisePosition;
                 ((MouthDogAI)targetEnemy!).DetectNoise(noisePosition, float.MaxValue);

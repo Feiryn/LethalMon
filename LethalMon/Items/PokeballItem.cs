@@ -31,6 +31,8 @@ public abstract class PokeballItem : ThrowableItem
     private int captureStrength;
 
     private BallType ballType;
+
+    public Dictionary<string, float> cooldowns = new();
     #endregion
 
     #region Initialization
@@ -136,6 +138,7 @@ public abstract class PokeballItem : ThrowableItem
                             pokeballItem.SetScrapValue(scrapValue);
                             ball.GetComponent<NetworkObject>().Spawn(false);
                             pokeballItem.FallToGround();
+                            pokeballItem.cooldowns = cooldowns;
                         }
                     }
                 }
@@ -187,6 +190,7 @@ public abstract class PokeballItem : ThrowableItem
                 var enemyPosition = tamedBehaviour.Enemy.transform.position;
                 tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
                 tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
+                tamedBehaviour.SetCooldownTimers(cooldowns);
 
                 gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
                 CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
