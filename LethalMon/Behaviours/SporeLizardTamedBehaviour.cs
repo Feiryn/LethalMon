@@ -145,10 +145,8 @@ namespace LethalMon.Behaviours
 
         public override void OnDestroy()
         {
-            if (IsOwnerPlayer)
-            {
-                ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
-            }
+            if (IsOwnerPlayer && ownerPlayer?.nightVision != null)
+                ownerPlayer.nightVision.enabled = nightVisionPreviouslyEnabled;
 
             sporeLizard.agentLocalVelocity = Vector3.zero;
             sporeLizard.CalculateAnimationDirection(0f);

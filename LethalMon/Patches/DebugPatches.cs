@@ -60,12 +60,14 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.FlowerSnake.ToString());
+                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Butler.ToString());
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Puffer.ToString());
+                LethalMon.Log("Spawnable items: " + Utils.SpawnableItems.Count);
+                var enemy = SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Crawler.ToString());
+                GameNetworkManager.Instance.StartCoroutine(KillEnemyLater(enemy!));
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
@@ -140,7 +142,14 @@ namespace LethalMon.Patches
         #endregion
 
         #region Enemy
-        public static void SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, string enemyName)
+
+        public static IEnumerator KillEnemyLater(EnemyAI enemyAI)
+        {
+            yield return new WaitForSeconds(0.5f);
+            enemyAI.KillEnemyServerRpc(false);
+        }
+
+        public static EnemyAI? SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, string enemyName)
         {
             foreach (EnemyType enemyType in Utils.EnemyTypes)
             {
@@ -155,10 +164,11 @@ namespace LethalMon.Patches
                 enemyAI.enabled = StartOfRound.Instance.testRoom == null;
                 enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
 
-                return;
+                return enemyAI;
             }
 
             LethalMon.Logger.LogInfo("No enemy found..");
+            return null;
         }
         #endregion
 

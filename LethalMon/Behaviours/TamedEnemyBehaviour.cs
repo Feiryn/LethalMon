@@ -8,6 +8,7 @@ using LethalMon.Patches;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using static LethalMon.Utils;
 using static LethalMon.Utils.LayerMasks;
 
 namespace LethalMon.Behaviours;
@@ -22,14 +23,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     // Add your custom behaviour classes here
     internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
     {
-        { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
-        { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
-        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
-        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
-        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) },
-        { typeof(DressGirlAI),      typeof(GhostGirlTamedBehaviour) },
-        { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) }
+        { typeof(FlowermanAI),       typeof(FlowermanTamedBehaviour) },
+        { typeof(RedLocustBees),     typeof(RedLocustBeesTamedBehaviour) },
+        { typeof(HoarderBugAI),      typeof(HoarderBugTamedBehaviour) },
+        { typeof(PufferAI),          typeof(SporeLizardTamedBehaviour) },
+        { typeof(MouthDogAI),        typeof(MouthDogTamedBehaviour) },
+        { typeof(FlowerSnakeEnemy),  typeof(TulipSnakeTamedBehaviour) },
+        { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
+        { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
+        { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -225,14 +227,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal virtual void OnCallFromBall()
-    {
-        for (int i = 0; i <= 29; i++)
-        {
-            if (LayerMask.LayerToName(i) != "")
-                LethalMon.Log(LayerMask.LayerToName(i) + " = " + i + ",");
-        }
-    }
+    internal virtual void OnCallFromBall() { }
 
     internal virtual void OnRetrieveInBall() { }
 
@@ -557,7 +552,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         TurnTowardsPosition(ownerPosition);
     }
 
-    internal void TurnTowardsPosition(Vector3 position)
+    internal virtual void TurnTowardsPosition(Vector3 position)
     {
         Transform enemyTransform = Enemy.transform;
         Vector3 direction = position - enemyTransform.position;
@@ -574,6 +569,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.agent.enabled = true;
     }
 
+    internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
+    {
+        return enemyAI.gameObject.layer != (int)Mask.EnemiesNotRendered && !enemyAI.isEnemyDead;
+    }
+
+    internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+
     internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
     {
         targetNearestEnemyInterval -= Time.deltaTime;
@@ -586,7 +588,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if(target != null)
         {
             targetEnemy = target;
-            SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+            OnFoundTarget();
             LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
         }
     }
@@ -606,7 +608,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             var tamedBehaviour = enemyHit?.GetComponentInParent<TamedEnemyBehaviour>();
             if (enemyInRange?.transform == null || tamedBehaviour == null || tamedBehaviour.ownerPlayer != null) continue;
 
-            if (enemyInRange == Enemy || enemyInRange.gameObject.layer == (int)Mask.EnemiesNotRendered || enemyInRange.isEnemyDead) continue;
+            if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
             if (requireLOS && !enemyInRange.CheckLineOfSightForPosition(startPosition, 180f, 10)) continue;
 
