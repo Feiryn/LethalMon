@@ -40,9 +40,9 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal static List<ulong> hidingPlayers = [];
+        internal static List<ulong> hidingPlayers = new();
 
-        internal List<GameObject> hidingSpores = [];
+        internal List<GameObject> hidingSpores = new();
         internal readonly int MaximumHidingSpores = 3;
         internal Vector3 lastHidingSporePosition = Vector3.zero;
 
@@ -100,6 +100,11 @@ namespace LethalMon.Behaviours
             if (Utils.IsHost)
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
 #endif
+
+            if (ownerPlayer != null)
+            {
+                Fox.transform.localScale *= 0.75f;
+            }
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -449,6 +454,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("SpawnHidingMoldClientRpc");
 
             var moldSpore = Instantiate(MoldSpreadManager.moldPrefab, position, Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(-180f, 180f), 0f)), MoldSpreadManager.moldContainer);
+            moldSpore.transform.localScale *= 0.75f;;
             foreach (var meshRenderer in moldSpore.GetComponentsInChildren<MeshRenderer>())
             {
                 foreach (var material in meshRenderer.materials)
