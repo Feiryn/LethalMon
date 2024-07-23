@@ -1,7 +1,6 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
 using System;
-using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using static LethalMon.Utils.LayerMasks;
@@ -26,9 +25,6 @@ namespace LethalMon.Behaviours
 
         internal readonly float CleanUpTime = 5f;
         internal float timeCleaning = 0f;
-
-        internal AudioClip? createPresentAudio = null;
-        internal ParticleSystem? createPresentParticles = null;
         #endregion
 
         #region Custom behaviours
@@ -127,10 +123,24 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         internal void EnemyCleanedUpClientRpc()
         {
-            if(createPresentParticles != null) createPresentParticles.Play();
-            var audioClip = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>()?.openGiftAudio;
-            if (audioClip != null)
-                Utils.PlaySoundAtPosition(Butler.transform.position, audioClip);
+            if (targetEnemy == null) return;
+
+            var giftBox = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>();
+            if (giftBox != null)
+            {
+                var presentAudio = Instantiate(giftBox.openGiftAudio);
+                var presentParticles = Instantiate(giftBox.PoofParticle);
+
+                presentParticles.transform.position = targetEnemy.transform.position;
+                var bounds = Utils.RealEnemyBounds(targetEnemy);
+                presentParticles.transform.localScale = bounds.HasValue ? bounds.Value.size : Vector3.one;
+                presentParticles.Play();
+
+                Utils.PlaySoundAtPosition(Butler.transform.position, presentAudio);
+
+                Destroy(presentAudio, 0.5f);
+                Destroy(presentParticles, 0.5f);
+            }
 
             Butler.creatureAnimator.SetInteger("HeldItem", 0);
 
@@ -139,27 +149,6 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-
-        internal override void Start()
-        {
-            base.Start();
-
-            var giftBox = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>();
-            if(giftBox != null)
-            {
-                createPresentAudio = Instantiate(giftBox.openGiftAudio);
-                createPresentParticles = Instantiate(giftBox.PoofParticle);
-            }
-        }
-
-        void OnDestroy()
-        {
-            base.OnDestroy();
-
-            Destroy(createPresentAudio);
-            Destroy(createPresentParticles);
-        }
-
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // OWNER ONLY
