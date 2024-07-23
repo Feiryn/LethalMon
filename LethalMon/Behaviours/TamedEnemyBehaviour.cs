@@ -424,7 +424,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
         }
 
-        if (ownerPlayer == null)
+        if (ownerPlayer == null && Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
         {
             ScanNodeProperties scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
             if (scanNode != null)

@@ -250,7 +250,7 @@ public class PlayerControllerBPatch
             LethalMon.Log("Current item type: " + currentItem.GetType());
             if (currentItem.GetType().IsSubclassOf(typeof(PokeballItem)) && !((PokeballItem) currentItem).enemyCaptured)
             {
-                HUDManager.Instance.DisplayTip("LethalMon Tip", "Scan enemies to know if they are catchable or not");
+                HUDManager.Instance.DisplayTip("LethalMon Tip", "Scan base game enemies to know if they are catchable or not. Modded enemies are not catchable.");
                 SentBallScanTip = true;
             }
         }
