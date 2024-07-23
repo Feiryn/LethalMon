@@ -138,8 +138,8 @@ namespace LethalMon.Behaviours
 
                 Utils.PlaySoundAtPosition(Butler.transform.position, presentAudio);
 
-                Destroy(presentAudio, 0.5f);
-                Destroy(presentParticles, 0.5f);
+                Destroy(presentAudio, 1f);
+                Destroy(presentParticles, 1f);
             }
 
             Butler.creatureAnimator.SetInteger("HeldItem", 0);
