@@ -1,3 +1,8 @@
+# 0.3.2
+
+- Fixed a bug that made the content of balls not loaded properly
+- Catchable scan node text is not added to modded enemies to avoid conflicts
+
 # 0.3.1
 
 - Fixed a bug that made the Nutcracker uncatchable
