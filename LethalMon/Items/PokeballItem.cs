@@ -236,7 +236,7 @@ public abstract class PokeballItem : ThrowableItem
         {
             KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
             EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            SetCaughtEnemyServerRpc(type.name);
+            SetCaughtEnemy(type);
         }
     }
     #endregion
