@@ -5,7 +5,6 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using static LethalMon.Utils.LayerMasks;
-using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -25,8 +24,11 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal readonly float CleanUpTime = 3f;
+        internal readonly float CleanUpTime = 5f;
         internal float timeCleaning = 0f;
+
+        internal AudioClip? createPresentAudio = null;
+        internal ParticleSystem? createPresentParticles = null;
         #endregion
 
         #region Custom behaviours
@@ -52,12 +54,11 @@ namespace LethalMon.Behaviours
 
                     Butler.agent.speed = 9f;
                     Butler.SetButlerRunningServerRpc(true);
-                    Butler.lookTarget = targetEnemy.transform;
-                    Butler.headLookTarget = targetEnemy.transform;
                     Butler.SetDestinationToPosition(targetEnemy!.transform.position);
                     break;
                 case CustomBehaviour.CleanUpEnemy:
-                    timeCleaning = 0f;
+                    timeCleaning = Butler.creatureAnimator.GetInteger("HeldItem") == 1 ? 0f : -2f; // More if not sweeping previously
+                    Butler.creatureAnimator.SetInteger("HeldItem", 1);
                     Butler.agent.speed = 0f;
                     Butler.SetButlerRunningServerRpc(false);
                     Butler.SetSweepingAnimServerRpc(true);
@@ -104,6 +105,7 @@ namespace LethalMon.Behaviours
             if (!enemyRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out targetEnemy) || targetEnemy == null)
             {
                 LethalMon.Log("EnemyCleanedUpServerRpc: Unable to get enemy object.", LethalMon.LogType.Error);
+                EnemyCleanedUpClientRpc();
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 return;
             }
@@ -115,11 +117,9 @@ namespace LethalMon.Behaviours
 
             RoundManager.Instance.DespawnEnemyOnServer(targetEnemy.NetworkObject);
 
-            EnemyCleanedUpClientRpc();
-
             Butler.SetSweepingAnimServerRpc(false);
 
-            targetEnemy = null;
+            EnemyCleanedUpClientRpc();
 
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
@@ -127,11 +127,39 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         internal void EnemyCleanedUpClientRpc()
         {
-            Butler.popParticle.Play();
+            if(createPresentParticles != null) createPresentParticles.Play();
+            var audioClip = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>()?.openGiftAudio;
+            if (audioClip != null)
+                Utils.PlaySoundAtPosition(Butler.transform.position, audioClip);
+
+            Butler.creatureAnimator.SetInteger("HeldItem", 0);
+
+            targetEnemy = null;
         }
         #endregion
 
         #region Base Methods
+
+        internal override void Start()
+        {
+            base.Start();
+
+            var giftBox = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>();
+            if(giftBox != null)
+            {
+                createPresentAudio = Instantiate(giftBox.openGiftAudio);
+                createPresentParticles = Instantiate(giftBox.PoofParticle);
+            }
+        }
+
+        void OnDestroy()
+        {
+            base.OnDestroy();
+
+            Destroy(createPresentAudio);
+            Destroy(createPresentParticles);
+        }
+
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // OWNER ONLY
@@ -144,8 +172,6 @@ namespace LethalMon.Behaviours
 
                     Butler.agent.speed = 6f;
                     Butler.SetButlerRunningServerRpc(false);
-                    Butler.lookTarget = ownerPlayer.transform;
-                    Butler.headLookTarget = ownerPlayer.playerGlobalHead;
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -153,8 +179,6 @@ namespace LethalMon.Behaviours
 
                     Butler.agent.speed = 9f;
                     Butler.SetButlerRunningServerRpc(true);
-                    Butler.lookTarget = targetEnemy.transform;
-                    Butler.headLookTarget = targetEnemy.transform;
                     break;
 
                 default: break;
@@ -189,35 +213,19 @@ namespace LethalMon.Behaviours
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
 
-            Butler.watchingPlayer = playerWhoThrewBall;
-            Butler.targetPlayer = playerWhoThrewBall;
-            Butler.syncedTargetPlayer = playerWhoThrewBall;
             if (IsOwner)
-                SwitchToDefaultBehaviour(2);
+            {
+                Butler.targetPlayer = playerWhoThrewBall;
+                Butler.berserkModeTimer = 8f;
+                Butler.SwitchOwnershipAndSetToStateServerRpc(2, playerWhoThrewBall.actualClientId, 0f);
+            }
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            // ANY CLIENT
-            Butler.AnimateLooking();
             base.OnUpdate(update, doAIInterval);
-        }
 
-        internal override void DoAIInterval()
-        {
-            // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
-            base.DoAIInterval();
-        }
-
-        public override PokeballItem? RetrieveInBall(Vector3 position)
-        {
-            // ANY CLIENT
-            return base.RetrieveInBall(position);
-        }
-
-        internal override void TurnTowardsPosition(Vector3 position)
-        {
-            //base.TurnTowardsPosition(position);
+            Butler.CalculateAnimationDirection();
         }
         #endregion
     }
