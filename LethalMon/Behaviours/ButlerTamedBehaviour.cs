@@ -101,23 +101,28 @@ namespace LethalMon.Behaviours
             if (!enemyRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out targetEnemy) || targetEnemy == null)
             {
                 LethalMon.Log("EnemyCleanedUpServerRpc: Unable to get enemy object.", LethalMon.LogType.Error);
-                EnemyCleanedUpClientRpc();
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-                return;
+            }
+            else
+            {
+                if (!Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out GrabbableObject? item))
+                    LethalMon.Log("Unable to spawn an item after cleaning up the enemy.", LethalMon.LogType.Error);
+                else
+                    LethalMon.Log("Spawned " + item!.itemProperties.itemName + " from cleaning up enemy " + targetEnemy.enemyType.enemyName);
+
+                RoundManager.Instance.DespawnEnemyOnServer(targetEnemy.NetworkObject);
             }
 
-            if (!Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out GrabbableObject? item))
-                LethalMon.Log("Unable to spawn an item after cleaning up the enemy.", LethalMon.LogType.Error);
-            else
-                LethalMon.Log("Spawned " + item!.itemProperties.itemName + " from cleaning up enemy " + targetEnemy.enemyType.enemyName);
-
-            RoundManager.Instance.DespawnEnemyOnServer(targetEnemy.NetworkObject);
-
             Butler.SetSweepingAnimServerRpc(false);
-
             EnemyCleanedUpClientRpc();
 
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            var target = NearestEnemy();
+            if (target != null)
+            {
+                targetEnemy = target;
+                SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsDeadEnemy);
+            }
+            else
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
 
         [ClientRpc]
