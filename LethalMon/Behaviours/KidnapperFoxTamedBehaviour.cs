@@ -112,24 +112,9 @@ namespace LethalMon.Behaviours
             // OWNER ONLY
             base.InitTamingBehaviour(behaviour);
 
-            switch (behaviour)
+            if (behaviour == TamingBehaviour.TamedDefending)
             {
-                case TamingBehaviour.TamedFollowing:
-                    Fox.inSpecialAnimation = false;
-                    Fox.EnableEnemyMesh(enable: true);
-                    if (Fox.agent != null)
-                    {
-                        Fox.agent.enabled = true;
-                        Fox.agent.speed = 5f;
-                    }
-                    //Fox.tongueTarget = ownerPlayer == Utils.CurrentPlayer ? ownerPlayer!.upperSpineLocalPoint : ownerPlayer!.upperSpine;
-                    break;
-
-                case TamingBehaviour.TamedDefending:
-                    ShootTongueAtEnemy();
-                    break;
-
-                default: break;
+                ShootTongueAtEnemy();
             }
         }
 
