@@ -20,6 +20,8 @@ public class LethalMon : BaseUnityPlugin
 
     internal static AudioClip HoardingBugFlySfx;
 
+    internal static GameObject hudPrefab;
+
     private void Awake()
     {
         Logger = base.Logger;
@@ -58,7 +60,8 @@ public class LethalMon : BaseUnityPlugin
         Greatball.Setup(assetBundle);
         Ultraball.Setup(assetBundle);
         Masterball.Setup(assetBundle);
-        HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("HoardingBug_Fly.ogg");
+        HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("Assets/HoardingBug_Fly.ogg");
+        hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
     }
 
     private void ApplyHarmonyPatches()
@@ -74,6 +77,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(SporeLizardTamedBehaviour));
         Harmony.PatchAll(typeof(MouthDogPatch));
         Harmony.PatchAll(typeof(EnemyAIPatch));
+        Harmony.PatchAll(typeof(HUDManagerPatch));
 
         // Static RPCs
         PlayerControllerBPatch.InitializeRPCS();
