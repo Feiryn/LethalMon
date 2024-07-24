@@ -49,15 +49,20 @@ namespace LethalMon.Behaviours
                     if (targetEnemy == null) return;
 
                     Butler.agent.speed = 9f;
-                    Butler.SetButlerRunningServerRpc(true);
+                    if (IsOwner)
+                        Butler.SetButlerRunningServerRpc(true);
+
                     Butler.SetDestinationToPosition(targetEnemy!.transform.position);
                     break;
                 case CustomBehaviour.CleanUpEnemy:
                     timeCleaning = Butler.creatureAnimator.GetInteger("HeldItem") == 1 ? 0f : -2f; // More if not sweeping previously
                     Butler.creatureAnimator.SetInteger("HeldItem", 1);
                     Butler.agent.speed = 0f;
-                    Butler.SetButlerRunningServerRpc(false);
-                    Butler.SetSweepingAnimServerRpc(true);
+                    if (IsOwner)
+                    {
+                        Butler.SetButlerRunningServerRpc(false);
+                        Butler.SetSweepingAnimServerRpc(true);
+                    }
                     break;
 
                 default:
@@ -92,43 +97,42 @@ namespace LethalMon.Behaviours
             {
                 timeCleaning = 0f;
                 EnemyCleanedUpServerRpc(targetEnemy.NetworkObject);
+                Butler.SetSweepingAnimServerRpc(false);
             }
         }
 
         [ServerRpc(RequireOwnership = false)]
         internal void EnemyCleanedUpServerRpc(NetworkObjectReference enemyRef)
         {
-            if (!enemyRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out targetEnemy) || targetEnemy == null)
-            {
-                LethalMon.Log("EnemyCleanedUpServerRpc: Unable to get enemy object.", LethalMon.LogType.Error);
-            }
-            else
+            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
             {
                 if (!Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out GrabbableObject? item))
                     LethalMon.Log("Unable to spawn an item after cleaning up the enemy.", LethalMon.LogType.Error);
                 else
                     LethalMon.Log("Spawned " + item!.itemProperties.itemName + " from cleaning up enemy " + targetEnemy.enemyType.enemyName);
-
-                RoundManager.Instance.DespawnEnemyOnServer(targetEnemy.NetworkObject);
             }
 
-            Butler.SetSweepingAnimServerRpc(false);
-            EnemyCleanedUpClientRpc();
-
-            var target = NearestEnemy();
-            if (target != null)
-            {
-                targetEnemy = target;
-                SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsDeadEnemy);
-            }
-            else
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            EnemyCleanedUpClientRpc(enemyRef);
         }
 
         [ClientRpc]
-        internal void EnemyCleanedUpClientRpc()
+        internal void EnemyCleanedUpClientRpc(NetworkObjectReference enemyRef)
         {
-            if (targetEnemy == null) return;
+            Butler.creatureAnimator.SetInteger("HeldItem", 0);
+
+            Vector3 enemyPos, enemySize = Vector3.one;
+            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
+            {
+                enemyPos = targetEnemy.transform.position;
+                var bounds = Utils.RealEnemyBounds(targetEnemy);
+                if(bounds.HasValue)
+                    enemySize = bounds.Value.size;
+            }
+            else
+            {
+                LethalMon.Log("EnemyCleanedUpServerRpc: Unable to get enemy object.", LethalMon.LogType.Error);
+                enemyPos = Enemy.transform.position;
+            }
 
             var giftBox = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>();
             if (giftBox != null)
@@ -136,9 +140,8 @@ namespace LethalMon.Behaviours
                 var presentAudio = Instantiate(giftBox.openGiftAudio);
                 var presentParticles = Instantiate(giftBox.PoofParticle);
 
-                presentParticles.transform.position = targetEnemy.transform.position;
-                var bounds = Utils.RealEnemyBounds(targetEnemy);
-                presentParticles.transform.localScale = bounds.HasValue ? bounds.Value.size : Vector3.one;
+                presentParticles.transform.position = enemyPos;
+                presentParticles.transform.localScale = enemySize;
                 presentParticles.Play();
 
                 Utils.PlaySoundAtPosition(Butler.transform.position, presentAudio);
@@ -147,9 +150,20 @@ namespace LethalMon.Behaviours
                 Destroy(presentParticles, 1f);
             }
 
-            Butler.creatureAnimator.SetInteger("HeldItem", 0);
-
+            RoundManager.Instance.DespawnEnemyOnServer(enemyRef);
             targetEnemy = null;
+
+            if(IsOwner)
+            {
+                var target = NearestEnemy();
+                if (target != null)
+                {
+                    targetEnemy = target;
+                    SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsDeadEnemy);
+                }
+                else
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
         }
         #endregion
 
@@ -165,14 +179,16 @@ namespace LethalMon.Behaviours
                     if (ownerPlayer == null) return;
 
                     Butler.agent.speed = 6f;
-                    Butler.SetButlerRunningServerRpc(false);
+                    if (IsOwner)
+                        Butler.SetButlerRunningServerRpc(false);
                     break;
 
                 case TamingBehaviour.TamedDefending:
                     if (targetEnemy == null) return;
 
                     Butler.agent.speed = 9f;
-                    Butler.SetButlerRunningServerRpc(true);
+                    if (IsOwner)
+                        Butler.SetButlerRunningServerRpc(true);
                     break;
 
                 default: break;
