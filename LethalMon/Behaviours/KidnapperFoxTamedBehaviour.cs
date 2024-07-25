@@ -51,7 +51,7 @@ namespace LethalMon.Behaviours
 
 
         private DateTime canTongueHitAfter = new DateTime(0);
-        internal readonly float TongueHitCooldownSeconds = 2f;
+        internal readonly float TongueHitCooldownSeconds = 5f;
         internal Coroutine? tongueShootCoroutine = null;
         internal Coroutine? pushTargetCoroutine = null;
         internal readonly int TongueKillPercentage = 20;
@@ -214,7 +214,7 @@ namespace LethalMon.Behaviours
         {
             if (targetEnemy == null || tongueShootCoroutine != null || canTongueHitAfter >= DateTime.Now) return;
 
-            var killEnemy = targetEnemy.enemyType.canDie && (enemyHitTimes >= 3 || Random.Range(0, 100) < TongueKillPercentage);
+            var killEnemy = targetEnemy.enemyType.canDie && (enemyHitTimes >= 4 || Random.Range(0, 100) < TongueKillPercentage);
 
             tongueShootCoroutine = StartCoroutine(ShootTongueAtEnemyCoroutine(killEnemy));
 
