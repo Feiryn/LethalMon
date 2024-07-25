@@ -4,10 +4,11 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using static LethalMon.Utils.LayerMasks;
+using HarmonyLib;
+using System.Collections;
 
 namespace LethalMon.Behaviours
 {
-#if DEBUG
     internal class ButlerTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
@@ -150,7 +151,10 @@ namespace LethalMon.Behaviours
                 Destroy(presentParticles, 1f);
             }
 
-            RoundManager.Instance.DespawnEnemyOnServer(enemyRef);
+            if(Utils.IsHost)
+                RoundManager.Instance.DespawnEnemyGameObject(enemyRef);
+            else if(targetEnemy != null)
+                RoundManager.Instance.SpawnedEnemies.Remove(targetEnemy);
             targetEnemy = null;
 
             if(IsOwner)
@@ -239,5 +243,4 @@ namespace LethalMon.Behaviours
         }
         #endregion
     }
-#endif
 }
