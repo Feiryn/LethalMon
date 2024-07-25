@@ -9,7 +9,6 @@ using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Debug = UnityEngine.Debug;
 
 namespace LethalMon.Patches;
 
@@ -170,7 +169,7 @@ public class PlayerControllerBPatch
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (tamedBehaviour != null)
+        if (tamedBehaviour != null && tamedBehaviour.CanBeTeleported())
         {
             LethalMon.Log("Teleport tamed enemy to " + pos);
             tamedBehaviour.Enemy.agent.enabled = false;
@@ -200,7 +199,7 @@ public class PlayerControllerBPatch
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (tamedBehaviour != null)
+        if (tamedBehaviour != null && tamedBehaviour.CanDefend)
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
 
@@ -223,7 +222,7 @@ public class PlayerControllerBPatch
 
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 
-        if (tamedBehaviour != null && (__instance.IsServer || __instance.IsHost))
+        if (tamedBehaviour != null && (__instance.IsServer || __instance.IsHost) && tamedBehaviour.CanDefend)
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
             LethalMon.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");

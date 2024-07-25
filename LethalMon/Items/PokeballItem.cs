@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GameNetcodeStuff;
 using LethalLib.Modules;
 using LethalMon.Behaviours;
+using LethalMon.Patches;
 using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
@@ -32,7 +34,7 @@ public abstract class PokeballItem : ThrowableItem
 
     private BallType ballType;
 
-    public Dictionary<string, float> cooldowns = new();
+    public Dictionary<string, Tuple<float, DateTime>> cooldowns = new();
     #endregion
 
     #region Initialization
@@ -368,7 +370,6 @@ public abstract class PokeballItem : ThrowableItem
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
         this.ChangeName();
-        this.cooldowns = new Dictionary<string, float>();
     }
 
     private void ChangeName()
@@ -419,9 +420,10 @@ public abstract class PokeballItem : ThrowableItem
             return;
         }
 
-        tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         tamedBehaviour.ownerPlayer = ownerPlayer;
         tamedBehaviour.ownClientId = ownerPlayer.playerClientId;
+        tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+        HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
         tamedBehaviour.OnCallFromBall();
     }
 

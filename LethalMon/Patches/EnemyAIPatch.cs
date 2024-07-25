@@ -42,8 +42,11 @@ public class EnemyAIPatch
                     tamedEnemyBehaviour.InitCustomBehaviour(stateIndex - TamedEnemyBehaviour.TamedBehaviourCount - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
                 }
             }
-            
-            HUDManagerPatch.UpdateTamedMonsterAction(tamedEnemyBehaviour.GetCurrentStateDescription());
+
+            if (tamedEnemyBehaviour.ownerPlayer == Utils.CurrentPlayer)
+            {
+                HUDManagerPatch.UpdateTamedMonsterAction(tamedEnemyBehaviour.GetCurrentStateDescription());
+            }
         }
         else
         {

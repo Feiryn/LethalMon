@@ -32,6 +32,18 @@ namespace LethalMon.Behaviours
 
         #endregion
 
+        #region Cooldowns
+
+        private static readonly string TeleportCooldownId = "dressgirl_tp";
+    
+        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TeleportCooldownId, "Attack enemy", 60f) };
+
+        private CooldownNetworkBehaviour teleportCooldown;
+
+        internal override bool CanDefend => teleportCooldown.IsFinished();
+
+        #endregion
+        
         #region Custom behaviours
         internal enum CustomBehaviour
         {
@@ -228,6 +240,14 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
+
+        internal override void Start()
+        {
+            base.Start();
+            
+            teleportCooldown = GetCooldownWithId(TeleportCooldownId);
+        }
+        
         internal override void LateUpdate()
         {
             AnimateWalking();
@@ -264,7 +284,10 @@ namespace LethalMon.Behaviours
                 GhostGirl.enemyMeshEnabled = true;
             }
 
-            TargetNearestEnemy();
+            if (teleportCooldown.IsFinished())
+            {
+                TargetNearestEnemy();
+            }
         }
 
         internal override void OnTamedDefending()
@@ -425,6 +448,8 @@ namespace LethalMon.Behaviours
 
         private IEnumerator TeleportAndDamage(EnemyAI enemyAI, Vector3 newPosition, Action onComplete = null)
         {
+            teleportCooldown.Reset();
+                
             // Effects
             if(enemyAI.enemyType.canDie)
             {

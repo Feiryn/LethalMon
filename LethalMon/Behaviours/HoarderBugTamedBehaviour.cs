@@ -15,6 +15,9 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     public float currentTimer = 0f;
 
     public const float searchTimer = 1f; // in seconds
+
+    internal override bool CanDefend => false;
+
     #endregion
 
     #region Custom behaviours
@@ -259,7 +262,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     [ServerRpc(RequireOwnership = false)]
 	public void DropItemServerRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
     {
-        bringItemCooldown.Reset();
+        bringItemCooldown.Resume();
 		DropItemClientRpc(objectRef, targetFloorPosition);
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 	}
@@ -279,6 +282,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void GrabItemServerRpc(NetworkObjectReference objectRef)
     {
+        bringItemCooldown.Reset();
+        bringItemCooldown.Pause();
         GrabItemClientRpc(objectRef);
         SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
     }

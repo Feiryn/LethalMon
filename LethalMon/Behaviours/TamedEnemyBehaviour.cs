@@ -96,6 +96,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     
     internal virtual string DefendingBehaviourDescription => "Defends you!";
 
+    internal virtual bool CanDefend => true;
+
     public TamingBehaviour? CurrentTamingBehaviour
     {
         get
@@ -661,7 +663,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
         PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
-        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => item.CurrentTimer);
+        DateTime now = SystemClock.now;
+        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
 	    pokeballItem.fallTime = 0f;
 	    pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
 	    pokeballItem.SetScrapValue(ballValue);
@@ -669,26 +672,37 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 	    pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
 	    pokeballItem.FallToGround();
 
+        OnRetrieveInBall();
+        
         Enemy.GetComponent<NetworkObject>().Despawn(true);
 
         isOutsideOfBall = false;
 
-        OnRetrieveInBall();
-
         return pokeballItem;
     }
 
-    public void SetCooldownTimers(Dictionary<string, float> cooldownsTimers)
+    public void SetCooldownTimers(Dictionary<string, Tuple<float, DateTime>> cooldownsTimers)
     {
-        foreach (KeyValuePair<string, float> cooldownTimer in cooldownsTimers)
+        DateTime now = SystemClock.now;
+        foreach (KeyValuePair<string, Tuple<float, DateTime>> cooldownTimer in cooldownsTimers)
         {
-            GetComponents<CooldownNetworkBehaviour>().First(cooldown => cooldown.Id.Value.Value == cooldownTimer.Key).InitTimer(cooldownTimer.Value);
+            GetComponents<CooldownNetworkBehaviour>().FirstOrDefault(cooldown => cooldown.Id.Value.Value == cooldownTimer.Key)?.InitTimer(cooldownTimer.Value.Item1 + (float) (now - cooldownTimer.Value.Item2).TotalSeconds);
         }
     }
 
     public CooldownNetworkBehaviour GetCooldownWithId(string id)
     {
         return GetComponents<CooldownNetworkBehaviour>().First(cooldown => cooldown.Id.Value.Value == id);
+    }
+    
+    public bool IsOwnedByAPlayer()
+    {
+        return ownerPlayer != null;
+    }
+
+    public bool IsCurrentBehaviourTaming(TamingBehaviour behaviour)
+    {
+        return Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) behaviour;
     }
     #endregion
 
@@ -720,9 +734,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             afterTeleportFunction.Invoke(enemyAI, position);
     }
 
-    public bool IsOwnedByAPlayer()
+    public virtual bool CanBeTeleported()
     {
-        return ownerPlayer != null;
+        return true;
     }
     #endregion
 }

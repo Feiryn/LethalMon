@@ -14,6 +14,8 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     public NetworkVariable<FixedString512Bytes> DisplayName { get; private set; }
     
     public NetworkVariable<float> CooldownTime { get; private set; }
+
+    public bool Paused { get; private set; } = false;
     
     public float CurrentTimer { get; private set; }
     
@@ -39,14 +41,24 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     
     public void Update()
     {
-        CurrentTimer += Time.deltaTime;
+        if (!Paused)
+        {
+            CurrentTimer += Time.deltaTime;   
+        }
 
         if (_cooldownCircle != null)
         {
-            _cooldownCircle.fillAmount = Mathf.Clamp(CurrentTimer / CooldownTime.Value, 0, 1);
+            if (Paused && CurrentTimer == 0f)
+            {
+                _cooldownCircle.fillAmount = 1;
+            }
+            else
+            {
+                _cooldownCircle.fillAmount = Mathf.Clamp(CurrentTimer / CooldownTime.Value, 0, 1);
+            }
             
             float cooldownLeftTime = Mathf.Clamp(CooldownTime.Value - CurrentTimer, 0, CooldownTime.Value);
-            _cooldownTime!.text = cooldownLeftTime == 0f ? "" : Mathf.Floor(cooldownLeftTime).ToString(CultureInfo.InvariantCulture);
+            _cooldownTime!.text = cooldownLeftTime == 0f ? "" : ((int) Mathf.Round(cooldownLeftTime)).ToString(CultureInfo.InvariantCulture);
         }
         
         if (_needSyncing)
@@ -72,6 +84,18 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
         SyncCooldownServerRpc();
     }
 
+    public void Pause()
+    {
+        Paused = true;
+        _needSyncing = true;
+    }
+    
+    public void Resume()
+    {
+        Paused = false;
+        _needSyncing = true;
+    }
+    
     public void BindToHUD(Image cooldownCircle, TextMeshProUGUI cooldownTime, TextMeshProUGUI cooldownName)
     {
         _cooldownCircle = cooldownCircle;
@@ -83,13 +107,14 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     public void SyncCooldownServerRpc()
     {
         LethalMon.Log($"Send cooldown \"{DisplayName.Value}\" syncing to {CurrentTimer}");
-        SyncCooldownClientRpc(CurrentTimer, NetworkManager.ServerTime.Time);
+        SyncCooldownClientRpc(CurrentTimer, NetworkManager.ServerTime.Time, Paused);
     }
 
     [ClientRpc]
-    public void SyncCooldownClientRpc(float currentTimer, double serverTime)
+    public void SyncCooldownClientRpc(float currentTimer, double serverTime, bool paused)
     {
         CurrentTimer = currentTimer + (float) (NetworkManager.ServerTime.Time - serverTime);
-        LethalMon.Log($"Cooldown \"{DisplayName.Value}\"'s timer has been set to {CurrentTimer}");
+        Paused = paused;
+        LethalMon.Log($"Cooldown \"{DisplayName.Value}\"'s timer has been set to {CurrentTimer} (paused: " + Paused + ")");
     }
 }

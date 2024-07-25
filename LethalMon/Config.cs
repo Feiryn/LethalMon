@@ -45,8 +45,8 @@ namespace LethalMon
 
         override public void CreateInputActions(in InputActionMapBuilder builder)
         {
-            var retrieveBallKeyKeyboard = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyKeyboard", "<Keyboard>/" + KeyboardControl.P.ToString(), "Key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
-            var retrieveBallKeyGamepad = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyGamepad", "<Gamepad>/" + GamepadControl.RightStickPress.ToString(), "Gamepad key for retreiving the tamed enemy inside its ball. Requires a restart after changing.").Value;
+            var retrieveBallKeyKeyboard = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyKeyboard", "<Keyboard>/" + KeyboardControl.P.ToString(), "Key for retrieving the tamed enemy inside its ball. Requires a restart after changing.").Value;
+            var retrieveBallKeyGamepad = LethalMon.Instance.Config.Bind("Controls", "RetrieveBallKeyGamepad", "<Gamepad>/" + GamepadControl.RightStickPress.ToString(), "Gamepad key for retrieving the tamed enemy inside its ball. Requires a restart after changing.").Value;
             builder.NewActionBinding()
                 .WithActionId("retreiveBallKey")
                 .WithActionType(InputActionType.Button)

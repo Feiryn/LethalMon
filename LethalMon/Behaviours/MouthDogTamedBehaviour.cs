@@ -47,6 +47,9 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
+
+    internal override bool CanDefend => false;
+
     #endregion
     
     #region Cooldowns
@@ -148,6 +151,10 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
+    public override bool CanBeTeleported()
+    {
+        return !IsCurrentBehaviourTaming(TamingBehaviour.TamedDefending);
+    }
     #endregion
 
     #region Methods
@@ -238,11 +245,14 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     
     private void WalkMode()
     {
-        if (mouthDog.agent != null)
+        if (mouthDog != null)
         {
-            mouthDog.agent.speed = 5f;
+            if (mouthDog.agent != null)
+            {
+                mouthDog.agent.speed = 5f;
+            }
+            mouthDog.creatureAnimator.Play("Base Layer.Idle1");
         }
-        mouthDog.creatureAnimator.Play("Base Layer.Idle1");
     }
     
     private void ChaseMode()

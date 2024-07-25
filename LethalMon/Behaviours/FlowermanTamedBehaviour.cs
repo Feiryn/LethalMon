@@ -15,8 +15,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     internal FlowermanAI bracken { get; private set; }
 
     private EnemyAI? grabbedEnemyAi;
-    
-    private bool ownerInsideFactory = false;
 
     // Left arm
     private Transform? arm1L;
@@ -105,7 +103,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         if (grabbedEnemyAi == null)
         {
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            SwitchToCustomBehaviour((int) CustomBehaviour.GoesBackToOwner);
             return;
         }
         
@@ -116,7 +114,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             ReleaseEnemy();
             ReleaseEnemyServerRpc();
 
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            SwitchToCustomBehaviour((int) CustomBehaviour.GoesBackToOwner);
         }
         else
         {
@@ -131,7 +129,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         if (ownerPlayer == null || ownerPlayer.isPlayerDead
                                 || Vector3.Distance(bracken.transform.position, ownerPlayer.transform.position) < 8f // Reached owner
-                                || ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+                                || !ownerPlayer.isInsideFactory)
         {
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             return;
@@ -147,12 +145,14 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         switch ((CustomBehaviour)behaviour)
         {
             case CustomBehaviour.GoesBackToOwner:
-                ownerInsideFactory = ownerPlayer!.isInsideFactory;
+                CalmDown();
                 break;
             default:
                 break;
         }
     }
+    
+    
     #endregion
     
     #region Cooldowns
@@ -163,6 +163,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     private CooldownNetworkBehaviour grabCooldown;
 
+    internal override bool CanDefend => grabCooldown.IsFinished();
     #endregion
 
     #region Base Methods
@@ -277,13 +278,18 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         bracken.CalculateAnimationDirection();
     }
 
-    public override PokeballItem? RetrieveInBall(Vector3 position)
+    public override void OnDestroy()
     {
-        this.ReleaseEnemy();
-        ReleaseEnemyServerRpc();
-
-        return base.RetrieveInBall(position);
+        ReleaseEnemy();
+        
+        base.OnDestroy();
     }
+
+    public override bool CanBeTeleported()
+    {
+        return grabbedEnemyAi == null;
+    }
+
     #endregion
 
     #region Methods
@@ -294,10 +300,10 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         switch(behaviour)
         {
             case TamingBehaviour.TamedFollowing:
-                CalmDownServerRpc();
+                CalmDown();
                 break;
             case TamingBehaviour.TamedDefending:
-                StandUpServerRpc();
+                StandUp();
                 break;
             default: break;
         }
@@ -313,9 +319,12 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void CalmDown()
     {
-        bracken.creatureAngerVoice.Stop();
-        bracken.creatureAnimator.SetBool("sneak", true);
-        bracken.creatureAnimator.SetBool("anger", false);
+        if (bracken != null)
+        {
+            bracken.creatureAngerVoice.Stop();
+            bracken.creatureAnimator.SetBool("sneak", true);
+            bracken.creatureAnimator.SetBool("anger", false);
+        }
     }
 
     public void GrabEnemy(EnemyAI enemyAI)
@@ -338,6 +347,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
         var farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAI.transform.position).position;
         bracken.SetDestinationToPosition(farthestPosition);
+        grabCooldown.Reset();
+        grabCooldown.Pause();
         LethalMon.Log("Moving to " + farthestPosition);
         
         SwitchToCustomBehaviour((int) CustomBehaviour.DragEnemyAway);
@@ -375,7 +386,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         grabbedEnemyAi.agent.enabled = true;
         TeleportEnemy(grabbedEnemyAi, selfTransform.position);
         grabbedEnemyAi = null;
-        grabCooldown.Reset();
+        grabCooldown.Resume();
             
         LethalMon.Log("Enemy release");
     }
@@ -395,30 +406,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     #endregion
     
     #region RPCs
-    [ServerRpc(RequireOwnership = false)]
-    public void StandUpServerRpc()
-    {
-        StandUpClientRpc();
-    }
-    
-    [ClientRpc]
-    public void StandUpClientRpc()
-    {
-        StandUp();
-    }
-    
-    [ServerRpc(RequireOwnership = false)]
-    public void CalmDownServerRpc()
-    {  
-        CalmDownClientRpc();
-    }
-    
-    [ClientRpc]
-    public void CalmDownClientRpc()
-    {
-        CalmDown();
-    }
-    
     [ServerRpc(RequireOwnership = false)]
     public void GrabEnemyServerRpc(NetworkObjectReference enemyAiRef)
     {

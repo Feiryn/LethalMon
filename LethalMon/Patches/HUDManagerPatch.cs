@@ -39,8 +39,10 @@ public class HUDManagerPatch
     
     public static void UpdatePressKeyTip()
     {
-        // todo update when the player updates it
-        pressKeyTip.text = "[" + ModConfig.Instance.RetrieveBallKey.GetBindingDisplayString() + "] to retrieve";
+        if (pressKeyTip != null)
+        {
+            pressKeyTip.text = "[" + ModConfig.Instance.RetrieveBallKey.GetBindingDisplayString() + "]\nto retrieve";
+        }
     }
     
     public static void ChangeToTamedBehaviour(TamedEnemyBehaviour behaviour)

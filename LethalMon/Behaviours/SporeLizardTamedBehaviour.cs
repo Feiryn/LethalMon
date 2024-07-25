@@ -50,7 +50,7 @@ namespace LethalMon.Behaviours
             if (IsOwnerPlayer)
             {
                 nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
-                ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retreive in ball when going outside, so that it gets disabled again
+                ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retrieve in ball when going outside, so that it gets disabled again
             }
         }
 
