@@ -368,6 +368,7 @@ public abstract class PokeballItem : ThrowableItem
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
         this.ChangeName();
+        this.cooldowns = new Dictionary<string, float>();
     }
 
     private void ChangeName()

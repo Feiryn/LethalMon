@@ -23,10 +23,10 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         GettingItem = 1,
         BringBackItem
     }
-    internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
     {
-        { new (CustomBehaviour.GettingItem.ToString(), OnGettingItem) },
-        { new (CustomBehaviour.BringBackItem.ToString(), OnBringBackItem) }
+        new (CustomBehaviour.GettingItem.ToString(), "Saw an interesting item!", OnGettingItem),
+        new (CustomBehaviour.BringBackItem.ToString(), "Brings an item to you!", OnBringBackItem)
     };
 
     public void OnGettingItem()
@@ -74,6 +74,16 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
     }
     #endregion
+    
+    #region Cooldowns
+
+    private static readonly string BringItemCooldownId = "hoarderbug_bringitem";
+    
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(BringItemCooldownId, "Bring item", 5f) };
+
+    private CooldownNetworkBehaviour bringItemCooldown;
+
+    #endregion
 
     #region Base Methods
     internal override void Start()
@@ -84,6 +94,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         if (hoarderBug == null)
             hoarderBug = gameObject.AddComponent<HoarderBugAI>();
 
+        bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
+        
         if (ownerPlayer != null)
         {
             hoarderBug.creatureAnimator.Play("Base Layer.Walking");
@@ -95,8 +107,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (ownerPlayer == null) return;
-
+        if (ownerPlayer == null || !bringItemCooldown.IsFinished()) return;
+        
         currentTimer += Time.deltaTime;
         if (currentTimer > searchTimer)
         {
@@ -246,7 +258,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     #region RPCs
     [ServerRpc(RequireOwnership = false)]
 	public void DropItemServerRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
-    {  
+    {
+        bringItemCooldown.Reset();
 		DropItemClientRpc(objectRef, targetFloorPosition);
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 	}

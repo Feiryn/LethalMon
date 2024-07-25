@@ -15,6 +15,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     internal FlowermanAI bracken { get; private set; }
 
     private EnemyAI? grabbedEnemyAi;
+    
+    private bool ownerInsideFactory = false;
 
     // Left arm
     private Transform? arm1L;
@@ -81,6 +83,76 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     private readonly float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
     
     internal float DistanceTowardsOwner => ownerPlayer != null ? Vector3.Distance(ownerPlayer.transform.position, bracken.transform.position) : 0f;
+
+    internal override string DefendingBehaviourDescription => "Saw an enemy to drag away!";
+
+    #endregion
+    
+    #region Custom behaviours
+    internal enum CustomBehaviour
+    {
+        DragEnemyAway = 1,
+        GoesBackToOwner
+    }
+    
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
+    {
+        new (CustomBehaviour.DragEnemyAway.ToString(), "Drags an enemy away...", OnDragEnemyAway),
+        new (CustomBehaviour.GoesBackToOwner.ToString(), "Walks back to you...", OnWalkBackToOwner)
+    };
+
+    public void OnDragEnemyAway()
+    {
+        if (grabbedEnemyAi == null)
+        {
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            return;
+        }
+        
+        if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner)
+        {
+            LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
+
+            ReleaseEnemy();
+            ReleaseEnemyServerRpc();
+
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        }
+        else
+        {
+            // As the bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
+            Utils.OpenDoorsAsEnemyAroundPosition(grabbedEnemyAi.transform.position);
+        }
+
+        //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
+    }
+
+    public void OnWalkBackToOwner()
+    {
+        if (ownerPlayer == null || ownerPlayer.isPlayerDead
+                                || Vector3.Distance(bracken.transform.position, ownerPlayer.transform.position) < 8f // Reached owner
+                                || ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+        {
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            return;
+        }
+        
+        bracken.SetDestinationToPosition(ownerPlayer.transform.position);
+    }
+    
+    internal override void InitCustomBehaviour(int behaviour)
+    {
+        base.InitCustomBehaviour(behaviour);
+
+        switch ((CustomBehaviour)behaviour)
+        {
+            case CustomBehaviour.GoesBackToOwner:
+                ownerInsideFactory = ownerPlayer!.isInsideFactory;
+                break;
+            default:
+                break;
+        }
+    }
     #endregion
     
     #region Cooldowns
@@ -150,55 +222,38 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     internal override void OnTamedDefending()
     {
-        if (grabbedEnemyAi != null)
+        if (targetEnemy == null)
         {
-            if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner)
-            {
-                LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
-
-                ReleaseEnemy();
-                ReleaseEnemyServerRpc();
-
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            }
-            else
-            {
-                // As the bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
-                Utils.OpenDoorsAsEnemyAroundPosition(grabbedEnemyAi.transform.position);
-            }
-
-            //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            return;
         }
-        else if (targetEnemy != null)
+        
+        if (targetEnemy.isEnemyDead)
         {
-            if (targetEnemy.isEnemyDead)
-            {
-                LethalMon.Log("Target is dead, stop targeting it");
-                targetEnemy = null;
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            LethalMon.Log("Target is dead, stop targeting it");
+            targetEnemy = null;
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
-                return;
-            }
+            return;
+        }
 
-            if (targetEnemy.meshRenderers.Any(meshRendererTarget => bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
-            {
-                LethalMon.Log("Collided with target, grab it");
+        if (targetEnemy.meshRenderers.Any(meshRendererTarget => bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+        {
+            LethalMon.Log("Collided with target, grab it");
 
-                EnemyAI enemyToGrab = targetEnemy;
-                GrabEnemy(enemyToGrab);
-                StandUp();
-                
-                GrabEnemyServerRpc(enemyToGrab.GetComponent<NetworkObject>());
-            }
-            else
-            {
-                LethalMon.Log("Moving to target");
-
-                bracken.SetDestinationToPosition(targetEnemy.transform.position);
-            }
+            EnemyAI enemyToGrab = targetEnemy;
+            GrabEnemy(enemyToGrab);
+            StandUp();
+            
+            GrabEnemyServerRpc(enemyToGrab.GetComponent<NetworkObject>());
         }
         else
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        {
+            LethalMon.Log("Moving to target");
+
+            bracken.SetDestinationToPosition(targetEnemy.transform.position);
+        }
+        
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -284,6 +339,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         var farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAI.transform.position).position;
         bracken.SetDestinationToPosition(farthestPosition);
         LethalMon.Log("Moving to " + farthestPosition);
+        
+        SwitchToCustomBehaviour((int) CustomBehaviour.DragEnemyAway);
     }
 
     public void PlaceEnemyAiInBrackenHands(EnemyAI enemyAI)

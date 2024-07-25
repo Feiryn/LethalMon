@@ -1,6 +1,7 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using GameNetcodeStuff;
-using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours;
@@ -13,10 +14,39 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     private float CumulatedCheckDogsSeconds = 0f;
     
     private static readonly float CheckDogsSecondsInterval = 1f;
-    
-    private bool howled = false;
 
     internal float HowlTimer;
+
+    internal override string DefendingBehaviourDescription => "Runs away...";
+    #endregion
+    
+    #region Custom behaviours
+    internal enum CustomBehaviour
+    {
+        Howl = 1
+    }
+    
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
+    {
+        new (CustomBehaviour.Howl.ToString(), "Is howling!", OnHowl)
+    };
+
+    public void OnHowl()
+    {
+        if (HowlTimer > 0f)
+        {
+            HowlTimer -= Time.deltaTime;
+            return;
+        }
+        
+        if (targetEnemy != null)
+        {
+            ((MouthDogAI)targetEnemy!).suspicionLevel = 0;
+            targetEnemy = null;
+        }
+        
+        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+    }
     #endregion
     
     #region Cooldowns
@@ -79,35 +109,45 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedDefending();
 
-        if (HowlTimer > 0f)
+        if (Vector3.Distance(mouthDog.transform.position, mouthDog.destination) < 1f)
         {
-            HowlTimer -= Time.deltaTime;
-            return;
-        }
-
-        if (howled)
-        {
-            if (targetEnemy != null)
-            {
-                ((MouthDogAI)targetEnemy!).suspicionLevel = 0;
-                targetEnemy = null;
-                WalkServerRpc();
-            }
-        }
-        else
-        {
-            if (Vector3.Distance(mouthDog.transform.position, mouthDog.destination) < 1f)
-            {
-                HowlServerRpc();
-                HowlTimer = mouthDog.screamSFX.length;
-                howled = true;
-                howlCooldown.Reset();
-                var noisePosition = mouthDog.transform.position;
-                ((MouthDogAI)targetEnemy!).lastHeardNoisePosition = noisePosition;
-                ((MouthDogAI)targetEnemy!).DetectNoise(noisePosition, float.MaxValue);
-            }
+            HowlTimer = mouthDog.screamSFX.length;
+            howlCooldown.Reset();
+            var noisePosition = mouthDog.transform.position;
+            ((MouthDogAI)targetEnemy!).lastHeardNoisePosition = noisePosition;
+            ((MouthDogAI)targetEnemy!).DetectNoise(noisePosition, float.MaxValue);
+            
+            SwitchToCustomBehaviour((int) CustomBehaviour.Howl);
         }
     }
+
+    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    {
+        base.InitTamingBehaviour(behaviour);
+        
+        switch (behaviour)
+        {
+            case TamingBehaviour.TamedFollowing:
+                WalkMode();
+                break;
+            case TamingBehaviour.TamedDefending:
+                ChaseMode();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(behaviour), behaviour, null);
+        }
+    }
+
+    internal override void InitCustomBehaviour(int behaviour)
+    {
+        base.InitCustomBehaviour(behaviour);
+
+        if (behaviour == (int)CustomBehaviour.Howl)
+        {
+            Howl();
+        }
+    }
+
     #endregion
 
     #region Methods
@@ -151,9 +191,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
             if (foundPath)
             {
-                ChaseServerRpc();
                 targetEnemy = mouthDogAI;
-                howled = false;
                 HowlTimer = 0f;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
                 return;
@@ -200,13 +238,19 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     
     private void WalkMode()
     {
-        mouthDog.agent.speed = 5f;
+        if (mouthDog.agent != null)
+        {
+            mouthDog.agent.speed = 5f;
+        }
         mouthDog.creatureAnimator.Play("Base Layer.Idle1");
     }
     
     private void ChaseMode()
     {
-        mouthDog.agent.speed = 13f;
+        if (mouthDog.agent != null)
+        {
+            mouthDog.agent.speed = 13f;
+        }
         mouthDog.creatureAnimator.Play("Base Layer.Chase");
     }
 
@@ -214,44 +258,6 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     {
         mouthDog.creatureAnimator.Play("Base Layer.ChaseHowl");
         mouthDog.creatureVoice.PlayOneShot(mouthDog.screamSFX);
-    }
-    #endregion
-    
-    #region RPCs
-    [ServerRpc(RequireOwnership = false)]
-    public void WalkServerRpc()
-    {
-        WalkClientRpc();
-    }
-    
-    [ClientRpc]
-    public void WalkClientRpc()
-    {
-        WalkMode();
-    }
-    
-    [ServerRpc(RequireOwnership = false)]
-    public void ChaseServerRpc()
-    {
-        ChaseClientRpc();
-    }
-    
-    [ClientRpc]
-    public void ChaseClientRpc()
-    {
-        ChaseMode();
-    }
-    
-    [ServerRpc(RequireOwnership = false)]
-    public void HowlServerRpc()
-    {
-        HowlClientRpc();
-    }
-    
-    [ClientRpc]
-    public void HowlClientRpc()
-    {
-        Howl();
     }
     #endregion
 }

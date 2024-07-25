@@ -4,6 +4,7 @@ using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Items;
+using LethalMon.Patches;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -53,7 +54,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public PlayerControllerB? targetPlayer = null;
 
-    public ulong ownClientId;
+    public ulong ownClientId = ulong.MaxValue;
 
     public BallType ballType;
 
@@ -86,10 +87,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     public static readonly int TamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
 
-    private Dictionary<int, Action> CustomBehaviours = new Dictionary<int, Action>(); // List of behaviour state indices and their custom handler
+    private Dictionary<int, Tuple<string, Action>> CustomBehaviours = new (); // List of behaviour state indices and their custom handler
 
     // Override this to add more custom behaviours to your tamed enemy
-    internal virtual List<Tuple<string, Action>>? CustomBehaviourHandler => null;
+    internal virtual List<Tuple<string, string, Action>>? CustomBehaviourHandler => null;
+
+    internal virtual string FollowingBehaviourDescription => "Follows you...";
+    
+    internal virtual string DefendingBehaviourDescription => "Defends you!";
 
     public TamingBehaviour? CurrentTamingBehaviour
     {
@@ -199,8 +204,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         foreach (var customBehaviour in CustomBehaviourHandler)
         {
             behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
-            CustomBehaviours.Add(CustomBehaviours.Count + 1, customBehaviour.Item2);
-            LethalMon.Log($"Added custom behaviour {CustomBehaviours.Count} with handler {customBehaviour.Item2.Method.Name}");
+            CustomBehaviours.Add(CustomBehaviours.Count + 1, new Tuple<string, Action>(customBehaviour.Item2, customBehaviour.Item3));
+            LethalMon.Log($"Added custom behaviour {CustomBehaviours.Count} with handler {customBehaviour.Item3.Method.Name}");
         }
         Enemy.enemyBehaviourStates = behaviourStateList.ToArray();
     }
@@ -232,6 +237,31 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual void OnRetrieveInBall() { }
 
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
+
+    internal string GetCurrentStateDescription()
+    {
+        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex)
+        {
+            return "Base behaviour (not implemented)";
+        }
+
+        if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedFollowing)
+        {
+            return FollowingBehaviourDescription;
+        }
+        
+        if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedDefending)
+        {
+            return DefendingBehaviourDescription;
+        }
+        
+        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex + TamedBehaviourCount + CustomBehaviours.Count)
+        {
+            return CustomBehaviours[Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount].Item1;
+        }
+
+        return "Unknown behaviour";
+    }
     #endregion
 
     #region ActionKeys
@@ -292,12 +322,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             {
                 customBehaviour -= TamedBehaviourCount;
                 if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
-                    CustomBehaviours[customBehaviour]();
+                    CustomBehaviours[customBehaviour].Item2();
                 else
                 {
                     LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
                     foreach (var b in CustomBehaviours)
-                        LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Method.Name}");
+                        LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Item2.Method.Name}");
                 }
                 return;
             }
@@ -456,11 +486,32 @@ public class TamedEnemyBehaviour : NetworkBehaviour
                     : "Not catchable";
             }
         }
+
+        if (ownClientId == Utils.CurrentPlayer.playerClientId)
+        {
+            HUDManagerPatch.EnableHUD(true);
+            HUDManagerPatch.ChangeToTamedBehaviour(this);
+        }
     }
 
     internal virtual void DoAIInterval()
     {
         Enemy.DoAIInterval();
+    }
+
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+
+        foreach (var cooldown in GetComponents<CooldownNetworkBehaviour>())
+        {
+            cooldown.OnDestroy();
+        }
+        
+        if (ownClientId == Utils.CurrentPlayer.playerClientId)
+        {
+            HUDManagerPatch.EnableHUD(false);
+        }
     }
     #endregion
 
@@ -667,6 +718,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);
+    }
+
+    public bool IsOwnedByAPlayer()
+    {
+        return ownClientId != long.MaxValue;
     }
     #endregion
 }

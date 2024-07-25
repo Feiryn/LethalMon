@@ -30,9 +30,9 @@ namespace LethalMon.Behaviours
         {
             Riding = 1,
         }
-        internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
         {
-            { new Tuple<string, Action>(CustomBehaviour.Riding.ToString(), WhileRiding) },
+            new Tuple<string, string, Action>(CustomBehaviour.Riding.ToString(), "Is being rode...", WhileRiding),
         };
 
         void WhileRiding()

@@ -27,6 +27,9 @@ namespace LethalMon.Behaviours
         internal bool ownerInsideFactory = false;
 
         internal Coroutine? ScareAndHuntCoroutine = null;
+
+        internal override string DefendingBehaviourDescription => "Saw an enemy to hunt!";
+
         #endregion
 
         #region Custom behaviours
@@ -35,10 +38,10 @@ namespace LethalMon.Behaviours
             RunningBackToOwner = 1,
             ScareThrowerAndHunt
         }
-        internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
         {
-            { new (CustomBehaviour.RunningBackToOwner.ToString(), OnRunningBackToOwner) },
-            { new (CustomBehaviour.ScareThrowerAndHunt.ToString(), WhileScaringThrower) }
+            new (CustomBehaviour.RunningBackToOwner.ToString(), "Runs back to you...", OnRunningBackToOwner),
+            new (CustomBehaviour.ScareThrowerAndHunt.ToString(), "Is hunting you!", WhileScaringThrower)
         };
 
         internal override void InitCustomBehaviour(int behaviour)

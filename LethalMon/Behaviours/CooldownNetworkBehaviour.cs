@@ -1,6 +1,9 @@
+using System.Globalization;
+using TMPro;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace LethalMon.Behaviours;
 
@@ -15,6 +18,10 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     public float CurrentTimer { get; private set; }
     
     private bool _needSyncing = true;
+
+    private Image? _cooldownCircle;
+
+    private TextMeshProUGUI? _cooldownTime;
 
     public void InitTimer(float timer)
     {
@@ -34,6 +41,14 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     {
         CurrentTimer += Time.deltaTime;
 
+        if (_cooldownCircle != null)
+        {
+            _cooldownCircle.fillAmount = Mathf.Clamp(CurrentTimer / CooldownTime.Value, 0, 1);
+            
+            float cooldownLeftTime = Mathf.Clamp(CooldownTime.Value - CurrentTimer, 0, CooldownTime.Value);
+            _cooldownTime!.text = cooldownLeftTime == 0f ? "" : Mathf.Floor(cooldownLeftTime).ToString(CultureInfo.InvariantCulture);
+        }
+        
         if (_needSyncing)
         {
             Sync();
@@ -55,6 +70,13 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     {
         _needSyncing = false;
         SyncCooldownServerRpc();
+    }
+
+    public void BindToHUD(Image cooldownCircle, TextMeshProUGUI cooldownTime, TextMeshProUGUI cooldownName)
+    {
+        _cooldownCircle = cooldownCircle;
+        _cooldownTime = cooldownTime;
+        cooldownName.text = DisplayName.Value.ToString();
     }
 
     [ServerRpc(RequireOwnership = false)]

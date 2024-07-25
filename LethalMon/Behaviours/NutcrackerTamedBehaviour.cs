@@ -16,7 +16,8 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     private float lookTimer = 0f;
 
     private readonly float lookTimerInterval = 1f;
-    
+
+    internal override string DefendingBehaviourDescription => "Shoots at an enemy!";
     #endregion
     
     #region Custom behaviours
@@ -25,10 +26,10 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         LookForPlayer = 1,
         Rampage = 2
     }
-    internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
     {
-        new Tuple<string, Action>(CustomBehaviour.LookForPlayer.ToString(), OnLookForPlayer),
-        new Tuple<string, Action>(CustomBehaviour.Rampage.ToString(), OnRampage)
+        new Tuple<string, string, Action>(CustomBehaviour.LookForPlayer.ToString(), "Is looking for you!", OnLookForPlayer),
+        new Tuple<string, string, Action>(CustomBehaviour.Rampage.ToString(), "Is on a rampage!", OnRampage)
     };
 
     void OnRampage() { }

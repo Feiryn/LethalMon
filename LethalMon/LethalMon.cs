@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -21,6 +23,8 @@ public class LethalMon : BaseUnityPlugin
     internal static AudioClip HoardingBugFlySfx;
 
     internal static GameObject hudPrefab;
+
+    internal static Dictionary<string, Sprite> monstersSprites = new();
 
     private void Awake()
     {
@@ -62,6 +66,16 @@ public class LethalMon : BaseUnityPlugin
         Masterball.Setup(assetBundle);
         HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("Assets/HoardingBug_Fly.ogg");
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
+
+        // Load monsters sprites
+        Log("All assets: " + string.Join(", ", assetBundle.GetAllAssetNames()));
+        const string monstersIconsNamePath = "assets/ui/monstersicons/";
+        monstersSprites = assetBundle.GetAllAssetNames()
+            .Where(assetName => assetName.StartsWith(monstersIconsNamePath) && assetName.EndsWith(".png"))
+            .ToDictionary(
+                assetName => assetName.Substring(monstersIconsNamePath.Length, assetName.Length - monstersIconsNamePath.Length - 4),
+                assetName => assetBundle.LoadAsset<Sprite>(assetName)
+            );
     }
 
     private void ApplyHarmonyPatches()

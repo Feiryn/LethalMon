@@ -25,9 +25,9 @@ namespace LethalMon.Behaviours
         {
             Flying = 1,
         }
-        internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new List<Tuple<string, Action>>()
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
         {
-            { new Tuple<string, Action>(CustomBehaviour.Flying.ToString(), WhileFlying) },
+            new Tuple<string, string, Action>(CustomBehaviour.Flying.ToString(), "Is flying with you...", WhileFlying),
         };
 
         void WhileFlying()

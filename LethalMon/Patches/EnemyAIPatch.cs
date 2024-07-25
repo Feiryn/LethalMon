@@ -42,10 +42,12 @@ public class EnemyAIPatch
                     tamedEnemyBehaviour.InitCustomBehaviour(stateIndex - TamedEnemyBehaviour.TamedBehaviourCount - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
                 }
             }
+            
+            HUDManagerPatch.UpdateTamedMonsterAction(tamedEnemyBehaviour.GetCurrentStateDescription());
         }
         else
         {
-            LethalMon.Log("No TamedEnemyBehaviour component found before EnemyAI SwitchToBehaviourStateOnLocalClient", LethalMon.LogType.Warning);
+            LethalMon.Log("No TamedEnemyBehaviour component found after EnemyAI SwitchToBehaviourStateOnLocalClient", LethalMon.LogType.Warning);
         }
     }
 }
