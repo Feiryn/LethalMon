@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
-using UnityEngine;
+using LethalMon.Behaviours;
 
 namespace LethalMon.Patches;
 
@@ -28,5 +28,14 @@ public class RedLocustBeesPatch
         }
 
         return true; // Do not skip base
+    }
+
+    [HarmonyPatch(typeof(RedLocustBees), nameof(RedLocustBees.SpawnHiveNearEnemy))]
+    [HarmonyPrefix]
+    public static bool SpawnHiveNearEnemyPrefix(RedLocustBees __instance)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+
+        return !(tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsOwnedByAPlayer());
     }
 }

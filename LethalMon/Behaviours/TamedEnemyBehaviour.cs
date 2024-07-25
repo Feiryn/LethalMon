@@ -722,7 +722,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool IsOwnedByAPlayer()
     {
-        return ownClientId != long.MaxValue;
+        return ownerPlayer != null;
     }
     #endregion
 }
