@@ -160,44 +160,49 @@ public abstract class PokeballItem : ThrowableItem
     {
         LethalMon.Log("Touch ground");
 
-        if (base.IsHost && this.playerThrownBy != null && this.enemyCaptured)
+        if (!this.enemyCaptured || this.playerThrownBy == null) return;
+        
+        TamedEnemyBehaviour? playerPet = Utils.GetPlayerPet(this.playerThrownBy);
+        
+        if (playerPet != null)
         {
-            LethalMon.Logger.LogInfo("Getting pet..");
-            if (Utils.GetPlayerPet(this.playerThrownBy) != null)
+            if (this.playerThrownBy == Utils.CurrentPlayer)
             {
                 LethalMon.Logger.LogInfo("You already have a monster out!");
                 HUDManager.Instance.DisplayTip("LethalMon", "You already have a monster out!");
             }
-            else
+
+            return;
+        }
+
+        if (Utils.IsHost)
+        {
+            EnemyType typeToSpawn = this.enemyType!;
+
+            GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
+                Quaternion.Euler(new Vector3(0, 0f, 0f)));
+
+            //EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
+            if (!gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
             {
-                EnemyType typeToSpawn = this.enemyType!;
-
-                GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
-                    Quaternion.Euler(new Vector3(0, 0f, 0f)));
-
-                //EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
-                if (!gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
-                {
-                    LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
-                    return;
-                }
-
-                LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
-                tamedBehaviour.ballType = this.ballType;
-                tamedBehaviour.ballValue = this.scrapValue;
-                tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-                tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
-                tamedBehaviour.isOutsideOfBall = true;
-                tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
-                var enemyPosition = tamedBehaviour.Enemy.transform.position;
-                tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
-                tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
-                tamedBehaviour.SetCooldownTimers(cooldowns);
-
-                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
-                Destroy(this.gameObject);
+                LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
+                return;
             }
+
+            LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
+            tamedBehaviour.ballType = this.ballType;
+            tamedBehaviour.ballValue = this.scrapValue;
+            tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+            tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+            tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+            var enemyPosition = tamedBehaviour.Enemy.transform.position;
+            tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
+            tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
+            tamedBehaviour.SetCooldownTimers(cooldowns);
+
+            gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+            CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
+            Destroy(this.gameObject);
         }
     }
 

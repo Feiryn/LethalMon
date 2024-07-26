@@ -75,8 +75,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public bool isOutsideOfBall = false;
-
     internal float targetNearestEnemyInterval = 0f;
 
     #region Behaviours
@@ -605,7 +603,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
-            if (enemyInRange?.transform == null) continue;
+            var tamedBehaviour = enemyHit?.GetComponentInParent<TamedEnemyBehaviour>();
+            if (enemyInRange?.transform == null || tamedBehaviour == null || tamedBehaviour.ownerPlayer != null) continue;
 
             if (enemyInRange == Enemy || enemyInRange.gameObject.layer == (int)Mask.EnemiesNotRendered || enemyInRange.isEnemyDead) continue;
 
@@ -675,8 +674,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         OnRetrieveInBall();
         
         Enemy.GetComponent<NetworkObject>().Despawn(true);
-
-        isOutsideOfBall = false;
 
         return pokeballItem;
     }

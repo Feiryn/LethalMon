@@ -373,6 +373,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void ReleaseEnemy()
     {
+        grabCooldown.Resume();
+        
         if (grabbedEnemyAi == null) return;
 
         Transform enemyAiTransform = grabbedEnemyAi.transform;
@@ -386,7 +388,6 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         grabbedEnemyAi.agent.enabled = true;
         TeleportEnemy(grabbedEnemyAi, selfTransform.position);
         grabbedEnemyAi = null;
-        grabCooldown.Resume();
             
         LethalMon.Log("Enemy release");
     }

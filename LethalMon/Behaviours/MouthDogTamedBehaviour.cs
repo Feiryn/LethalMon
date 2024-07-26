@@ -180,7 +180,8 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         MouthDogAI[] mouthDogAIs = FindObjectsOfType<MouthDogAI>();
         foreach (MouthDogAI mouthDogAI in mouthDogAIs)
         {
-            if (mouthDogAI == mouthDog || mouthDogAI.isEnemyDead || Vector3.Distance(mouthDogAI.transform.position, ownerPlayer!.transform.position) > 20f) continue;
+            TamedEnemyBehaviour? tamedEnemyBehaviour = mouthDogAI.GetComponentInParent<TamedEnemyBehaviour>();
+            if (mouthDogAI == mouthDog || mouthDogAI.isEnemyDead || Vector3.Distance(mouthDogAI.transform.position, ownerPlayer!.transform.position) > 20f || (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsOwnedByAPlayer())) continue;
             
             bool foundPath = false;
             for (float i = 15f; i > 7f && !foundPath; i--)
