@@ -60,7 +60,6 @@ Here are the implementation status of monsters:
 ## Roadmap
 
 - Audio
-- HUD
 - Name above your own monsters
 - Better (and working) tooltips
 - Implementation of more monsters

@@ -1,3 +1,17 @@
+# 0.4.0
+
+- Added an HUD for invoked monsters
+- Bracken now has a 20s cooldown to drag enemies
+- Hoarding bug now has 5s cooldown to bring items
+- The ghost girl now has a 1min cooldown to attack enemies
+- Bracken now goes back to the owner by walking and not teleporting
+- Cooldowns now can't be exploited by calling a monster back to its ball and release it afterward
+- Fixed a bug that made the bees spawn an hive each time they are called from their ball
+- Fixed a bug that made the hoarding bug stuck if the owner was attacked
+- Fixed a bug that sometimes made the nutcracker shoots at dead enemies
+- Tamed monsters can no longer attack other tamed monsters
+- The tip "You already have a monster out!" is now displaying correctly for clients
+
 # 0.3.2
 
 - Fixed a bug that made the content of balls not loaded properly
