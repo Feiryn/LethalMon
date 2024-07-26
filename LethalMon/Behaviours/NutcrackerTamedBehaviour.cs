@@ -132,7 +132,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         if (nutcracker is { aimingGun: false, reloadingGun: false, torsoTurning: false })
         {
             LethalMon.Log("Is not aiming nor reloading.");
-            if (targetEnemy != null && (!targetEnemy.isEnemyDead || !targetEnemy.agent.enabled) && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
+            if (targetEnemy != null && !targetEnemy.isEnemyDead && targetEnemy.agent.enabled && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
             {
                 LethalMon.Log(targetEnemy + " is in LOS, aiming gun");
                 nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);
