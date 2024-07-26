@@ -12,16 +12,28 @@ namespace LethalMon.Behaviours
     {
         #region Properties
         internal TestEnemy testEnemy { get; private set; } // Replace with enemy class
+
+        internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
+
+        internal override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
         #endregion
 
+        #region Cooldowns
+        private static readonly string CooldownId = "monstername_cooldownname";
+    
+        internal override Cooldown[] Cooldowns => new[] { new Cooldown(CooldownId, "Display text", 20f) };
+
+        private CooldownNetworkBehaviour cooldown;
+        #endregion
+        
         #region Custom behaviours
         internal enum CustomBehaviour
         {
             TestBehavior = 1
         }
-        internal override List<Tuple<string, Action>>? CustomBehaviourHandler => new()
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
         {
-            { new (CustomBehaviour.TestBehavior.ToString(), OnTestBehavior) }
+            new (CustomBehaviour.TestBehavior.ToString(), "Behaviour description text", OnTestBehavior)
         };
 
         internal override void InitCustomBehaviour(int behaviour)
@@ -70,11 +82,13 @@ namespace LethalMon.Behaviours
             base.Start();
 
             testEnemy = (Enemy as TestEnemy)!;
+
+            cooldown = GetCooldownWithId(CooldownId);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
-            // OWNER ONLY
+            // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
 
             switch(behaviour)
@@ -123,6 +137,12 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             return base.RetrieveInBall(position);
+        }
+
+        public override bool CanBeTeleported()
+        {
+            // HOST ONLY
+            return base.CanBeTeleported();
         }
         #endregion
 
