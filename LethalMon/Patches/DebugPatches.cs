@@ -11,7 +11,7 @@ namespace LethalMon.Patches
     [HarmonyPatch]
     internal class DebugPatches : NetworkBehaviour
     {
-#if DONT
+#if DEBUG
         private static bool Executing = false;
 
         [HarmonyPatch(typeof(PlayerControllerB), "Update")]

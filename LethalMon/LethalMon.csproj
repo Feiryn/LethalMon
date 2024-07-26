@@ -40,6 +40,11 @@
         <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <!-- Define a property to check for Linux -->
+        <IsLinux Condition="'$(OS)' == 'Unix' or '$(OS)' == 'Linux'">true</IsLinux>
+    </PropertyGroup>
+    
     <!-- Primary Package References -->
     <ItemGroup>
         <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
@@ -63,7 +68,15 @@
       </Reference>
     </ItemGroup>
     
-    <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
+    <Target Name="NetcodePatchLinux" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'true'">
         <Exec Command="$HOME/.dotnet/tools/netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
+    </Target>
+
+    <Target Name="NetcodePatchWindows" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'false'">
+        <Exec Command="netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
+    </Target>
+    
+    <Target Name="CopyPostBuildWindows" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'false'">
+        <Exec Command="copy /Y  &quot;$(ProjectDir)bin\Debug\netstandard2.1\LethalMon.dll&quot; &quot;C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\$(ProjectName)\LethalMon.dll&quot;" />
     </Target>
 </Project>
