@@ -4,7 +4,6 @@ using LethalMon.Items;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
@@ -48,10 +47,7 @@ namespace LethalMon.Behaviours
 
         internal readonly float IdleTimeTillSpawningSpore = 3f;
         internal float idleTime = 0f;
-
-
-        private DateTime canTongueHitAfter = new DateTime(0);
-        internal readonly float TongueHitCooldownSeconds = 5f;
+        
         internal Coroutine? tongueShootCoroutine = null;
         internal Coroutine? pushTargetCoroutine = null;
         internal readonly int TongueKillPercentage = 20;
@@ -59,48 +55,22 @@ namespace LethalMon.Behaviours
         internal int enemyHitTimes = 0;
         #endregion
 
-        #region Action Keys
-        private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Spawn hiding shroud" }
-        };
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        #region Cooldowns
+        private static readonly string TongueCooldownId = "fox_tongue";
+    
+        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TongueCooldownId, "Tongue hit", 5f) };
 
-        internal bool tongueOut = false;
-        internal override void ActionKey1Pressed()
-        {
-            base.ActionKey1Pressed();
-
-            Fox.creatureAnimator.SetBool("ShootTongue", value: tongueOut);
-            tongueOut = !tongueOut;
-            Fox.creatureAnimator.SetBool("mouthOpen", Vector3.Distance(Fox.transform.position, ownerPlayer!.transform.position) < 3f);
-        }
+        private CooldownNetworkBehaviour tongueCooldown;
         #endregion
-
+        
         #region Base Methods
-        internal void Awake()
-        {
-#if DEBUG
-            ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-            ownClientId = 0ul;
-            if(Utils.IsHost)
-                MoldSpreadManager.GenerateMold(ownerPlayer.transform.position, 2); // Needed so it doesn't get yeeted again at Start
-#endif
-        }
 
         internal override void Start()
         {
             base.Start();
-#if DEBUG
-            // Debug
-            ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-            ownClientId = 0ul;
-            isOutsideOfBall = true;
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            if (Utils.IsHost)
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
-#endif
 
+            tongueCooldown = GetCooldownWithId(TongueCooldownId);
+            
             if (ownerPlayer != null)
             {
                 Fox.transform.localScale *= 0.75f;
@@ -134,15 +104,16 @@ namespace LethalMon.Behaviours
                     idleTime = 0f;
                     if (Vector3.Distance(lastHidingSporePosition, Fox.transform.position) > 3f)
                     {
-                        SpawnHidingMoldServerRpc(Fox.transform.position);
-                        lastHidingSporePosition = Fox.transform.position;
+                        var foxPosition = Fox.transform.position;
+                        SpawnHidingMoldServerRpc(foxPosition);
+                        lastHidingSporePosition = foxPosition;
                     }
                 }
             }
             else
                 idleTime = 0f;
 
-            if (canTongueHitAfter < DateTime.Now)
+            if (tongueCooldown.IsFinished())
                 TargetNearestEnemy();
         }
 
@@ -202,7 +173,7 @@ namespace LethalMon.Behaviours
         #region TongueShooting
         internal void ShootTongueAtEnemy()
         {
-            if (targetEnemy == null || tongueShootCoroutine != null || canTongueHitAfter >= DateTime.Now) return;
+            if (targetEnemy == null || tongueShootCoroutine != null || !tongueCooldown.IsFinished()) return;
 
             var killEnemy = targetEnemy.enemyType.canDie && (enemyHitTimes >= 4 || Random.Range(0, 100) < TongueKillPercentage);
 
@@ -270,7 +241,7 @@ namespace LethalMon.Behaviours
 
             LethalMon.Log("ShootTongueAtEnemy -> Finished coroutine");
             tongueShootCoroutine = null;
-            canTongueHitAfter = DateTime.Now.AddSeconds(TongueHitCooldownSeconds);
+            tongueCooldown.Reset();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
         }
@@ -321,7 +292,7 @@ namespace LethalMon.Behaviours
             pushTargetCoroutine = null;
         }
 
-        internal IEnumerator PushTargetEnemyWithTongue(Vector3 direction, float force, int damageOnHit = 0)
+        private IEnumerator PushTargetEnemyWithTongue(Vector3 direction, float force, int damageOnHit = 0)
         {
             if (targetEnemy == null) yield break;
 
@@ -390,7 +361,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("PushTargetEnemyWithTongue -> Parameterised coroutine finished");
         }
 
-        internal IEnumerator ReachTargetEnemyWithTongue()
+        private IEnumerator ReachTargetEnemyWithTongue()
         {
             if (targetEnemy == null) yield break;
 
@@ -410,7 +381,7 @@ namespace LethalMon.Behaviours
             Fox.tongueTarget = null;
         }
 
-        internal IEnumerator PushTargetEnemyTo(Vector3 targetPosition, float duration, Action? onUpdate)
+        private IEnumerator PushTargetEnemyTo(Vector3 targetPosition, float duration, Action? onUpdate)
         {
             if (targetEnemy == null) yield break;
 
@@ -439,7 +410,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("SpawnHidingMoldClientRpc");
 
             var moldSpore = Instantiate(MoldSpreadManager.moldPrefab, position, Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(-180f, 180f), 0f)), MoldSpreadManager.moldContainer);
-            moldSpore.transform.localScale *= 0.75f;;
+            moldSpore.transform.localScale *= 0.75f;
             foreach (var meshRenderer in moldSpore.GetComponentsInChildren<MeshRenderer>())
             {
                 foreach (var material in meshRenderer.materials)
@@ -461,31 +432,14 @@ namespace LethalMon.Behaviours
                 DestroyHidingSpore(hidingSpores[0]);
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        internal void DestroyHidingSporeServerRpc(int index)
-        {
-            DestroyHidingSporeClientRpc(index);
-        }
-
-        [ClientRpc]
-        public void DestroyHidingSporeClientRpc(int index)
-        {
-            if(hidingSpores.Count >= index)
-            {
-                LethalMon.Log("Syncing error for hidingSpores. Index out of range.", LethalMon.LogType.Warning);
-                return;
-            }
-
-            DestroyHidingSpore(hidingSpores[index]);
-        }
-
         public void DestroyHidingSpore(GameObject hidingSpore)
         {
             hidingSpore.SetActive(value: false);
             hidingSpores.Remove(hidingSpore);
-            Instantiate(MoldSpreadManager.destroyParticle, hidingSpore.transform.position + Vector3.up * 0.5f, Quaternion.identity, null);
+            var hidingSporePosition = hidingSpore.transform.position;
+            Instantiate(MoldSpreadManager.destroyParticle, hidingSporePosition + Vector3.up * 0.5f, Quaternion.identity, null);
             MoldSpreadManager.destroyAudio.Stop();
-            MoldSpreadManager.destroyAudio.transform.position = hidingSpore.transform.position + Vector3.up * 0.5f;
+            MoldSpreadManager.destroyAudio.transform.position = hidingSporePosition + Vector3.up * 0.5f;
             MoldSpreadManager.destroyAudio.Play();
             RoundManager.Instance.PlayAudibleNoise(MoldSpreadManager.destroyAudio.transform.position, 6f, 0.5f, 0, noiseIsInsideClosedShip: false, 99611);
         }
