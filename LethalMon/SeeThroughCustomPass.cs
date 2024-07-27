@@ -14,12 +14,17 @@ class SeeThroughCustomPass : CustomPass
 
     Material stencilMaterial;
 
-    ShaderTagId[]   shaderTags;
+    ShaderTagId[] shaderTags;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
         if (stencilShader == null)
-            stencilShader = Utils.SeeThroughShader!;
+        {
+            if (Utils.SeeThroughShader == null)
+                return;
+
+            stencilShader = Utils.SeeThroughShader;
+        }
 
         stencilMaterial = CoreUtils.CreateEngineMaterial(stencilShader);
 

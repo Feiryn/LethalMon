@@ -46,6 +46,15 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f3Key.wasPressedThisFrame)
             {
+                // See through customPass -> Do this only once later on a global gameobject and not for every enemy
+                var cpv = Utils.CurrentPlayer.gameplayCamera.gameObject.AddComponent<CustomPassVolume>();
+                cpv.targetCamera = Utils.CurrentPlayer.gameplayCamera;
+                cpv.injectionPoint = CustomPassInjectionPoint.BeforeTransparent;
+                cpv.isGlobal = true;
+                var seeThrough = new SeeThroughCustomPass();
+                seeThrough.clearFlags = UnityEngine.Rendering.ClearFlag.None;
+                seeThrough.seeThroughLayer = 1 << (int)Utils.LayerMasks.Mask.Enemies;
+                cpv.customPasses.Add(seeThrough);
             }
 
             else if (Keyboard.current.f4Key.wasPressedThisFrame)

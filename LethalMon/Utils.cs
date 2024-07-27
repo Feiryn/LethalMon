@@ -333,6 +333,12 @@ public class Utils
     }
     public static Shader? SeeThroughShader;
 
+    private static readonly Color EnemyHighlightOutline = Color.red;
+    private static readonly Color EnemyHighlightInline = new Color(0.8f, 0f, 0f, 0.8f);
+
+    private static readonly Color ItemHighlightOutline = Color.green;
+    private static readonly Color ItemHighlightInline = new Color(0f, 0.8f, 0f, 0.6f);
+
     // Wireframe
     public static void LoadWireframeMaterial(AssetBundle assetBundle)
     {
@@ -345,8 +351,8 @@ public class Utils
 
         // Create a material from the loaded shader
         WireframeMaterial = new Material(wireframeShader);
-        WireframeMaterial.SetColor("_EdgeColor", Color.red);
-        WireframeMaterial.SetColor("_MainColor", new Color(0.8f, 0f, 0f, 0.8f));
+        WireframeMaterial.SetColor("_EdgeColor", EnemyHighlightOutline);
+        WireframeMaterial.SetColor("_MainColor", EnemyHighlightInline);
         WireframeMaterial.SetFloat("_WireframeVal", 0.04f);
     }
     public static Material? WireframeMaterial;
