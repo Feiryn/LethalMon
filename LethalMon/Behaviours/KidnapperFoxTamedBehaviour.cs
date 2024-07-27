@@ -53,6 +53,11 @@ namespace LethalMon.Behaviours
         internal readonly int TongueKillPercentage = 20;
         internal EnemyAI? lastHitEnemy = null;
         internal int enemyHitTimes = 0;
+
+        internal override string DefendingBehaviourDescription => "Hits an enemy with its tongue!";
+
+        internal override bool CanDefend => tongueCooldown.IsFinished();
+
         #endregion
 
         #region Cooldowns
@@ -93,9 +98,6 @@ namespace LethalMon.Behaviours
             // OWNER ONLY
             base.OnTamedFollowing();
 
-            Fox.CalculateAnimationDirection(Fox.maxAnimSpeed);
-            Fox.LateUpdate(); // Fox.AddProceduralOffsetToLimbsOverTerrain();
-
             if (Fox.agentLocalVelocity.x == 0f && Fox.agentLocalVelocity.z == 0f) // Idle
             {
                 idleTime += Time.deltaTime;
@@ -120,10 +122,13 @@ namespace LethalMon.Behaviours
         internal override void OnTamedDefending()
         {
             // OWNER ONLY
-            if ((targetEnemy == null || targetEnemy.isEnemyDead) && tongueShootCoroutine != null)
+            if (targetEnemy == null || targetEnemy.isEnemyDead)
             {
-                StopCoroutine(tongueShootCoroutine);
-                tongueShootCoroutine = null;
+                if (tongueShootCoroutine != null)
+                {
+                    StopCoroutine(tongueShootCoroutine);
+                    tongueShootCoroutine = null;
+                }
 
                 targetEnemy = null;
                 Fox.creatureAnimator.SetBool("shootTongue", false);
@@ -168,6 +173,15 @@ namespace LethalMon.Behaviours
             //base.TurnTowardsPosition(position);
             Fox.LookAtPosition(position);
         }
+
+        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        {
+            base.OnUpdate(update, doAIInterval);
+            
+            Fox.CalculateAnimationDirection(Fox.maxAnimSpeed);
+            Fox.LateUpdate(); // Fox.AddProceduralOffsetToLimbsOverTerrain();
+        }
+
         #endregion
 
         #region TongueShooting
