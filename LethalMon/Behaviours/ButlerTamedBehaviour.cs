@@ -26,6 +26,9 @@ namespace LethalMon.Behaviours
 
         internal readonly float CleanUpTime = 5f;
         internal float timeCleaning = 0f;
+
+        internal override bool CanDefend => false;
+
         #endregion
 
         #region Custom behaviours
@@ -174,7 +177,7 @@ namespace LethalMon.Behaviours
         #region Base Methods
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
-            // OWNER ONLY
+            // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
 
             switch (behaviour)
@@ -182,17 +185,18 @@ namespace LethalMon.Behaviours
                 case TamingBehaviour.TamedFollowing:
                     if (ownerPlayer == null) return;
 
-                    Butler.agent.speed = 6f;
-                    if (IsOwner)
-                        Butler.SetButlerRunningServerRpc(false);
+                    if (Butler.agent != null)
+                        Butler.agent.speed = 6f;
+                    
+                    Butler.creatureAnimator.SetBool("Running", false);
                     break;
 
                 case TamingBehaviour.TamedDefending:
                     if (targetEnemy == null) return;
 
                     Butler.agent.speed = 9f;
-                    if (IsOwner)
-                        Butler.SetButlerRunningServerRpc(true);
+
+                    Butler.creatureAnimator.SetBool("Running", true);
                     break;
 
                 default: break;
@@ -241,6 +245,14 @@ namespace LethalMon.Behaviours
 
             Butler.CalculateAnimationDirection();
         }
+
+        internal override void Start()
+        {
+            base.Start();
+            
+            Butler.agent.speed = 6f;
+        }
+
         #endregion
     }
 }
