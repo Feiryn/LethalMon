@@ -27,6 +27,12 @@ if [ ! -f "../CHANGELOG.md" ]; then
   exit 1
 fi
 
+# Test if LICENSE exists
+if [ ! -f "../LICENSE" ]; then
+  echo "../LICENSE not found"
+  exit 1
+fi
+
 # Test if lethalmon unity file exists and ask for confirmation
 if [ ! -f "../LethalMon/bin/Debug/netstandard2.1/lethalmon" ]; then
   echo "../LethalMon/bin/Debug/netstandard2.1/lethalmon not found"
@@ -70,11 +76,12 @@ jq --arg version "$version" '.version_number = $version' ./manifest.json > ./bui
 cp ./icon.png ./build/
 cp ../README.md ./build/
 cp ../CHANGELOG.md ./build/
+cp ../LICENSE ./build/
 cp ../LethalMon/bin/Debug/netstandard2.1/lethalmon ./build/plugins/LethalMon
 cp ../LethalMon/bin/Release/netstandard2.1/LethalMon.dll ./build/plugins/LethalMon
 
 # Create zip
-7za a -tzip ./build/Feiryn-LethalMon-"$version".zip ./build/CHANGELOG.md ./build/README.md ./build/icon.png ./build/manifest.json ./build/plugins
+7za a -tzip ./build/Feiryn-LethalMon-"$version".zip ./build/CHANGELOG.md ./build/README.md ./build/LICENSE ./build/icon.png ./build/manifest.json ./build/plugins
 
 # Echo end
 echo "Zip created in build folder"
