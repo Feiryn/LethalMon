@@ -320,4 +320,35 @@ public class Utils
         return TrySpawnItemAtPosition(spawnableItemWithRarity, position);
     }
     #endregion
+
+    #region Shader & Materials
+    // SeeThrough shader
+    public static void LoadSeeThroughShader(AssetBundle assetBundle)
+    {
+        SeeThroughShader = assetBundle.LoadAsset<Shader>("Assets/SeeThrough/SeeThroughStencil.shader");
+        if (SeeThroughShader == null)
+        {
+            LethalMon.Log("Unable to load seethrough shader!", LethalMon.LogType.Error);
+        }
+    }
+    public static Shader? SeeThroughShader;
+
+    // Wireframe
+    public static void LoadWireframeMaterial(AssetBundle assetBundle)
+    {
+        var wireframeShader = assetBundle.LoadAsset<Shader>("Assets/SeeThrough/wireframe.shader");
+        if (wireframeShader == null)
+        {
+            LethalMon.Log("Unable to load wireframe shader!", LethalMon.LogType.Error);
+            return;
+        }
+
+        // Create a material from the loaded shader
+        WireframeMaterial = new Material(wireframeShader);
+        WireframeMaterial.SetColor("_EdgeColor", Color.red);
+        WireframeMaterial.SetColor("_MainColor", new Color(0.8f, 0f, 0f, 0.8f));
+        WireframeMaterial.SetFloat("_WireframeVal", 0.04f);
+    }
+    public static Material? WireframeMaterial;
+    #endregion
 }
