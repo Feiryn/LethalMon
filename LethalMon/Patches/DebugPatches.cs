@@ -5,7 +5,6 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 using LethalMon.Items;
-using System.Collections.Generic;
 using UnityEngine.Rendering.HighDefinition;
 
 namespace LethalMon.Patches
@@ -15,7 +14,6 @@ namespace LethalMon.Patches
     {
 #if DEBUG
         private static bool Executing = false;
-        private static Camera? overlayCamera = null;
 
         [HarmonyPatch(typeof(PlayerControllerB), "Update")]
         [HarmonyPostfix]
