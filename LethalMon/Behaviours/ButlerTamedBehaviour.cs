@@ -283,8 +283,13 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
-            
-            Butler.agent.speed = 6f;
+
+            if (ownerPlayer != null)
+            {
+                Butler.agent.speed = 6f;
+                Butler.ambience1.volume = 0f;
+                Butler.ambience2.volume = 0f;
+            }
         }
 
         #endregion
