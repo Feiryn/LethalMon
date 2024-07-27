@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,9 +9,6 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 using Random = System.Random;
 using UnityEngine.AI;
-using LethalLib.Modules;
-using Unity.Services.Authentication;
-using System.Runtime.CompilerServices;
 using HarmonyLib;
 
 namespace LethalMon;
@@ -288,123 +284,40 @@ public class Utils
     #endregion
 
     #region Items
-    public enum VanillaItem
+
+    private static Item? _giftBoxItem;
+
+    public static Item? GiftBoxItem
     {
-        Custom,
-        Binoculars,
-        Boombox,
-        clipboard,
-        Homemade_flashbang,
-        Extension_ladder,
-        Flashlight,
-        Ammo,
-        Jetpack,
-        Key,
-        Lockpicker,
-        Apparatus,
-        Mapper,
-        Pro_flashlight,
-        Radar_booster,
-        Body,
-        Magic_7_ball,
-        Airhorn,
-        Bell,
-        Big_bolt,
-        Bottles,
-        Brush,
-        Candy,
-        Cash_register,
-        Chemical_jug,
-        Clown_horn,
-        Large_axle,
-        Comedy,
-        Teeth,
-        Dust_pan,
-        Easter_egg,
-        Egg_beater,
-        V_type_engine,
-        Golden_cup,
-        Fancy_lamp,
-        Painting,
-        Plastic_fish,
-        Laser_pointer,
-        Flask,
-        Gift,
-        Gold_bar,
-        Hairdryer,
-        Kitchen_knife,
-        Magnifying_glass,
-        Metal_sheet,
-        Cookie_mold_pan,
-        Mug,
-        Perfume_bottle,
-        Old_phone,
-        Jar_of_pickles,
-        Pill_bottle,
-        Hive,
-        Remote,
-        Ring,
-        Toy_robot,
-        Rubber_Ducky,
-        Red_soda,
-        Steering_wheel,
-        Stop_sign,
-        Tea_kettle,
-        Toothpaste,
-        Toy_cube,
-        Tragedy,
-        Whoopie_cushion,
-        Yield_sign,
-        Shotgun,
-        Shovel,
-        Spray_paint,
-        Sticky_note,
-        Stun_grenade,
-        TZP_Inhalant,
-        Walkie_talkie,
-        Zap_gun
+        get
+        {
+            if (_giftBoxItem != null)
+                return _giftBoxItem;
+            
+            _giftBoxItem = Resources.FindObjectsOfTypeAll<Item>().FirstOrDefault(item => item.itemName == "Gift");
+            return _giftBoxItem;
+        }
     }
-
-    public static VanillaItem itemTypeByName(string name)
+    
+    private static GameObject? TrySpawnItemAtPosition(SpawnableItemWithRarity spawnableItemWithRarity, Vector3 position)
     {
-        if (name == null || name.Length == 0) return VanillaItem.Custom;
-
-        name = name.Replace("-", "_");
-        name = name.Replace(" ", "_");
-
-        if (Enum.TryParse(typeof(VanillaItem), name, true, out object item))
-            return (VanillaItem)item;
-        return VanillaItem.Custom;
-    }
-
-    [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
-    [HarmonyPostfix]
-    [HarmonyPriority(Priority.Last)]
-    private static void LoadItemsPrefix() => SpawnableItems = Resources.FindObjectsOfTypeAll<Item>().ToList();
-    public static List<Item> SpawnableItems = new();
-    public static Item itemByName(string name) => SpawnableItems.Find(x => x.itemName == name || x.itemName.Replace("-", "_") == name || x.itemName.Replace(" ", "_") == name);
-    public static Item itemByType(VanillaItem type) => itemByName(type.ToString());
-
-    public static bool TrySpawnItemAtPosition(VanillaItem itemType, Vector3 position, out GrabbableObject? item) => TrySpawnItemAtPosition(itemByType(itemType).spawnPrefab, position, out item);
-    private static bool TrySpawnItemAtPosition(GameObject spawnPrefab, Vector3 position, out GrabbableObject? item)
-    {
-        if (!IsHost || spawnPrefab == null)
+        if (!IsHost)
         {
             LethalMon.Log("TrySpawnItemAtPosition: Not a valid item or not the host.");
-            item = null;
-            return false;
+            return null;
         }
 
-        LethalMon.Log("Instantiating item " + spawnPrefab.name);
-        var itemObj = Object.Instantiate(spawnPrefab, position, Quaternion.identity, StartOfRound.Instance.elevatorTransform);
+        LethalMon.Log("Instantiating item " + spawnableItemWithRarity.spawnableItem.name);
+        var itemObj = Object.Instantiate(spawnableItemWithRarity.spawnableItem.spawnPrefab, position, Quaternion.identity, StartOfRound.Instance.elevatorTransform);
         itemObj.GetComponent<NetworkObject>()?.Spawn();
-        return itemObj.TryGetComponent(out item);
+        return itemObj;
     }
 
-    public static bool TrySpawnRandomItemAtPosition(Vector3 position, out GrabbableObject? item)
+    public static GameObject? TrySpawnRandomItemAtPosition(Vector3 position, out SpawnableItemWithRarity spawnableItemWithRarity)
     {
-        LethalMon.Log("Spawnable items: " + SpawnableItems.Count);
-        return TrySpawnItemAtPosition(SpawnableItems[UnityEngine.Random.Range(0, SpawnableItems.Count - 1)].spawnPrefab, position, out item);
+        LethalMon.Log("Spawnable items: " + RoundManager.Instance.currentLevel.spawnableScrap.Count);
+        spawnableItemWithRarity = RoundManager.Instance.currentLevel.spawnableScrap[UnityEngine.Random.RandomRangeInt(0, RoundManager.Instance.currentLevel.spawnableScrap.Count)];
+        return TrySpawnItemAtPosition(spawnableItemWithRarity, position);
     }
     #endregion
 }

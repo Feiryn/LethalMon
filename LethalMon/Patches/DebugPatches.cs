@@ -65,7 +65,6 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                LethalMon.Log("Spawnable items: " + Utils.SpawnableItems.Count);
                 var enemy = SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Crawler.ToString());
                 GameNetworkManager.Instance.StartCoroutine(KillEnemyLater(enemy!));
             }

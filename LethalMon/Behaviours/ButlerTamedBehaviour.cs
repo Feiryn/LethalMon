@@ -6,6 +6,7 @@ using UnityEngine;
 using static LethalMon.Utils.LayerMasks;
 using HarmonyLib;
 using System.Collections;
+using System.Linq;
 
 namespace LethalMon.Behaviours
 {
@@ -108,19 +109,28 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         internal void EnemyCleanedUpServerRpc(NetworkObjectReference enemyRef)
         {
+            SpawnableItemWithRarity? spawnableItemWithRarity = null;
+            GameObject? item = null;
             if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
             {
-                if (!Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out GrabbableObject? item))
+                item = Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out spawnableItemWithRarity);
+                if (item == null)
                     LethalMon.Log("Unable to spawn an item after cleaning up the enemy.", LethalMon.LogType.Error);
                 else
-                    LethalMon.Log("Spawned " + item!.itemProperties.itemName + " from cleaning up enemy " + targetEnemy.enemyType.enemyName);
+                    LethalMon.Log("Spawned " + item.GetComponent<GrabbableObject>().itemProperties.itemName + " from cleaning up enemy " + targetEnemy.enemyType.enemyName);
             }
 
-            EnemyCleanedUpClientRpc(enemyRef);
+            int scrapValue = spawnableItemWithRarity != null ? (int)(UnityEngine.Random.RandomRangeInt(spawnableItemWithRarity.spawnableItem.minValue + 25, spawnableItemWithRarity.spawnableItem.maxValue + 35) * RoundManager.Instance.scrapValueMultiplier) : 0;
+            if (item != null)
+            {
+                RoundManager.Instance.totalScrapValueInLevel += scrapValue;
+                item.GetComponent<GrabbableObject>().SetScrapValue(scrapValue);
+            }
+            EnemyCleanedUpClientRpc(enemyRef, item != null, item != null ? item.GetComponent<NetworkObject>() : new NetworkObjectReference(), scrapValue);
         }
 
         [ClientRpc]
-        internal void EnemyCleanedUpClientRpc(NetworkObjectReference enemyRef)
+        internal void EnemyCleanedUpClientRpc(NetworkObjectReference enemyRef, bool itemSpawned, NetworkObjectReference itemRef, int scrapValue)
         {
             Butler.creatureAnimator.SetInteger("HeldItem", 0);
 
@@ -138,14 +148,16 @@ namespace LethalMon.Behaviours
                 enemyPos = Enemy.transform.position;
             }
 
-            var giftBox = Utils.itemByType(Utils.VanillaItem.Gift)?.spawnPrefab?.GetComponent<GiftBoxItem>();
-            if (giftBox != null)
+            Item? giftBox = Utils.GiftBoxItem;
+            if (giftBox != null && giftBox.spawnPrefab != null)
             {
-                var presentAudio = Instantiate(giftBox.openGiftAudio);
-                var presentParticles = Instantiate(giftBox.PoofParticle);
+                GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
+                var presentAudio = Instantiate(giftBoxItem.openGiftAudio);
+                var presentParticles = Instantiate(giftBoxItem.PoofParticle);
 
-                presentParticles.transform.position = enemyPos;
-                presentParticles.transform.localScale = enemySize;
+                var presentParticlesTransform = presentParticles.transform;
+                presentParticlesTransform.position = enemyPos;
+                presentParticlesTransform.localScale = enemySize;
                 presentParticles.Play();
 
                 Utils.PlaySoundAtPosition(Butler.transform.position, presentAudio);
@@ -171,6 +183,28 @@ namespace LethalMon.Behaviours
                 else
                     SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
+            
+            if (itemSpawned && !Utils.IsHost)
+                StartCoroutine(waitForGiftPresentToSpawnOnClient(itemRef, scrapValue));
+        }
+        
+        private IEnumerator waitForGiftPresentToSpawnOnClient(NetworkObjectReference netItemRef, int scrapValue)
+        {
+            NetworkObject netObject = null;
+            float startTime = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - startTime < 8f && !netItemRef.TryGet(out netObject))
+            {
+                yield return new WaitForSeconds(0.03f);
+            }
+            if (netObject == null)
+            {
+                Debug.Log("No network object found");
+                yield break;
+            }
+            yield return new WaitForEndOfFrame();
+            GrabbableObject component = netObject.GetComponent<GrabbableObject>();
+            RoundManager.Instance.totalScrapValueInLevel += scrapValue;
+            component.SetScrapValue(scrapValue);
         }
         #endregion
 
