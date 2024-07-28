@@ -5,6 +5,7 @@ using LethalMon.Items;
 using UnityEngine;
 using System.Collections;
 using LethalMon.CustomPasses;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace LethalMon.Behaviours
 {
@@ -28,10 +29,9 @@ namespace LethalMon.Behaviours
 
         internal override bool CanDefend => false;
 
-        Coroutine? lendMaskCoroutine = null;
         bool isWearingMask = false;
 
-        static readonly float MaximumMaskWearingTime = 20f;
+        static readonly float MaximumMaskWearingTime = 2f;
         float timeSinceWearingMask = 0f;
         #endregion
 
@@ -106,12 +106,15 @@ namespace LethalMon.Behaviours
             base.Start();
 
             lendMaskCooldown = GetCooldownWithId(CooldownId);
+
+            ownerPlayer = Utils.CurrentPlayer;
+            ownClientId = 0ul;
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
 
         void OnDestroy()
         {
-            if(lendMaskCoroutine != null)
-                StopCoroutine(lendMaskCoroutine);
+            StopAllCoroutines();
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -122,6 +125,7 @@ namespace LethalMon.Behaviours
             switch (behaviour)
             {
                 case TamingBehaviour.TamedFollowing:
+                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -147,6 +151,8 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            Masked.SetSuit(playerWhoThrewBall.currentSuitID);
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -178,22 +184,91 @@ namespace LethalMon.Behaviours
         void LendMask()
         {
             LethalMon.Log("LendMask");
-            lendMaskCoroutine = StartCoroutine(LendMaskCoroutine());
+            StartCoroutine(LendMaskCoroutine());
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
         }
 
         IEnumerator LendMaskCoroutine()
         {
             // todo: wear mask animation + glassify
-            yield return null;
+
+
+            // ---------------------------------------------------------------------
+            // KillPlayerAnimationClientRpc code
+            Masked.inSpecialAnimationWithPlayer = ownerPlayer!;
+            Masked.inSpecialAnimationWithPlayer.inAnimationWithEnemy = Masked;
+            if (Masked.inSpecialAnimationWithPlayer == GameNetworkManager.Instance.localPlayerController)
+                Masked.inSpecialAnimationWithPlayer.CancelSpecialTriggerAnimations();
+
+            //Masked.creatureAnimator.SetBool("killing", value: true);
+            Masked.agent.enabled = false;
+            Masked.inSpecialAnimationWithPlayer.inSpecialInteractAnimation = true;
+            Masked.inSpecialAnimationWithPlayer.snapToServerPosition = true;
+            Vector3 origin = ((!Masked.inSpecialAnimationWithPlayer.IsOwner) ? Masked.inSpecialAnimationWithPlayer.transform.parent.TransformPoint(Masked.inSpecialAnimationWithPlayer.serverPlayerPosition) : Masked.inSpecialAnimationWithPlayer.transform.position);
+            Vector3 vector = Masked.transform.position - Masked.transform.forward * 2f;
+            vector.y = origin.y;
+            Masked.playerRay = new Ray(origin, vector - Masked.inSpecialAnimationWithPlayer.transform.position);
+
+            // ---------------------------------------------------------------------
+            // killAnimation code
+            Vector3 endPosition = Masked.playerRay.GetPoint(0.7f);
+            Masked.inSpecialAnimationWithPlayer.disableSyncInAnimation = true;
+            Masked.inSpecialAnimationWithPlayer.disableLookInput = true;
+            RoundManager.Instance.tempTransform.position = Masked.inSpecialAnimationWithPlayer.transform.position;
+            RoundManager.Instance.tempTransform.LookAt(endPosition);
+            Quaternion startingPlayerRot = Masked.inSpecialAnimationWithPlayer.transform.rotation;
+            Quaternion targetRot = RoundManager.Instance.tempTransform.rotation;
+            Vector3 startingPosition = Masked.transform.position;
+            for (int i = 0; i < 8; i++)
+            {
+                if (i > 0)
+                {
+                    Masked.transform.LookAt(Masked.inSpecialAnimationWithPlayer.transform.position);
+                    Masked.transform.eulerAngles = new Vector3(0f, base.transform.eulerAngles.y, 0f);
+                }
+                Masked.transform.position = Vector3.Lerp(startingPosition, endPosition, i / 8f);
+                Masked.inSpecialAnimationWithPlayer.transform.rotation = Quaternion.Lerp(startingPlayerRot, targetRot, i / 8f);
+                Masked.inSpecialAnimationWithPlayer.transform.eulerAngles = new Vector3(0f, Masked.inSpecialAnimationWithPlayer.transform.eulerAngles.y, 0f);
+                yield return null;
+            }
+            Masked.transform.position = endPosition;
+            Masked.inSpecialAnimationWithPlayer.transform.rotation = targetRot;
+            Masked.inSpecialAnimationWithPlayer.transform.eulerAngles = new Vector3(0f, Masked.inSpecialAnimationWithPlayer.transform.eulerAngles.y, 0f);
+            yield return new WaitForSeconds(0.3f);
+            SetMaskGlowNoSound();
+
+            yield return StartCoroutine(RotateMaskOnPlayerFace());
+
+            Masked.FinishKillAnimation();
             isWearingMask = true;
             CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true);
+        }
+
+        IEnumerator RotateMaskOnPlayerFace()
+        {
+            var mask = Masked.maskTypes[Masked.maskTypeIndex];
+            mask.transform.SetParent(null);
+            var maskStartingPos = mask.transform.position;
+            var maskEndingPos = Masked.playerRay.GetPoint(0.1f);
+            maskEndingPos.y = maskStartingPos.y;
+            var maskStartingRot = mask.transform.rotation;
+            var maskEndingRot = Masked.inSpecialAnimationWithPlayer.transform.rotation;
+            var maskProgress = 0f;
+            while (maskProgress < 1f)
+            {
+                maskProgress += Time.deltaTime / 2f;
+                mask.transform.position = Vector3.Lerp(maskStartingPos, maskEndingPos, maskProgress);
+                mask.transform.rotation = Quaternion.Lerp(maskStartingRot, maskEndingRot, Mathf.Min(maskProgress * 1.5f, 1f));
+                yield return null;
+            }
+
+            mask.transform.SetParent(Masked.inSpecialAnimationWithPlayer.transform, true);
         }
 
         void GiveBackMask()
         {
             lendMaskCooldown.Reset();
-            lendMaskCoroutine = StartCoroutine(LendMaskCoroutine());
+            StartCoroutine(GiveBackMaskCoroutine());
         }
 
         IEnumerator GiveBackMaskCoroutine()
@@ -202,6 +277,12 @@ namespace LethalMon.Behaviours
             yield return null;
             isWearingMask = false;
             CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
+        }
+
+        void SetMaskGlowNoSound(bool enable = true) // SetMaskGlow without sound
+        {
+            Masked.maskEyesGlow[Masked.maskTypeIndex].enabled = enable;
+            Masked.maskEyesGlowLight.enabled = enable;
         }
         #endregion
     }
