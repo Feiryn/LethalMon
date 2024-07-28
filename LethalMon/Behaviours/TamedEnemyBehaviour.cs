@@ -8,7 +8,6 @@ using LethalMon.Patches;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static LethalMon.Utils;
 using static LethalMon.Utils.LayerMasks;
 
 namespace LethalMon.Behaviours;
@@ -31,15 +30,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(FlowerSnakeEnemy),  typeof(TulipSnakeTamedBehaviour) },
         { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
         { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
-        { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) }
-        { typeof(FlowermanAI),      typeof(FlowermanTamedBehaviour) },
-        { typeof(RedLocustBees),    typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),     typeof(HoarderBugTamedBehaviour) },
-        { typeof(PufferAI),         typeof(SporeLizardTamedBehaviour) },
-        { typeof(MouthDogAI),       typeof(MouthDogTamedBehaviour) },
-        { typeof(FlowerSnakeEnemy), typeof(TulipSnakeTamedBehaviour) },
-        { typeof(DressGirlAI),      typeof(GhostGirlTamedBehaviour) },
-        { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) }
+        { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) },
         { typeof(BushWolfEnemy),    typeof(KidnapperFoxTamedBehaviour) }
     };
 
@@ -601,19 +592,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         // Turn in the direction of the owner gradually
         TurnTowardsPosition(ownerPosition);
-    }
-
-    internal virtual void TurnTowardsPosition(Vector3 position)
-    {
-        Transform enemyTransform = Enemy.transform;
-        Vector3 direction = position - enemyTransform.position;
-        Quaternion targetRotation = Quaternion.LookRotation(direction);
-        enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
-    }
-
-    public virtual void MoveTowards(Vector3 position)
-    {
-        Enemy.SetDestinationToPosition(position);
     }
 
     private void TeleportBehindOwner()

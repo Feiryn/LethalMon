@@ -138,9 +138,8 @@ namespace LethalMon.Behaviours
             if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
             {
                 enemyPos = targetEnemy.transform.position;
-                var bounds = Utils.RealEnemyBounds(targetEnemy);
-                if(bounds.HasValue)
-                    enemySize = bounds.Value.size;
+                if (Utils.TryGetRealEnemyBounds(targetEnemy, out Bounds bounds))
+                    enemySize = bounds.size;
             }
             else
             {
