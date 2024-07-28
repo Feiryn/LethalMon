@@ -333,13 +333,19 @@ public class Utils
     }
     public static Shader? SeeThroughShader;
 
-    private static readonly Color EnemyHighlightOutline = Color.red;
-    private static readonly Color EnemyHighlightInline = new Color(0.8f, 0f, 0f, 0.8f);
+    public static readonly Color EnemyHighlightOutline = Color.red;
+    public static readonly Color EnemyHighlightInline = new Color(0.8f, 0f, 0f, 0.8f);
 
-    private static readonly Color ItemHighlightOutline = Color.green;
-    private static readonly Color ItemHighlightInline = new Color(0f, 0.8f, 0f, 0.6f);
+    public static readonly Color ItemHighlightOutline = Color.yellow;
+    public static readonly Color ItemHighlightInline = new Color(0.8f, 0.8f, 0f, 0.5f);
 
-    // Wireframe
+    public static readonly Color PlayerHighlightOutline = Color.green;
+    public static readonly Color PlayerHighlightInline = new Color(0f, 0.8f, 0f, 0.6f);
+
+    /* WIREFRAME
+     * Properties: _EdgeColor, _MainColor, _WireframeVal
+     */
+
     public static void LoadWireframeMaterial(AssetBundle assetBundle)
     {
         var wireframeShader = assetBundle.LoadAsset<Shader>("Assets/SeeThrough/wireframe.shader");
@@ -351,9 +357,6 @@ public class Utils
 
         // Create a material from the loaded shader
         WireframeMaterial = new Material(wireframeShader);
-        WireframeMaterial.SetColor("_EdgeColor", EnemyHighlightOutline);
-        WireframeMaterial.SetColor("_MainColor", EnemyHighlightInline);
-        WireframeMaterial.SetFloat("_WireframeVal", 0.04f);
     }
     public static Material? WireframeMaterial;
     #endregion
