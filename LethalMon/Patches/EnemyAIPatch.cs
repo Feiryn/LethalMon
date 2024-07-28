@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using Object = UnityEngine.Object;
@@ -52,5 +53,45 @@ public class EnemyAIPatch
         {
             LethalMon.Log("No TamedEnemyBehaviour component found after EnemyAI SwitchToBehaviourStateOnLocalClient", LethalMon.LogType.Warning);
         }
+    }
+
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.HitEnemy))]
+    [HarmonyPrefix]
+    private static bool HitEnemyPrefix(EnemyAI __instance, int force = -1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemy))]
+    [HarmonyPrefix]
+    private static bool KillEnemyPrefix(EnemyAI __instance, bool destroy = false)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyClientRpc))]
+    [HarmonyPrefix]
+    private static bool KillEnemyClientRpcPrefix(EnemyAI __instance, bool destroy)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyServerRpc))]
+    [HarmonyPrefix]
+    private static bool KillEnemyServerRpcPrefix(EnemyAI __instance, bool destroy)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyOnOwnerClient))]
+    [HarmonyPrefix]
+    private static bool KillEnemyOnOwnerClientPrefix(EnemyAI __instance, bool overrideDestroy = false)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
     }
 }

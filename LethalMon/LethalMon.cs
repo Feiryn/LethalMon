@@ -91,6 +91,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(MouthDogPatch));
         Harmony.PatchAll(typeof(EnemyAIPatch));
         Harmony.PatchAll(typeof(HUDManagerPatch));
+        Harmony.PatchAll(typeof(FlowermanAIPatch));
 
         // Static RPCs
         PlayerControllerBPatch.InitializeRPCS();
