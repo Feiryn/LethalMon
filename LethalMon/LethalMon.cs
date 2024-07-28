@@ -9,7 +9,6 @@ using LethalMon.Behaviours;
 using LethalMon.Items;
 using LethalMon.Patches;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace LethalMon;
 
@@ -37,14 +36,7 @@ public class LethalMon : BaseUnityPlugin
         NetcodePatching();
         ApplyHarmonyPatches();
 
-        InputSystem.onActionChange += OnKeyChange;
-
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
-    }
-
-    private static void OnKeyChange(object o, InputActionChange change)
-    {
-        HUDManagerPatch.UpdatePressKeyTip();
     }
 
     private void NetcodePatching()
@@ -111,8 +103,6 @@ public class LethalMon : BaseUnityPlugin
         Harmony?.UnpatchSelf();
 
         Logger.LogDebug("Finished unpatching!");
-        
-        InputSystem.onActionChange -= OnKeyChange;
     }
 
     #region Logging

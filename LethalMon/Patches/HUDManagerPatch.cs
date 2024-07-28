@@ -120,8 +120,6 @@ public class HUDManagerPatch
             return;
         }
         
-        LethalMon.Log(string.Join("\n", elements.Select(e => e.fadeCoroutine)));
-        
         GameObject monsterHud = Object.Instantiate(LethalMon.hudPrefab, topRightCorner.canvasGroup.transform.parent);
         monsterHudElement = new HUDElement
         {
