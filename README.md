@@ -33,7 +33,7 @@ Here are the implementation status of monsters:
 |:---------------:|:-----------:|:----------------------------------------------------------------------:|
 |     Bracken     |     Yes     |                           Drags enemies away                           |
 |     Spider      |     No      |                                  TBD                                   |
-|     Butler      |     No      |                                  TBD                                   |
+|     Butler      |     Yes     |                 Clean up dead enemies and spawn scraps                 |
 |    Coil-head    |     No      |                                  TBD                                   |
 |   Ghost Girl    |     Yes     |                   Teleports enemies and damages them                   |
 |  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |
@@ -65,3 +65,7 @@ Here are the implementation status of monsters:
 - Implementation of more monsters
 - Better animations and models
 - Configurable parameters
+
+## Bug reports
+
+You can report bugs on github https://github.com/Feiryn/LethalMon/issues or on the LC discord modding server https://discord.com/invite/lcmod

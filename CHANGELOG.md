@@ -1,3 +1,8 @@
+# 0.4.1
+
+- Butler is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed game lags
+
 # 0.4.0
 
 - Added an HUD for invoked monsters
