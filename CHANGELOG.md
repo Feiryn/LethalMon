@@ -1,3 +1,9 @@
+# 0.4.2
+
+- Prevent tamed monsters from being hit or killed
+- Eyeless dogs and butlers are now easier to catch
+- Stop the butler's music when he is being captured
+
 # 0.4.1
 
 - Butler is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
