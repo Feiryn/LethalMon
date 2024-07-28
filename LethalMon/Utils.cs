@@ -360,5 +360,30 @@ public class Utils
         WireframeMaterial = new Material(wireframeShader);
     }
     public static Material? WireframeMaterial;
+
+    /* GLASS */
+    static readonly string GlassName = "LethalMonGlass";
+    private static Material? _glassMaterial = null;
+    public static Material Glass
+    {
+        get
+        {
+            if (_glassMaterial == null)
+            {
+                _glassMaterial = new Material(Shader.Find("HDRP/Lit"));
+                _glassMaterial.color = new Color(0.5f, 0.5f, 0.6f, 0.6f);
+                _glassMaterial.renderQueue = 3300;
+                _glassMaterial.shaderKeywords = [
+                    "_SURFACE_TYPE_TRANSPARENT",
+                    "_DISABLE_SSR_TRANSPARENT",
+                    "_REFRACTION_THIN",
+                    "_NORMALMAP_TANGENT_SPACE",
+                    "_ENABLE_FOG_ON_TRANSPARENT"
+                ];
+                _glassMaterial.name = GlassName;
+            }
+            return _glassMaterial;
+        }
+    }
     #endregion
 }
