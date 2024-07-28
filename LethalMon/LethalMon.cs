@@ -64,6 +64,8 @@ public class LethalMon : BaseUnityPlugin
         Greatball.Setup(assetBundle);
         Ultraball.Setup(assetBundle);
         Masterball.Setup(assetBundle);
+        Utils.LoadSeeThroughShader(assetBundle);
+        Utils.LoadWireframeMaterial(assetBundle);
         HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("Assets/HoardingBug_Fly.ogg");
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
 
