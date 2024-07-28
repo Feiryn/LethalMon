@@ -7,7 +7,7 @@ using LethalMon;
 class SeeThroughCustomPass : CustomPass
 {
     public LayerMask seeThroughLayer = (int)Utils.LayerMasks.Mask.Enemies;
-    public Material seeThroughMaterial = Utils.WireframeMaterial!;
+    public Material seeThroughMaterial = new Material(Utils.WireframeMaterial!);
 
     [SerializeField, HideInInspector]
     Shader stencilShader;
@@ -15,6 +15,13 @@ class SeeThroughCustomPass : CustomPass
     Material stencilMaterial;
 
     ShaderTagId[] shaderTags;
+
+    public void ConfigureMaterial(Color edgeColor, Color fillColor, float thickness)
+    {
+        seeThroughMaterial.SetColor("_EdgeColor", edgeColor);
+        seeThroughMaterial.SetColor("_MainColor", fillColor);
+        seeThroughMaterial.SetFloat("_WireframeVal", thickness);
+    }
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
