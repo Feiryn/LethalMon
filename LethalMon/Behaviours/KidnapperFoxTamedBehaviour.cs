@@ -77,9 +77,7 @@ namespace LethalMon.Behaviours
             tongueCooldown = GetCooldownWithId(TongueCooldownId);
             
             if (ownerPlayer != null)
-            {
                 Fox.transform.localScale *= 0.75f;
-            }
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -88,9 +86,7 @@ namespace LethalMon.Behaviours
             base.InitTamingBehaviour(behaviour);
 
             if (behaviour == TamingBehaviour.TamedDefending)
-            {
                 ShootTongueAtEnemy();
-            }
         }
 
         internal override void OnTamedFollowing()
@@ -144,6 +140,10 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            Fox.EnableEnemyMesh(true);
+            Fox.targetPlayer = playerWhoThrewBall;
+            Fox.SwitchToBehaviourStateOnLocalClient(2);
         }
 
         internal override void OnCallFromBall()
