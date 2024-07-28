@@ -11,7 +11,17 @@ namespace LethalMon.Behaviours
     internal class ExampleTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        internal TestEnemy testEnemy { get; private set; } // Replace with enemy class
+        internal TestEnemy? _testEnemy = null; // Replace with enemy class
+        internal TestEnemy TestEnemy
+        {
+            get
+            {
+                if (_testEnemy == null)
+                    _testEnemy = (Enemy as TestEnemy)!;
+
+                return _testEnemy;
+            }
+        }
 
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
@@ -80,8 +90,6 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
-
-            testEnemy = (Enemy as TestEnemy)!;
 
             cooldown = GetCooldownWithId(CooldownId);
         }
