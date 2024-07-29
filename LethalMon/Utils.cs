@@ -371,7 +371,7 @@ public class Utils
             if (_glassMaterial == null)
             {
                 _glassMaterial = new Material(Shader.Find("HDRP/Lit"));
-                _glassMaterial.color = new Color(0.5f, 0.5f, 0.6f, 0.6f);
+                _glassMaterial.color = new Color(0.5f, 0.5f, 0.6f, 0.1f);
                 _glassMaterial.renderQueue = 3300;
                 _glassMaterial.shaderKeywords = [
                     "_SURFACE_TYPE_TRANSPARENT",
