@@ -55,7 +55,7 @@ Here are the implementation status of monsters:
 |    Old Bird     |     No      |                                  TBD                                   |
 |  Mask Hornets   |     No      |                                  TBD                                   |
 |     Barber      |     No      |                                  TBD                                   |
-|  Kidnapper Fox  |     No      |                                  TBD                                   |
+|  Kidnapper Fox  |     No      |             Shoots its tongue at enemies and can kill them             |
 
 ## Capture probabilities
 

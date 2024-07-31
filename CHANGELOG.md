@@ -1,3 +1,11 @@
+# 0.4.3
+
+- Kidnapper fox is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Capture probabilities can be seen in the terminal with the command `lethaldex`
+- Balls price has been greatly reduced
+- Fixed a bug that allowed to capture already captured monsters
+- Fixed a bug that showed the tip about scanning enemy for everyone and not just the player that took a ball
+
 # 0.4.2
 
 - Prevent tamed monsters from being hit or killed
