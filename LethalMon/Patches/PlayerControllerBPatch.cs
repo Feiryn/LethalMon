@@ -242,7 +242,7 @@ public class PlayerControllerBPatch
     private static void SwitchToItemSlotPostFix(PlayerControllerB __instance, int slot,
         GrabbableObject fillSlotWithItem = null)
     {
-        if (SentBallScanTip || !StartOfRound.Instance.shipHasLanded) return;
+        if (SentBallScanTip || !StartOfRound.Instance.shipHasLanded || __instance != Utils.CurrentPlayer) return;
         
         GrabbableObject currentItem = __instance.ItemSlots[slot];
         if (currentItem != null)
