@@ -80,7 +80,7 @@ namespace LethalMon.CustomPasses
                     {
                         var seeThrough = new SeeThroughCustomPass();
                         seeThrough.clearFlags = UnityEngine.Rendering.ClearFlag.None;
-                        seeThrough.seeThroughLayer = Utils.LayerMasks.ToInt([Utils.LayerMasks.Mask.Player, Utils.LayerMasks.Mask.PlayerRagdoll]);
+                        seeThrough.seeThroughLayer = Utils.LayerMasks.ToInt(new[] { Utils.LayerMasks.Mask.Player, Utils.LayerMasks.Mask.PlayerRagdoll });
                         seeThrough.ConfigureMaterial(Utils.PlayerHighlightOutline, Utils.PlayerHighlightInline, 0.04f);
                         customPass = seeThrough;
                         break;
