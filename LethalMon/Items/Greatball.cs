@@ -17,7 +17,7 @@ public class Greatball : PokeballItem
         if (ballItem == null) return;
         
         SpawnPrefab = ballItem.spawnPrefab;
-        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 500,
+        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 125,
             itemInfo: Utils.CreateTerminalNode("Great ball",
                 "Use it to capture monsters. Second ball tier with a medium capture rate.")); // todo make price and availability configurable
         LethalMon.Log("Great ball added to shop");

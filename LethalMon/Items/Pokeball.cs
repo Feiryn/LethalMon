@@ -17,7 +17,7 @@ public class Pokeball : PokeballItem
         if (ballItem == null) return;
         
         SpawnPrefab = ballItem.spawnPrefab;
-        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 200,
+        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 40,
             itemInfo: Utils.CreateTerminalNode("Pokeball",
                 "Use it to capture monsters. First ball tier with a low capture rate.")); // todo make price and availability configurable
         LethalMon.Log("Pokeball added to shop");

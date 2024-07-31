@@ -17,7 +17,7 @@ public class Masterball : PokeballItem
         if (ballItem == null) return;
         
         SpawnPrefab = ballItem.spawnPrefab;
-        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 1200,
+        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 700,
             itemInfo: Utils.CreateTerminalNode("Master ball",
                 "Use it to capture monsters. Fourth ball tier with a 100% capture rate.")); // todo make price and availability configurable
         LethalMon.Log("Master ball added to shop");

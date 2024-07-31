@@ -17,7 +17,7 @@ public class Ultraball : PokeballItem
         if (ballItem == null) return;
         
         SpawnPrefab = ballItem.spawnPrefab;
-        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 800,
+        LethalLib.Modules.Items.RegisterShopItem(ballItem, price: 375,
             itemInfo: Utils.CreateTerminalNode("Ultra ball",
                 "Use it to capture monsters. Third ball tier with a high capture rate.")); // todo make price and availability configurable
         LethalMon.Log("Ultra ball added to shop");
