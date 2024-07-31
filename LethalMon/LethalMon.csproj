@@ -66,6 +66,9 @@
       <Reference Include="LethalLib">
         <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\LethalLib\plugins\LethalLib\LethalLib.dll</HintPath>
       </Reference>
+      <Reference Include="TerminalApi">
+        <HintPath>TerminalApi.dll</HintPath>
+      </Reference>
     </ItemGroup>
     
     <Target Name="NetcodePatchLinux" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'true'">

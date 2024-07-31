@@ -57,6 +57,12 @@ Here are the implementation status of monsters:
 |     Barber      |     No      |                                  TBD                                   |
 |  Kidnapper Fox  |     No      |                                  TBD                                   |
 
+## Capture probabilities
+
+To get capture probabilities, use the command `lethaldex` in the terminal (the image may be outdated as enemies are regularly added and capture rates can be modified):
+
+![lethaldex.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/lethaldex.png)
+
 ## Roadmap
 
 - Audio

@@ -13,6 +13,7 @@ using UnityEngine;
 namespace LethalMon;
 
 [BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("atomic.terminalapi", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class LethalMon : BaseUnityPlugin
 {
@@ -35,6 +36,10 @@ public class LethalMon : BaseUnityPlugin
         LoadAssetBundle();
         NetcodePatching();
         ApplyHarmonyPatches();
+        if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("atomic.terminalapi"))
+        {
+            LethalDex.Register();
+        }
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }

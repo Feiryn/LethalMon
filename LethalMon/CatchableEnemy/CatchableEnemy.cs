@@ -11,7 +11,7 @@ public abstract class CatchableEnemy
     /// <summary>
     /// Difficulty to capture the monster (0-9). <see cref="Data.CaptureProbabilities"/>
     /// </summary>
-    private readonly int _catchDifficulty;
+    public readonly int CatchDifficulty;
 
     /// <summary>
     /// The display name of the monster
@@ -28,17 +28,17 @@ public abstract class CatchableEnemy
     {
         this.Id = id;
         this.DisplayName = displayName;
-        this._catchDifficulty = catchDifficulty;
+        this.CatchDifficulty = catchDifficulty;
     }
 
     public float GetCaptureProbability(int ballStrength)
     {
-        if (ballStrength < 0 || ballStrength >= Data.CaptureProbabilities.Length || this._catchDifficulty < 0 || this._catchDifficulty >= Data.CaptureProbabilities[0].Length)
+        if (ballStrength < 0 || ballStrength >= Data.CaptureProbabilities.Length || this.CatchDifficulty < 0 || this.CatchDifficulty >= Data.CaptureProbabilities[0].Length)
         {
             return 0;
         }
 
-        return Data.CaptureProbabilities[ballStrength][this._catchDifficulty];
+        return Data.CaptureProbabilities[ballStrength][this.CatchDifficulty];
     }
     
     /// <summary>
