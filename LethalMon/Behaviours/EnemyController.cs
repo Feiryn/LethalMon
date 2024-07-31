@@ -80,17 +80,16 @@ namespace LethalMon.Behaviours
             if (enemy?.transform == null || controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
 
-            var bounds = Utils.RealEnemyBounds(enemy);
-            if(bounds == null)
+            if(!Utils.TryGetRealEnemyBounds(enemy, out Bounds bounds))
             {
                 LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
                 return;
             }
 
             triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            triggerObject.transform.position = bounds.Value.center;
-            triggerCenterDistance = enemy!.transform.position - bounds.Value.center;
-            triggerObject.transform.localScale = bounds.Value.size;
+            triggerObject.transform.position = bounds.center;
+            triggerCenterDistance = enemy!.transform.position - bounds.center;
+            triggerObject.transform.localScale = bounds.size;
             Physics.IgnoreCollision(triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
             //triggerObject.transform.SetParent(enemy.gameObject.transform, false); // damn parenting not working...
 
