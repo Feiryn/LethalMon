@@ -93,23 +93,26 @@ namespace LethalMon.Behaviours
 
         internal void OnLendMaskBehavior()
         {
-            if (!IsOwnerPlayer || !isWearingMask || maskTransferCoroutine != null) return;
+            if (!isWearingMask || maskTransferCoroutine != null) return;
 
-            StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
+            if(IsOwnerPlayer)
+                StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
+
             if (MaskAnimator != null)
             {
                 MaskAnimator.speed += Time.deltaTime / 10f;
-                if (MaskAnimator.speed > 1f)
+                if (MaskAnimator.speed > 1f && IsOwner)
                     GiveBackMaskServerRpc();
             }
-            else
+            else // Fallback
             {
                 timeSinceWearingMask += Time.deltaTime;
-                if (timeSinceWearingMask > MaximumMaskWearingTime)
+                if (timeSinceWearingMask > MaximumMaskWearingTime && IsOwner)
                     GiveBackMaskServerRpc();
             }
 
-            FollowOwner();
+            if(IsOwner)
+                FollowOwner();
         }
         #endregion
 
@@ -240,15 +243,17 @@ namespace LethalMon.Behaviours
             Masked.EnableEnemyMesh(true);
         }
 
-        public override bool CanBeTeleported()
-        {
-            // HOST ONLY
-            return base.CanBeTeleported();
-        }
-
         internal override void TurnTowardsPosition(Vector3 position)
         {
-            Masked.LookAtPosition(position);
+            // Masked.LookAtPosition(position); // avoid the log putput
+            Masked.focusOnPosition = position;
+            Masked.lookAtPositionTimer = 1f;
+            float num = Vector3.Angle(Masked.transform.forward, position - Masked.transform.position);
+            if (position.y - Masked.headTiltTarget.position.y < 0f)
+            {
+                num *= -1f;
+            }
+            Masked.verticalLookAngle = num;
         }
 
         internal override void LateUpdate()
