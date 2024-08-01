@@ -8,7 +8,7 @@
   - Choose if monsters react when a player fails to capture
   - Cooldowns for the bracken, dress girl, hoarding bug, fox and eyeless dog
   - Possibility to keep full balls or all balls if all the players are dead
-- The fox will now attack if you fail to capture him
+- The fox will now attack if you fail to capture him (thanks to [@NiroDev](https://github.com/NiroDev))
 - Fixed a bug that caused incompatibility with some mods like LethalEmotesAPI or EnemySkinRegistry
 
 # 0.4.3
