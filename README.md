@@ -70,7 +70,6 @@ To get capture probabilities, use the command `lethaldex` in the terminal (the i
 - Better (and working) tooltips
 - Implementation of more monsters
 - Better animations and models
-- Configurable parameters
 
 ## Bug reports
 
