@@ -59,6 +59,7 @@ class SeeThroughCustomPass : CustomPass
             readMask: (byte)UserStencilUsage.UserBit0,
             compareFunction: CompareFunction.Equal
         );
+
         RenderObjects(ctx.renderContext, ctx.cmd, seeThroughMaterial, seeThroughMaterial.FindPass("ForwardOnly"), CompareFunction.GreaterEqual, ctx.cullingResults, ctx.hdCamera, seeThroughStencil);
     }
 
@@ -76,7 +77,7 @@ class SeeThroughCustomPass : CustomPass
             overrideMaterial = overrideMaterial,
             overrideMaterialPassIndex = passIndex,
             layerMask = seeThroughLayer,
-            stateBlock = new RenderStateBlock(RenderStateMask.Depth){ depthState = new DepthState(true, depthCompare)},
+            stateBlock = new RenderStateBlock(RenderStateMask.Depth){ depthState = new DepthState(true, depthCompare) },
         };
 
         if (overrideStencil != null)
