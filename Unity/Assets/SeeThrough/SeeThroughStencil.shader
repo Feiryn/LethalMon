@@ -4,7 +4,7 @@
     {
         _Color("Color", Color) = (1,1,1,1)
         _ColorMap("ColorMap", 2D) = "white" {}
-
+        _MaxVisibilityDistance("Max Visibility Distance", Float) = 10
         // Transparency
         _AlphaCutoff("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
         [HideInInspector]_StencilWriteMask("_StencilWriteMask", Float) = 0
@@ -63,7 +63,62 @@
                 surfaceData.color = 1;
             }
 
-            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/ShaderPassForwardUnlit.hlsl"
+            #if SHADERPASS != SHADERPASS_FORWARD_UNLIT
+
+            #error SHADERPASS_is_not_correctly_define
+            #endif
+
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/VertMesh.hlsl"
+
+            PackedVaryingsType Vert(AttributesMesh inputMesh)
+            {
+                VaryingsType varyingsType;
+                varyingsType.vmesh = VertMesh(inputMesh);
+                return PackVaryingsType(varyingsType);
+            }
+
+            #ifdef TESSELLATION_ON
+
+            PackedVaryingsToPS VertTesselation(VaryingsToDS input)
+            {
+                VaryingsToPS output;
+                output.vmesh = VertMeshTesselation(input.vmesh);
+                return PackVaryingsToPS(output);
+            }
+
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/TessellationShare.hlsl"
+
+            #endif // TESSELLATION_ON
+
+            float _MaxVisibilityDistance;
+
+            float4 Frag(PackedVaryingsToPS packedInput) : SV_Target
+            {
+                FragInputs input = UnpackVaryingsMeshToFragInputs(packedInput.vmesh);
+
+                PositionInputs posInput = GetPositionInput(input.positionSS.xy, _ScreenSize.zw, input.positionSS.z, input.positionSS.w, input.positionRWS);
+
+                float3 V = GetWorldSpaceNormalizeViewDir(input.positionRWS);
+
+                SurfaceData surfaceData;
+                BuiltinData builtinData;
+                GetSurfaceAndBuiltinData(input, V, posInput, surfaceData, builtinData);
+
+                BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionSS.xy, surfaceData);
+
+                float4 outColor = ApplyBlendMode(bsdfData.color + builtinData.emissiveColor, builtinData.opacity);
+        
+                // Calculate distance from camera
+                float distanceFromCamera = length(_WorldSpaceCameraPos - input.positionRWS);
+        
+                // Apply distance-based fade
+                float fadeAlpha = saturate((_MaxVisibilityDistance - distanceFromCamera) / _MaxVisibilityDistance);
+                outColor.a *= fadeAlpha;
+
+                outColor = EvaluateAtmosphericScattering(posInput, V, outColor);
+
+                return outColor;
+            }
 
             #pragma vertex Vert
             #pragma fragment Frag

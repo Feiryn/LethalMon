@@ -6,15 +6,18 @@ using LethalMon;
 
 class SeeThroughCustomPass : CustomPass
 {
-    public LayerMask seeThroughLayer = (int)Utils.LayerMasks.Mask.Enemies;
-    public Material seeThroughMaterial = new Material(Utils.WireframeMaterial!);
+    public Material seeThroughMaterial = new Material( Utils.WireframeMaterial! );
+    public LayerMask seeThroughLayer;
+    public float maxVisibilityDistance = 20f;
 
-    [SerializeField, HideInInspector]
-    Shader stencilShader;
+    [SerializeField]
+    Shader stencilShader = Utils.SeeThroughShader!;
 
     Material stencilMaterial;
 
     ShaderTagId[] shaderTags;
+
+    protected override bool executeInSceneView => true;
 
     public void ConfigureMaterial(Color edgeColor, Color fillColor, float thickness)
     {
@@ -25,14 +28,6 @@ class SeeThroughCustomPass : CustomPass
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
-        if (stencilShader == null)
-        {
-            if (Utils.SeeThroughShader == null)
-                return;
-
-            stencilShader = Utils.SeeThroughShader;
-        }
-
         stencilMaterial = CoreUtils.CreateEngineMaterial(stencilShader);
 
         shaderTags = new ShaderTagId[4]
@@ -42,6 +37,7 @@ class SeeThroughCustomPass : CustomPass
             new ShaderTagId("SRPDefaultUnlit"),
             new ShaderTagId("FirstPass"),
         };
+
     }
 
     protected override void Execute(CustomPassContext ctx)
@@ -49,6 +45,7 @@ class SeeThroughCustomPass : CustomPass
         // We first render objects into the user stencil bit 0, this will allow us to detect
         // if the object is behind another object.
         stencilMaterial.SetInt("_StencilWriteMask", (int)UserStencilUsage.UserBit0);
+        seeThroughMaterial.SetFloat("_MaxVisibilityDistance", maxVisibilityDistance);
 
         RenderObjects(ctx.renderContext, ctx.cmd, stencilMaterial, 0, CompareFunction.LessEqual, ctx.cullingResults, ctx.hdCamera);
         // CustomPassUtils.DrawRenderers(ctx, seeThroughLayer, RenderQueueType.All, overrideRenderState: stencilWriteRenderState);
@@ -77,7 +74,7 @@ class SeeThroughCustomPass : CustomPass
             overrideMaterial = overrideMaterial,
             overrideMaterialPassIndex = passIndex,
             layerMask = seeThroughLayer,
-            stateBlock = new RenderStateBlock(RenderStateMask.Depth){ depthState = new DepthState(true, depthCompare) },
+            stateBlock = new RenderStateBlock(RenderStateMask.Depth) { depthState = new DepthState(true, depthCompare) },
         };
 
         if (overrideStencil != null)
