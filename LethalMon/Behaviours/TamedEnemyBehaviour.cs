@@ -473,13 +473,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
         AddCustomBehaviours();
 
-        Enemy.Start();
-        if (Enemy.creatureAnimator != null)
+        if (ownerPlayer != null)
         {
-            Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
+            Enemy.Start();
+            if (Enemy.creatureAnimator != null)
+            {
+                Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
+            }
         }
-
-        if (ownerPlayer == null && Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
+        else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
         {
             ScanNodeProperties scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
             if (scanNode != null)
