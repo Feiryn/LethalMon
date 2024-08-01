@@ -7,6 +7,7 @@ using System.Collections;
 using LethalMon.CustomPasses;
 using static UnityEngine.Rendering.DebugUI;
 using Unity.Netcode;
+using System.Linq;
 
 namespace LethalMon.Behaviours
 {
@@ -41,8 +42,20 @@ namespace LethalMon.Behaviours
         Coroutine? maskTransferCoroutine = null;
 
         GameObject? Mask => Masked?.maskTypes[Masked.maskTypeIndex];
+        Animator? _maskAnimator = null;
+        Animator? MaskAnimator
+        {
+            get
+            {
+                if(_maskAnimator == null)
+                    _maskAnimator = Mask?.GetComponent<Animator>();
+
+                return _maskAnimator;
+            }
+        }
 
         Color? originalNightVisionColor = null;
+        float originalNightVisionIntensity = 366f;
         #endregion
 
         #region Cooldowns
@@ -80,13 +93,20 @@ namespace LethalMon.Behaviours
 
         internal void OnLendMaskBehavior()
         {
-            if (!IsOwnerPlayer || !isWearingMask) return;
+            if (!IsOwnerPlayer || !isWearingMask || maskTransferCoroutine != null) return;
 
-            timeSinceWearingMask += Time.deltaTime;
-            if(timeSinceWearingMask > MaximumMaskWearingTime)
+            StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
+            if (MaskAnimator != null)
             {
-                GiveBackMaskServerRpc();
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                MaskAnimator.speed += Time.deltaTime / 10f;
+                if (MaskAnimator.speed > 1f)
+                    GiveBackMaskServerRpc();
+            }
+            else
+            {
+                timeSinceWearingMask += Time.deltaTime;
+                if (timeSinceWearingMask > MaximumMaskWearingTime)
+                    GiveBackMaskServerRpc();
             }
 
             FollowOwner();
@@ -124,9 +144,10 @@ namespace LethalMon.Behaviours
 
             lendMaskCooldown = GetCooldownWithId(CooldownId);
 
-            ownerPlayer = Utils.CurrentPlayer;
+            ownerPlayer = Utils.AlivePlayers.Where((p) => p.playerClientId == 0ul).First();
             ownClientId = 0ul;
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            Masked.EnableEnemyMesh(true);
 
             if (Mask != null)
             {
@@ -163,7 +184,10 @@ namespace LethalMon.Behaviours
             // OWNER ONLY
             base.OnTamedFollowing();
 
-            if(Masked.agent && !Masked.agent.enabled)
+            if (Mask != null && !Mask.activeSelf)
+                Mask.SetActive(true);
+
+            if (IsOwner && !Masked.agent.enabled)
                 Masked.agent.enabled = true;
         }
 
@@ -171,6 +195,8 @@ namespace LethalMon.Behaviours
         {
             // OWNER ONLY
             base.OnTamedDefending();
+
+            // idea: decoy
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -187,12 +213,6 @@ namespace LethalMon.Behaviours
             base.OnUpdate(update, doAIInterval);
 
             Masked.CalculateAnimationDirection();
-
-            if (isWearingMask && IsOwnerPlayer)
-            {
-                ownerPlayer!.insanityLevel -= Time.deltaTime / 10f;
-                LethalMon.Log("Insanity: " + ownerPlayer!.insanityLevel);
-            }
         }
 
         internal override void DoAIInterval()
@@ -200,7 +220,7 @@ namespace LethalMon.Behaviours
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();
 
-            if (ownerPlayer != null)
+            if (ownerPlayer != null && maskTransferCoroutine == null)
             {
                 Masked.running = Vector3.Distance(Masked.transform.position, ownerPlayer.transform.position) > 5f;
                 Masked.agent.speed = Masked.running ? 7f : 3.8f;
@@ -211,6 +231,13 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             return base.RetrieveInBall(position);
+        }
+
+        internal override void OnCallFromBall()
+        {
+            base.OnCallFromBall();
+
+            Masked.EnableEnemyMesh(true);
         }
 
         public override bool CanBeTeleported()
@@ -256,6 +283,9 @@ namespace LethalMon.Behaviours
 
             yield return StartCoroutine(FaceOwner());
 
+            if (IsOwner)
+                Masked.agent.speed = 0f;
+
             yield return new WaitForSeconds(0.3f);
             SetMaskGlowNoSound();
 
@@ -267,14 +297,27 @@ namespace LethalMon.Behaviours
                 SetMaskGlassified();
 
             Masked.FinishKillAnimation();
+
+            if(IsOwnerPlayer)
+                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true);
+            else
+                SetMaskGlowNoSound();
+
+            if(IsOwner)
+                Masked.agent.speed = 5f;
+
             isWearingMask = true;
             SetRedVision();
             /*if (Mask != null)
                 Mask.layer = (int)Utils.LayerMasks.Mask.Props;*/
-            CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true);
 
             Masked.SetHandsOutClientRpc(false);
             maskTransferCoroutine = null;
+
+            yield return null;
+
+            if (IsOwnerPlayer)
+                SwitchToCustomBehaviour((int)CustomBehaviour.LendMask);
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -297,6 +340,9 @@ namespace LethalMon.Behaviours
 
             yield return StartCoroutine(FaceOwner());
 
+            if (IsOwner)
+                Masked.agent.speed = 0f;
+
             SetMaskShaking();
             if (IsOwnerPlayer)
                 SetMaskGlassified(false);
@@ -308,16 +354,25 @@ namespace LethalMon.Behaviours
             yield return StartCoroutine(RotateMaskOnMaskedFace());
 
             Masked.FinishKillAnimation();
+
+            if (IsOwner)
+                Masked.agent.speed = 5f;
+
             isWearingMask = false;
             SetRedVision(false);
-            /*if(Mask != null)
-                Mask.layer = (int)Utils.LayerMasks.Mask.Enemies;*/
-            CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
+
+            if(IsOwnerPlayer)
+                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
 
             Masked.SetHandsOutClientRpc(false);
             maskTransferCoroutine = null;
 
             lendMaskCooldown.Reset();
+
+            yield return null;
+
+            if (IsOwnerPlayer)
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
 
         IEnumerator RotateMaskOnPlayerFace()
@@ -461,29 +516,28 @@ namespace LethalMon.Behaviours
 
         void SetMaskShaking(bool shaking = true)
         {
-            var maskAnimator = Mask?.GetComponent<Animator>();
-            if (maskAnimator != null)
-                maskAnimator.speed = shaking ? 1f : 0f; // 1f is default.. unsure why it's constantly shaking by default
+            if (MaskAnimator != null)
+                MaskAnimator.speed = shaking ? 1f : 0f; // 1f is default.. unsure why it's constantly shaking by default
         }
 
         void SetRedVision(bool enable = true)
         {
-            if (ownerPlayer == null) return;
+            if (ownerPlayer == null || ownerPlayer.nightVision.enabled == enable) return;
 
             if(enable)
             {
                 originalNightVisionColor = ownerPlayer.nightVision.color;
                 ownerPlayer.nightVision.color = Color.red;
-                ownerPlayer.nightVision.enabled = true;
-                LethalMon.Log("INTENSITY: " + ownerPlayer.nightVision.intensity);
-                ownerPlayer.nightVision.intensity /= 2f;
+                originalNightVisionIntensity = ownerPlayer.nightVision.intensity;
+                ownerPlayer.nightVision.intensity /= 1.5f;
             }
             else
             {
                 ownerPlayer.nightVision.color = originalNightVisionColor.GetValueOrDefault(Color.white);
-                ownerPlayer.nightVision.enabled = false;
-                ownerPlayer.nightVision.intensity *= 2f;
+                ownerPlayer.nightVision.intensity = originalNightVisionIntensity;
             }
+
+            ownerPlayer.nightVision.enabled = enable;
         }
         #endregion
     }
