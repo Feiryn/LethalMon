@@ -1,3 +1,4 @@
+using System;
 using GameNetcodeStuff;
 using LethalMon.Behaviours;
 
@@ -8,10 +9,12 @@ namespace LethalMon.CatchableEnemy;
 /// </summary>
 public abstract class CatchableEnemy
 {
+    private readonly int _baseCatchDifficulty;
+    
     /// <summary>
     /// Difficulty to capture the monster (0-9). <see cref="Data.CaptureProbabilities"/>
     /// </summary>
-    public readonly int CatchDifficulty;
+    public int CatchDifficulty => Math.Clamp(_baseCatchDifficulty + ModConfig.Instance.values.CaptureRateModifier, 0, 9);
 
     /// <summary>
     /// The display name of the monster
@@ -28,7 +31,7 @@ public abstract class CatchableEnemy
     {
         this.Id = id;
         this.DisplayName = displayName;
-        this.CatchDifficulty = catchDifficulty;
+        this._baseCatchDifficulty = catchDifficulty;
     }
 
     public float GetCaptureProbability(int ballStrength)
@@ -48,7 +51,7 @@ public abstract class CatchableEnemy
     /// <param name="player">The player that threw the ball</param>
     public void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player)
     {
-        if (enemyAI.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
+        if (ModConfig.Instance.values.MonstersReactToFailedCaptures && enemyAI.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
             tamedEnemyBehaviour.OnEscapedFromBall(player);
     }
 

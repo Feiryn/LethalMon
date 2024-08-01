@@ -159,7 +159,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     private static readonly string GrabCooldownId = "bracken_grab";
     
-    internal override Cooldown[] Cooldowns => new[] { new Cooldown(GrabCooldownId, "Grab enemy", 20f) };
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown) };
 
     private CooldownNetworkBehaviour grabCooldown;
 

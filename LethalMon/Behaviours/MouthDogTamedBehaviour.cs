@@ -56,7 +56,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
     private static readonly string HowlCooldownId = "mouthdog_howl";
     
-    internal override Cooldown[] Cooldowns => new[] { new Cooldown(HowlCooldownId, "Howl", 5f) };
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(HowlCooldownId, "Howl", ModConfig.Instance.values.EyelessDogHowlCooldown) };
 
     private CooldownNetworkBehaviour howlCooldown;
 

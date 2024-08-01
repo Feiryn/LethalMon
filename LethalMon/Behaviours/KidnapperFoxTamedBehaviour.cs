@@ -63,7 +63,7 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private static readonly string TongueCooldownId = "fox_tongue";
     
-        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TongueCooldownId, "Tongue hit", 5f) };
+        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown) };
 
         private CooldownNetworkBehaviour tongueCooldown;
         #endregion

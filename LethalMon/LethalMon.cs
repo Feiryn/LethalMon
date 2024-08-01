@@ -36,10 +36,6 @@ public class LethalMon : BaseUnityPlugin
         LoadAssetBundle();
         NetcodePatching();
         ApplyHarmonyPatches();
-        if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("atomic.terminalapi"))
-        {
-            LethalDex.Register();
-        }
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }

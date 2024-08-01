@@ -82,7 +82,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     private static readonly string BringItemCooldownId = "hoarderbug_bringitem";
     
-    internal override Cooldown[] Cooldowns => new[] { new Cooldown(BringItemCooldownId, "Bring item", 5f) };
+    internal override Cooldown[] Cooldowns => new[] { new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown) };
 
     private CooldownNetworkBehaviour bringItemCooldown;
 

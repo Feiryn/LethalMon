@@ -114,7 +114,8 @@ public class LethalDex
                + new string(HorizontalLine, tier1Text.Length + 2) + BottomJoint
                + new string(HorizontalLine, tier2Text.Length + 2) + BottomJoint
                + new string(HorizontalLine, tier3Text.Length + 2) + BottomJoint
-               + new string(HorizontalLine, tier4Text.Length + 2) + BottomRightJoint;
+               + new string(HorizontalLine, tier4Text.Length + 2) + BottomRightJoint
+               + "\n\n";
 
         return res;
     }

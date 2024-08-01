@@ -36,7 +36,7 @@ namespace LethalMon.Behaviours
 
         private static readonly string TeleportCooldownId = "dressgirl_tp";
     
-        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TeleportCooldownId, "Attack enemy", 60f) };
+        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown) };
 
         private CooldownNetworkBehaviour teleportCooldown;
 
