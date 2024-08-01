@@ -1,3 +1,16 @@
+# 0.4.4
+
+- Added a lot of fields to the configuration file (host and clients are synced):
+  - Balls spawn rarity
+  - Balls prices in shop (and possibility to disable them)
+  - Capture rate modifier to make the captures easier or harder
+  - Possibility to disable some monsters
+  - Choose if monsters react when a player fails to capture
+  - Cooldowns for the bracken, dress girl, hoarding bug, fox and eyeless dog
+  - Possibility to keep full balls or all balls if all the players are dead
+- The fox will now attack if you fail to capture him
+- Fixed a bug that caused incompatibility with some mods like LethalEmotesAPI or EnemySkinRegistry
+
 # 0.4.3
 
 - Kidnapper fox is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
