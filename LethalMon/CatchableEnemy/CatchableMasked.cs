@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using LethalMon.Behaviours;
 
 namespace LethalMon.CatchableEnemy;
 
@@ -12,7 +13,7 @@ public class CatchableMasked : CatchableEnemy
     {
         var masked = enemyAI as MaskedPlayerEnemy;
         if (masked != null)
-            return masked.inSpecialAnimationWithPlayer == null;
+            return masked.inSpecialAnimationWithPlayer == null && !(masked.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour) && tamedBehaviour.escapeFromBallEventRunning);
 
         return base.CanBeCapturedBy(enemyAI, player);
     }
