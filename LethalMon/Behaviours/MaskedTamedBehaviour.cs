@@ -98,16 +98,24 @@ namespace LethalMon.Behaviours
             if(IsOwnerPlayer)
                 StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
 
+            bool dropMask = false;
+
             if (MaskAnimator != null)
             {
                 MaskAnimator.speed += Time.deltaTime / 10f;
-                if (MaskAnimator.speed > 1f && IsOwner)
-                    GiveBackMaskServerRpc();
+                if (MaskAnimator.speed > 1f) dropMask = true;
             }
             else // Fallback
             {
                 timeSinceWearingMask += Time.deltaTime;
-                if (timeSinceWearingMask > MaximumMaskWearingTime && IsOwner)
+                if (timeSinceWearingMask > MaximumMaskWearingTime) dropMask = true;
+            }
+
+            if (dropMask && IsOwnerPlayer)
+            {
+                ownerPlayer!.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 8);
+
+                if (!ownerPlayer.isPlayerDead)
                     GiveBackMaskServerRpc();
             }
 
@@ -394,17 +402,18 @@ namespace LethalMon.Behaviours
         {
             if (ownerPlayer == null) yield break;
 
+            LethalMon.Log("RotateMaskOnMaskedFace", LethalMon.LogType.Warning);
+
             Vector3 endPosition;
             Quaternion endRotation;
             if (originalMaskParent != null)
             {
-                LethalMon.Log("originalMaskParent not null: " + originalMaskParent.gameObject.name + " / " + originalMaskLocalPosition);
-                endPosition = originalMaskParent.transform.position;
+                endPosition = originalMaskParent.transform.position + Vector3.up * originalMaskLocalPosition.y + Masked.transform.forward * originalMaskLocalPosition.z; // todo: find better way
                 endRotation = originalMaskParent.transform.rotation;
             }
             else
             {
-                endPosition = Masked.transform.position + Vector3.up * 2f + Masked.transform.forward * 0.2f;
+                endPosition = Masked.transform.position + Vector3.up * 2.3f + Masked.transform.forward * 0.15f;
                 endRotation = Masked.transform.rotation;
             }
 
