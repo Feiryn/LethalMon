@@ -272,6 +272,7 @@ public class Utils
             Railing = 28,
             DecalStickableSurface = 29,
             CompanyCruiser = 30,
+            Ghost = 31
         }
 
         internal static int ToInt(Mask[] masks)
@@ -323,6 +324,31 @@ public class Utils
     #endregion
 
     #region Shader & Materials
+    public static List<MeshRenderer> GetMeshRenderers(GameObject g)
+    {
+        List<MeshRenderer> listOfMesh = [];
+        foreach (MeshRenderer mesh in g.GetComponentsInChildren<MeshRenderer>())
+        {
+            listOfMesh.Add(mesh);
+        }
+        return listOfMesh;
+    }
+
+    public static void ReplaceAllMaterialsWith(GameObject g, Func<Material, Material> materialReplacer)
+    {
+        var meshRenderer = GetMeshRenderers(g);
+        foreach (var mr in meshRenderer)
+            ReplaceAllMaterialsWith(mr, materialReplacer);
+    }
+
+    public static void ReplaceAllMaterialsWith(MeshRenderer mr, Func<Material, Material> materialReplacer)
+    {
+        var materials = new List<Material>();
+        foreach (var m in mr.materials)
+            materials.Add(materialReplacer(m));
+        mr.materials = materials.ToArray();
+    }
+
     // SeeThrough shader
     public static void LoadSeeThroughShader(AssetBundle assetBundle)
     {
