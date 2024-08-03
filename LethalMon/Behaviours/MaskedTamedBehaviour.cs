@@ -7,6 +7,7 @@ using System.Collections;
 using LethalMon.CustomPasses;
 using Unity.Netcode;
 using System.Linq;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace LethalMon.Behaviours
 {
@@ -59,6 +60,7 @@ namespace LethalMon.Behaviours
         public bool escapeFromBallEventRunning = false;
         static readonly float MaximumGhostChaseTime = 5f;
         bool isEscapedDEBUG = false;
+        List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         #endregion
 
         #region Cooldowns
@@ -241,11 +243,13 @@ namespace LethalMon.Behaviours
             Masked.agent.enabled = false;
             Masked.enabled = false;
             yield return new WaitForSeconds(1f);
-            Masked.SetMaskGlow(true);
+            SetMaskGlowNoSound(true);
+            //Masked.creatureSFX.PlayOneShot(Masked.enemyType.audioClips[0]);
             yield return new WaitForSeconds(0.5f);
 
             float timeGlowingUp = 0f; // Fallback
-            float finalIntensity = Masked.maskEyesGlowLight.intensity * 50f;
+            float startIntensity = Masked.maskEyesGlowLight.intensity;
+            float finalIntensity = startIntensity * 50f;
             while (Masked.maskEyesGlowLight.intensity < finalIntensity && timeGlowingUp < 2f)
             {
                 Masked.maskEyesGlowLight.intensity += Time.deltaTime * 50f;
@@ -255,41 +259,80 @@ namespace LethalMon.Behaviours
 
             yield return new WaitForSeconds(0.3f);
 
-            Masked.maskEyesGlowLight.intensity /= 10f;
+            StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
+            Masked.maskEyesGlowLight.intensity /= 2f;
+            yield return new WaitForSeconds(3.5f);
 
-            var ghostMimic = SpawnGhostMimic(playerWhoThrewBall, Masked.transform.position);
-            if (ghostMimic == null)
+            StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
+            Masked.maskEyesGlowLight.intensity = startIntensity;
+
+            float fallbackTimer = 0f;
+            yield return new WaitWhile(() =>
             {
-                Masked.SetMaskGlow(false);
-                Masked.agent.enabled = true;
-                SetEscapeFromBallEventRunningServerRpc(false);
+                fallbackTimer += Time.deltaTime;
+                return spawnedGhostMimics.Count > 0 && fallbackTimer < 10f;
+            });
+
+            StopAllCoroutines();
+            foreach(var ghostMimic in spawnedGhostMimics)
+                RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
+            spawnedGhostMimics.Clear();
+
+            if (!isEscapedDEBUG)
+                Masked.enabled = true;
+            else
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            Masked.agent.enabled = true;
+
+            SetMaskGlowNoSound(false);
+
+            isEscapedDEBUG = false;
+
+            SetEscapeFromBallEventRunningServerRpc(false);
+        }
+
+        internal IEnumerator SpawnAndHandleGhostMimic(PlayerControllerB targetPlayer)
+        {
+            var ghostMimic = SpawnGhostMimic(targetPlayer, Masked.transform.position);
+            if (ghostMimic == null)
                 yield break;
-            }
+
+            spawnedGhostMimics.Add(ghostMimic);
+
+            RoundManager.Instance.FlickerLights(true, false);
+            var mainParticle = ghostMimic.teleportParticle.main;
+            mainParticle.simulationSpeed = 15f;
+            ghostMimic.teleportParticle.Play();
 
             ghostMimic.enabled = false;
+            ghostMimic.maskEyesGlow[ghostMimic.maskTypeIndex].enabled = true;
+            ghostMimic.maskEyesGlowLight.enabled = true;
+            ghostMimic.maskEyesGlowLight.color = Color.blue;
+            ghostMimic.maskEyesGlowLight.intensity *= 50f;
 
-            yield return new WaitForSeconds(2f);
+            yield return new WaitForSeconds(3.5f);
+
+            ghostMimic.SetHandsOutServerRpc(true);
 
             int counter = 0;
             float timeChasing = 0f;
-            while (timeChasing < MaximumGhostChaseTime)
+            while (timeChasing < MaximumGhostChaseTime && !targetPlayer.isPlayerDead)
             {
                 ghostMimic.enabled = false;
                 ghostMimic.agent.speed = 10f;
-                ghostMimic.creatureAnimator.SetBool("HandsOut", true);
 
                 counter++;
                 if (counter > 10)
                 {
                     counter = 0;
-                    ghostMimic.SetDestinationToPosition(playerWhoThrewBall.transform.position);
+                    ghostMimic.SetDestinationToPosition(targetPlayer.transform.position);
                 }
 
                 ghostMimic.CalculateAnimationDirection();
 
-                if (Vector3.Distance(ghostMimic.transform.position, playerWhoThrewBall.transform.position) < 1f)
+                if (Vector3.Distance(ghostMimic.transform.position, targetPlayer.transform.position) < 1f)
                 {
-                    playerWhoThrewBall.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 1);
+                    targetPlayer.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 1);
                     break;
                 }
 
@@ -297,7 +340,6 @@ namespace LethalMon.Behaviours
                 yield return null;
             }
 
-            // todo: poof ghost
             Item? giftBox = Utils.GiftBoxItem;
             if (giftBox != null && giftBox.spawnPrefab != null)
             {
@@ -307,30 +349,8 @@ namespace LethalMon.Behaviours
                 presentParticles.Play();
             }
 
+            spawnedGhostMimics.Remove(ghostMimic);
             RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
-            if (!isEscapedDEBUG)
-                Masked.enabled = true;
-            else
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            Masked.agent.enabled = true;
-
-            Masked.SetMaskGlow(false);
-
-            isEscapedDEBUG = false;
-
-            SetEscapeFromBallEventRunningServerRpc(false);
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        internal void SetEscapeFromBallEventRunningServerRpc(bool running = true)
-        {
-            SetEscapeFromBallEventRunningClientRpc(running);
-        }
-
-        [ClientRpc]
-        internal void SetEscapeFromBallEventRunningClientRpc(bool running)
-        {
-            escapeFromBallEventRunning = running;
         }
 
         internal MaskedPlayerEnemy? SpawnGhostMimic(PlayerControllerB imitatingPlayer, Vector3 position)
@@ -345,6 +365,18 @@ namespace LethalMon.Behaviours
 
             Ghostify(maskedEnemy);
             return maskedEnemy;
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void SetEscapeFromBallEventRunningServerRpc(bool running = true)
+        {
+            SetEscapeFromBallEventRunningClientRpc(running);
+        }
+
+        [ClientRpc]
+        internal void SetEscapeFromBallEventRunningClientRpc(bool running)
+        {
+            escapeFromBallEventRunning = running;
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -691,6 +723,13 @@ namespace LethalMon.Behaviours
             maskedEnemy.rendererLOD1.materials = Enumerable.Repeat(false, Masked.rendererLOD1.materials.Length).Select(x => new Material(Utils.Glass)).ToArray();
             maskedEnemy.rendererLOD2.materials = Enumerable.Repeat(false, Masked.rendererLOD2.materials.Length).Select(x => new Material(Utils.Glass)).ToArray();
             Utils.ReplaceAllMaterialsWith(maskedEnemy.gameObject, (Material _) => Utils.Glass);
+            maskedEnemy.transform.localPosition += Vector3.up * 0.5f;
+
+            var light = maskedEnemy.maskTypes[maskedEnemy.maskTypeIndex].gameObject.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.intensity = 2f;
+            light.enabled = true;
+            light.color = Color.blue;
         }
         #endregion
     }
