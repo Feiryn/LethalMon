@@ -30,7 +30,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
         { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
         { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) },
-        { typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) }
+        { typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) },
+        { typeof(CrawlerAI),         typeof(CrawlerTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -523,6 +524,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         Transform enemyTransform = Enemy.transform;
         Vector3 direction = position - enemyTransform.position;
+        direction.y = 0f;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
     }

@@ -60,7 +60,17 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Butler.ToString());
+                LethalMon.Log("-------------------");
+                Collider[] colliders = Physics.OverlapSphere(Utils.CurrentPlayer.transform.position, 3f);
+                // Log all the colliders and sub components
+                foreach (var collider in colliders)
+                {
+                    LethalMon.Log(collider.name);
+                    foreach (var component in collider.GetComponents<Component>())
+                    {
+                        LethalMon.Log("  " + component.GetType().Name + " (los: " + !Physics.Linecast(Utils.CurrentPlayer.transform.position, component.transform.position, StartOfRound.Instance.collidersAndRoomMaskAndDefault) + ")");
+                    }
+                }
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
@@ -76,7 +86,21 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Flowerman.ToString());
+                foreach (var bigDoor in FindObjectsOfType<TerminalAccessibleObject>())
+                {
+                    if (bigDoor.isBigDoor && bigDoor.isDoorOpen)
+                    {
+                        bigDoor.SetDoorOpenServerRpc(false);
+                    }
+                }
+                
+                foreach (var smallDoor in FindObjectsOfType<DoorLock>())
+                {
+                    if (!smallDoor.isLocked)
+                    {
+                        smallDoor.LockDoor();
+                    }
+                }
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
