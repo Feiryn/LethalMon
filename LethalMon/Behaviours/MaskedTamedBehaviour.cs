@@ -69,8 +69,9 @@ namespace LethalMon.Behaviours
                 if( _ghostMaterial == null)
                 {
                     _ghostMaterial = new Material(Utils.WireframeMaterial);
-                    _ghostMaterial.SetColor("_EdgeColor", new Color(0.8f, 0.9f, 1f, 0.20f));
+                    _ghostMaterial.SetColor("_EdgeColor", new Color(0.8f, 0.9f, 1f, 0.15f));
                     _ghostMaterial.SetFloat("_WireframeVal", 1f);
+                    _ghostMaterial.SetFloat("_MaxVisibilityDistance", 40f);
                     return _ghostMaterial;
                 }
 
@@ -167,10 +168,10 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            /*
+            
              Ghostify(Masked);
             return;
-            if (!escapeFromBallEventRunning.Value)
+            /*if (!escapeFromBallEventRunning.Value)
             {
                 isEscapedDEBUG = true;
                 SwitchToDefaultBehaviour(0);
@@ -769,7 +770,7 @@ namespace LethalMon.Behaviours
             if(!mask.gameObject.TryGetComponent(out Light light))
                 light = mask.gameObject.AddComponent<Light>();
             light.type = LightType.Point;
-            light.range = 15f;
+            light.range = 10f;
             light.intensity = 2f;
             light.enabled = true;
             light.color = new Color(0.8f, 0.9f, 1f);
