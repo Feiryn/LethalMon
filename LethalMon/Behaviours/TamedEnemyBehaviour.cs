@@ -515,7 +515,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             cooldown.OnDestroy();
         }
         
-        if (ownClientId == Utils.CurrentPlayer.playerClientId)
+        if (Utils.CurrentPlayer != null && ownClientId == Utils.CurrentPlayer.playerClientId)
         {
             HUDManagerPatch.EnableHUD(false);
         }
