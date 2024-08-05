@@ -35,7 +35,7 @@ namespace LethalMon.Behaviours
         Transform? originalMaskParent = null;
         Vector3 originalMaskLocalPosition = Vector3.zero;
 
-        static readonly float MaximumMaskWearingTime = 2f;
+        static readonly float MaximumMaskWearingTime = 10f;
         float timeSinceWearingMask = 0f;
 
         Coroutine? maskTransferCoroutine = null;
@@ -60,6 +60,23 @@ namespace LethalMon.Behaviours
         static readonly float MaximumGhostChaseTime = 5f;
         bool isEscapedDEBUG = false;
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
+
+        private Material? _ghostMaterial = null;
+        internal Material GhostMaterial
+        {
+            get
+            {
+                if( _ghostMaterial == null)
+                {
+                    _ghostMaterial = new Material(Utils.WireframeMaterial);
+                    _ghostMaterial.SetColor("_EdgeColor", new Color(0.8f, 0.9f, 1f, 0.20f));
+                    _ghostMaterial.SetFloat("_WireframeVal", 1f);
+                    return _ghostMaterial;
+                }
+
+                return _ghostMaterial;
+            }
+        }
         #endregion
 
         /*#region MirageCompatibility
@@ -116,28 +133,22 @@ namespace LethalMon.Behaviours
         {
             if (!isWearingMask || maskTransferCoroutine != null) return;
 
-            if(IsOwnerPlayer)
+            if (IsOwnerPlayer)
+            {
                 StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
 
-            bool dropMask = false;
-
-            if (MaskAnimator != null)
-            {
-                MaskAnimator.speed += Time.deltaTime / 10f;
-                if (MaskAnimator.speed > 1f) dropMask = true;
-            }
-            else // Fallback
-            {
                 timeSinceWearingMask += Time.deltaTime;
-                if (timeSinceWearingMask > MaximumMaskWearingTime) dropMask = true;
-            }
+                if (MaskAnimator != null && timeSinceWearingMask > (MaximumMaskWearingTime / 1.5f))
+                    MaskAnimator.speed += Time.deltaTime / (MaximumMaskWearingTime / 4f);
 
-            if (dropMask && IsOwnerPlayer)
-            {
-                ownerPlayer!.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 8);
+                if (timeSinceWearingMask > MaximumMaskWearingTime)
+                {
+                    timeSinceWearingMask = 0f;
+                    ownerPlayer!.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 8);
 
-                if (!ownerPlayer.isPlayerDead)
-                    GiveBackMaskServerRpc();
+                    if (!ownerPlayer.isPlayerDead)
+                        GiveBackMaskServerRpc();
+                }
             }
 
             if(IsOwner)
@@ -156,8 +167,9 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            Ghostify(Masked);
-
+            /*
+             Ghostify(Masked);
+            return;
             if (!escapeFromBallEventRunning.Value)
             {
                 isEscapedDEBUG = true;
@@ -166,6 +178,7 @@ namespace LethalMon.Behaviours
                 OnEscapedFromBall(ownerPlayer!);
             }
             return;
+            */
 
             if (ownerPlayer == null || maskTransferCoroutine != null) return;
 
@@ -492,7 +505,10 @@ namespace LethalMon.Behaviours
             Masked.FinishKillAnimation();
 
             if(IsOwnerPlayer)
+            {
+                SetRedVision();
                 CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true);
+            }
             else
                 SetMaskGlowNoSound();
 
@@ -500,7 +516,6 @@ namespace LethalMon.Behaviours
                 Masked.agent.speed = 5f;
 
             isWearingMask = true;
-            SetRedVision();
 
             Masked.SetHandsOutServerRpc(true);
             maskTransferCoroutine = null;
@@ -542,6 +557,12 @@ namespace LethalMon.Behaviours
 
             SetMaskGlowNoSound();
 
+            if (IsOwnerPlayer)
+            {
+                SetRedVision(false);
+                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
+            }
+
             yield return StartCoroutine(RotateMaskOnMaskedFace());
 
             Masked.FinishKillAnimation();
@@ -550,10 +571,8 @@ namespace LethalMon.Behaviours
                 Masked.agent.speed = 5f;
 
             isWearingMask = false;
-            SetRedVision(false);
 
-            if(IsOwnerPlayer)
-                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
+            SetMaskGlowNoSound(false);
 
             Masked.SetHandsOutServerRpc(false);
 
@@ -714,10 +733,14 @@ namespace LethalMon.Behaviours
 
         void SetRedVision(bool enable = true)
         {
-            if (ownerPlayer == null || ownerPlayer.nightVision.enabled == enable) return;
+            LethalMon.Log("1", LethalMon.LogType.Warning);
+            if (ownerPlayer == null) return;
+            LethalMon.Log("2", LethalMon.LogType.Warning);
 
-            if(enable)
+            if (enable)
             {
+                LethalMon.Log("2.1", LethalMon.LogType.Warning);
+                LethalMon.Log("Night vision activation", LethalMon.LogType.Warning);
                 originalNightVisionColor = ownerPlayer.nightVision.color;
                 ownerPlayer.nightVision.color = Color.red;
                 originalNightVisionIntensity = ownerPlayer.nightVision.intensity;
@@ -725,6 +748,7 @@ namespace LethalMon.Behaviours
             }
             else
             {
+                LethalMon.Log("2.2", LethalMon.LogType.Warning);
                 ownerPlayer.nightVision.color = originalNightVisionColor.GetValueOrDefault(Color.white);
                 ownerPlayer.nightVision.intensity = originalNightVisionIntensity;
             }
@@ -734,10 +758,10 @@ namespace LethalMon.Behaviours
 
         private void Ghostify(MaskedPlayerEnemy maskedEnemy)
         {
-            maskedEnemy.rendererLOD0.materials = Enumerable.Repeat(false, Masked.rendererLOD0.materials.Length).Select(x => new Material(Utils.Glass)).ToArray();
-            maskedEnemy.rendererLOD1.materials = Enumerable.Repeat(false, Masked.rendererLOD1.materials.Length).Select(x => new Material(Utils.Glass)).ToArray();
-            maskedEnemy.rendererLOD2.materials = Enumerable.Repeat(false, Masked.rendererLOD2.materials.Length).Select(x => new Material(Utils.Glass)).ToArray();
-            Utils.ReplaceAllMaterialsWith(maskedEnemy.gameObject, (Material _) => Utils.Glass);
+            maskedEnemy.rendererLOD0.materials = Enumerable.Repeat(false, Masked.rendererLOD0.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
+            maskedEnemy.rendererLOD1.materials = Enumerable.Repeat(false, Masked.rendererLOD1.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
+            maskedEnemy.rendererLOD2.materials = Enumerable.Repeat(false, Masked.rendererLOD2.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
+            Utils.ReplaceAllMaterialsWith(maskedEnemy.gameObject, (Material _) => GhostMaterial);
 
             var mask = maskedEnemy.maskTypes[maskedEnemy.maskTypeIndex];
             if (mask == null) return;
@@ -745,10 +769,10 @@ namespace LethalMon.Behaviours
             if(!mask.gameObject.TryGetComponent(out Light light))
                 light = mask.gameObject.AddComponent<Light>();
             light.type = LightType.Point;
-            light.range = 10f;
-            light.intensity = 10f;
+            light.range = 15f;
+            light.intensity = 2f;
             light.enabled = true;
-            light.color = Color.blue;
+            light.color = new Color(0.8f, 0.9f, 1f);
         }
         #endregion
 
