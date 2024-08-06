@@ -121,7 +121,7 @@ public abstract class PokeballItem : ThrowableItem
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
 
-                this.catchableEnemy!.CatchFailBehaviour(this.enemyAI!, this.lastThrower);
+                Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower);
                 if (Utils.IsHost)
                 {
                     if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
@@ -444,7 +444,7 @@ public abstract class PokeballItem : ThrowableItem
     {
         LethalMon.Log("SyncContentPacket client rpc received");
 
-        EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == enemyTypeName);
+        EnemyType enemyType = EnemyTypes.First(type => type.name == enemyTypeName);
         SetCaughtEnemy(enemyType);
     }
     #endregion

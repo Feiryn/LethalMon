@@ -7,7 +7,6 @@ using System.Collections;
 using LethalMon.CustomPasses;
 using Unity.Netcode;
 using System.Linq;
-using HarmonyLib;
 
 namespace LethalMon.Behaviours
 {
@@ -58,8 +57,13 @@ namespace LethalMon.Behaviours
         float originalNightVisionIntensity = 366f;
 
         public bool escapeFromBallEventRunning = false;
-        static readonly float MaximumGhostChaseTime = 5f;
+
+        internal float ghostLifetime = 0f;
+        static readonly float GhostSpawnTime = 3f;
+        static readonly float MaximumGhostLifeTime = GhostSpawnTime + 5f;
+
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
+        MaskedTamedBehaviour? parentMimic = null;
 
         private Material? _ghostMaterial = null;
         internal Material GhostMaterial
@@ -105,11 +109,13 @@ namespace LethalMon.Behaviours
         #region Custom behaviours
         internal enum CustomBehaviour
         {
-            LendMask = 1
+            LendMask = 1,
+            Ghostified
         }
         internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
         {
-            new (CustomBehaviour.LendMask.ToString(), "Lending mask", OnLendMaskBehavior)
+            new (CustomBehaviour.LendMask.ToString(), "Lending mask", OnLendMaskBehavior),
+            new (CustomBehaviour.Ghostified.ToString(), "Ghostified", OnGhostBehavior)
         };
 
         internal override void InitCustomBehaviour(int behaviour)
@@ -120,6 +126,19 @@ namespace LethalMon.Behaviours
             switch ((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.LendMask:
+                    SetMaskShaking(false);
+                    break;
+
+                case CustomBehaviour.Ghostified:
+                    if (targetPlayer == null) return;
+
+                    ghostLifetime = 0f;
+                    Masked.stareAtTransform = targetPlayer.gameplayCamera.transform;
+                    GhostAppearedServerRpc();
+
+                    RoundManager.Instance.tempTransform.position = Masked.transform.position;
+                    RoundManager.Instance.tempTransform.LookAt(targetPlayer.transform);
+                    Masked.transform.rotation = RoundManager.Instance.tempTransform.rotation;
                     break;
 
                 default:
@@ -151,6 +170,25 @@ namespace LethalMon.Behaviours
 
             if(IsOwner)
                 FollowOwner();
+        }
+
+        internal void OnGhostBehavior()
+        {
+            ghostLifetime += Time.deltaTime; // Spawn animation
+            if (ghostLifetime < GhostSpawnTime) return;
+
+            if (targetPlayer == null || targetPlayer.isPlayerDead || ghostLifetime > MaximumGhostLifeTime)
+            {
+                GhostDisappearsServerRpc();
+                return;
+            }
+
+            Masked.agent!.speed = 10f;
+            Masked.CalculateAnimationDirection();
+            Masked.LookAtFocusedPosition();
+
+            if (Vector3.Distance(Masked.transform.position, targetPlayer.transform.position) < 1f)
+                GhostHitPlayerServerRpc(targetPlayer.playerClientId);
         }
         #endregion
 
@@ -212,9 +250,17 @@ namespace LethalMon.Behaviours
 
         void CleanUp()
         {
+            if(parentMimic != null)
+                parentMimic.spawnedGhostMimics.Remove(Masked);
+
             StopAllCoroutines();
             foreach (var ghostMimic in spawnedGhostMimics)
+            {
+                if(ghostMimic == null || !ghostMimic.IsSpawned) continue;
+
                 RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
+                DestroyImmediate(ghostMimic);
+            }
             spawnedGhostMimics.Clear();
         }
 
@@ -227,6 +273,7 @@ namespace LethalMon.Behaviours
             {
                 case TamingBehaviour.TamedFollowing:
                     EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+                    SetMaskShaking(false);
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -265,6 +312,8 @@ namespace LethalMon.Behaviours
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
+            if (maskTransferCoroutine != null) return;
+
             base.OnUpdate(update, doAIInterval);
 
             Masked.CalculateAnimationDirection();
@@ -275,10 +324,26 @@ namespace LethalMon.Behaviours
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();
 
-            if (ownerPlayer != null && maskTransferCoroutine == null)
+            if (maskTransferCoroutine != null) return;
+
+            if (CurrentCustomBehaviour.GetValueOrDefault(0) == (int)CustomBehaviour.Ghostified && targetPlayer != null)
             {
-                Masked.running = Vector3.Distance(Masked.transform.position, ownerPlayer.transform.position) > 5f;
-                Masked.agent.speed = Masked.running ? 7f : 3.8f;
+                Masked.SetDestinationToPosition(targetPlayer.transform.position);
+                return;
+            }
+
+            if (ownerPlayer != null)
+            {
+                if (maskTransferCoroutine == null)
+                {
+                    Masked.running = Vector3.Distance(Masked.transform.position, ownerPlayer.transform.position) > 5f;
+                    Masked.agent.speed = Masked.running ? 7f : 3.8f;
+                }
+                else
+                {
+                    Masked.running = false;
+                    Masked.agent.speed = 0f;
+                }
             }
         }
 
@@ -295,7 +360,7 @@ namespace LethalMon.Behaviours
             Masked.EnableEnemyMesh(true);
 
             if(ownerPlayer != null)
-                Masked.stareAtTransform = ownerPlayer.transform;
+                Masked.stareAtTransform = ownerPlayer.gameplayCamera.transform;
         }
 
         internal override void TurnTowardsPosition(Vector3 position)
@@ -325,7 +390,8 @@ namespace LethalMon.Behaviours
             LethalMon.Log("MaskedEscapeFromBallCoroutine");
             if(IsOwner)
             {
-                Masked.agent.enabled = false;
+                if(Masked.agent != null)
+                    Masked.agent.enabled = false;
                 Masked.enabled = false;
             }
 
@@ -333,10 +399,17 @@ namespace LethalMon.Behaviours
             {
                 RoundManager.Instance.tempTransform.position = Masked.transform.position;
                 RoundManager.Instance.tempTransform.LookAt(targetPlayer.transform);
-                base.transform.rotation = RoundManager.Instance.tempTransform.rotation;
+                Masked.transform.rotation = RoundManager.Instance.tempTransform.rotation;
             }
 
             yield return new WaitForSeconds(0.5f);
+
+            if (MirageEnabled)
+            {
+                ShowMask(true);
+                if (Mask != null)
+                    Mask.gameObject.SetActive(false);
+            }
 
             SetMaskGlowNoSound(true);
 
@@ -355,12 +428,12 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(0.2f);
 
             if (IsOwner)
-                StartCoroutine(SpawnAndHandleGhostMimic());
+                StartCoroutine(SpawnGhostMimic());
             Masked.maskEyesGlowLight.intensity /= 2f;
             yield return new WaitForSeconds(3.5f);
 
             if (IsOwner)
-                StartCoroutine(SpawnAndHandleGhostMimic());
+                StartCoroutine(SpawnGhostMimic());
             Masked.maskEyesGlowLight.intensity = startIntensity;
 
             if (!IsOwner) yield break;
@@ -373,9 +446,12 @@ namespace LethalMon.Behaviours
                 return spawnedGhostMimics.Count > 0 && fallbackTimer < 10f;
             });
 
-            CleanUp();
-            Masked.agent.enabled = true;
+            if (fallbackTimer >= 10f)
+                LethalMon.Log("Fallback triggered on MaskedEscapeFromBallCoroutine.", LethalMon.LogType.Warning);
 
+            CleanUp();
+            if (Masked.agent != null)
+                Masked.agent.enabled = true;
             Masked.enabled = true;
 
             EscapeFromBallEventEndedServerRpc();
@@ -394,66 +470,40 @@ namespace LethalMon.Behaviours
         {
             SetMaskGlowNoSound(false);
 
+            if (MirageEnabled)
+                ShowMask(false);
+
             escapeFromBallEventRunning = false;
             Masked.inSpecialAnimationWithPlayer = null;
             targetPlayer = null;
         }
 
-        internal IEnumerator SpawnAndHandleGhostMimic()
+        internal IEnumerator SpawnGhostMimic()
         {
             var ghostMimic = SpawnMimic(Masked.transform.position);
             if (ghostMimic == null)
                 yield break;
 
-            spawnedGhostMimics.Add(ghostMimic);
-
-            yield return null;
-
-            ghostMimic.enabled = false;
-            GhostAppearedServerRpc(ghostMimic.NetworkObject);
-
-            yield return new WaitForSeconds(3f);
-
-            int counter = 0;
-            float timeChasing = 0f;
-            while (timeChasing < MaximumGhostChaseTime && targetPlayer != null && !targetPlayer.isPlayerDead)
+            if(!ghostMimic.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
             {
-                ghostMimic.agent!.speed = 10f;
-
-                counter++;
-                if (counter > 10)
-                {
-                    counter = 0;
-                    ghostMimic.SetDestinationToPosition(targetPlayer.transform.position);
-                    ghostMimic.agent.destination = ghostMimic.destination;
-                    if (ghostMimic.creatureAnimator != null)
-                        ghostMimic.SetHandsOutServerRpc(true);
-                    ghostMimic.SyncPositionToClients();
-                }
-
-                if(ghostMimic.animationContainer != null && ghostMimic.creatureAnimator != null)
-                    ghostMimic.CalculateAnimationDirection();
-
-                ghostMimic.LookAtFocusedPosition();
-
-                if (Vector3.Distance(ghostMimic.transform.position, targetPlayer.transform.position) < 1f)
-                {
-                    GhostHitPlayerServerRpc(targetPlayer.playerClientId);
-                    break;
-                }
-
-                timeChasing += Time.deltaTime;
-                yield return null;
+                LethalMon.Log("Ghost mimic has no tamed behaviour handler.", LethalMon.LogType.Error);
+                yield break;
             }
 
-            spawnedGhostMimics.Remove(ghostMimic);
-            GhostDisappearsServerRpc(ghostMimic.NetworkObject);
+            spawnedGhostMimics.Add(ghostMimic);
+
+            yield return null; // Call Start() once before switching
+
+            tamedBehaviour.parentMimic = this;
+            tamedBehaviour.targetPlayer = targetPlayer;
+            tamedBehaviour.SwitchToCustomBehaviour((int)CustomBehaviour.Ghostified);
         }
 
         [ServerRpc]
         public void GhostHitPlayerServerRpc(ulong playerID)
         {
             GhostHitPlayerClientRpc(playerID);
+            GhostDisappearsClientRpc();
         }
 
         [ClientRpc]
@@ -464,74 +514,53 @@ namespace LethalMon.Behaviours
         }
 
         [ServerRpc]
-        public void GhostAppearedServerRpc(NetworkObjectReference ghostRef)
+        public void GhostAppearedServerRpc()
         {
-            GhostAppearedClientRpc(ghostRef);
+            GhostAppearedClientRpc();
         }
 
         [ClientRpc]
-        public void GhostAppearedClientRpc(NetworkObjectReference ghostRef)
+        public void GhostAppearedClientRpc()
         {
-            if (!ghostRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out MaskedPlayerEnemy ghost))
+            Ghostify(Masked);
+
+            if (MirageEnabled)
             {
-                LethalMon.Log("GhostAppearedClientRpc: Unable to get ghost from reference.", LethalMon.LogType.Error);
-                return;
+                ShowMask(true);
+                if (Mask != null)
+                    Mask.gameObject.SetActive(false);
             }
 
-            Ghostify(ghost);
-
-            var mainParticle = ghost.teleportParticle.main;
+            var mainParticle = Masked.teleportParticle.main;
             mainParticle.simulationSpeed = 20f;
-            ghost.teleportParticle.Play();
+            Masked.teleportParticle.Play();
 
-            if (Vector3.Distance(ghost.transform.position, Utils.CurrentPlayer.transform.position) > 20f)
+            if (Vector3.Distance(Masked.transform.position, Utils.CurrentPlayer.transform.position) > 20f)
                 RoundManager.Instance.FlickerLights(true, false);
 
             if (targetPlayer != null)
             {
-                ghost.stareAtTransform = targetPlayer.transform;
-                ghost.lookAtPositionTimer = 0f;
-                ghost.LookAtFocusedPosition();
+                Masked.stareAtTransform = targetPlayer.gameplayCamera.transform;
+                Masked.lookAtPositionTimer = 0f;
+                Masked.LookAtFocusedPosition();
             }
         }
 
         [ServerRpc]
-        public void GhostDisappearsServerRpc(NetworkObjectReference ghostRef)
+        public void GhostDisappearsServerRpc()
         {
-            GhostDisappearsClientRpc(ghostRef);
+            GhostDisappearsClientRpc();
         }
 
         [ClientRpc]
-        public void GhostDisappearsClientRpc(NetworkObjectReference ghostRef)
+        public void GhostDisappearsClientRpc()
         {
-            if (!ghostRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out MaskedPlayerEnemy ghost))
-            {
-                LethalMon.Log("GhostDisappearsClientRpc: Unable to get ghost from reference.", LethalMon.LogType.Error);
-                return;
-            }
-
-            StartCoroutine(MakeGhostDisappear(ghost));
-        }
-
-        internal IEnumerator MakeGhostDisappear(MaskedPlayerEnemy ghost)
-        {
-            while (ghost.transform.localScale.y > 0f)
-                ghost.transform.localScale -= Vector3.one * Time.deltaTime * 2f;
-
-            // Poof effect
-            Item? giftBox = Utils.GiftBoxItem;
-            if (giftBox != null && giftBox.spawnPrefab != null)
-            {
-                GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
-                var presentParticles = Instantiate(giftBoxItem.PoofParticle);
-                presentParticles.transform.position = ghost.transform.position;
-                presentParticles.Play();
-            }
+            Utils.SpawnPoofCloudAt(Masked.transform.position);
 
             if (IsOwner)
             {
-                yield return new WaitForSeconds(0.5f);
-                RoundManager.Instance.DespawnEnemyGameObject(ghost.NetworkObject);
+                RoundManager.Instance.DespawnEnemyGameObject(Masked.NetworkObject);
+                Destroy(Masked, 0.5f);
             }
         }
 
@@ -548,9 +577,6 @@ namespace LethalMon.Behaviours
 
         private void Ghostify(MaskedPlayerEnemy maskedEnemy)
         {
-            if (maskedEnemy.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
-                tamedBehaviour.enabled = false;
-
             // Ghostify masked body
             maskedEnemy.rendererLOD0.materials = Enumerable.Repeat(false, Masked.rendererLOD0.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
             maskedEnemy.rendererLOD1.materials = Enumerable.Repeat(false, Masked.rendererLOD1.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
@@ -608,15 +634,13 @@ namespace LethalMon.Behaviours
         IEnumerator LendMaskCoroutine()
         {
             if (ownerPlayer == null) yield break;
-            
-            Masked.SetHandsOutServerRpc(true);
+
+            Masked.SetHandsOutClientRpc(true);
 
             yield return StartCoroutine(FaceOwner());
 
-            if (IsOwner)
-                Masked.agent.speed = 0f;
-
             yield return new WaitForSeconds(0.3f);
+
             SetMaskGlowNoSound();
 
             yield return StartCoroutine(RotateMaskOnPlayerFace());
@@ -636,17 +660,15 @@ namespace LethalMon.Behaviours
             else
                 SetMaskGlowNoSound();
 
-            if(IsOwner)
-                Masked.agent.speed = 5f;
-
             isWearingMask = true;
 
-            Masked.SetHandsOutServerRpc(true);
+            Masked.SetHandsOutClientRpc(false);
+
             maskTransferCoroutine = null;
 
             yield return null;
 
-            if (IsOwnerPlayer)
+            if (IsOwner)
                 SwitchToCustomBehaviour((int)CustomBehaviour.LendMask);
         }
 
@@ -663,15 +685,11 @@ namespace LethalMon.Behaviours
             maskTransferCoroutine = StartCoroutine(GiveBackMaskCoroutine());
         }
 
-
         IEnumerator GiveBackMaskCoroutine()
         {
             Masked.SetHandsOutServerRpc(true);
 
             yield return StartCoroutine(FaceOwner());
-
-            if (IsOwner)
-                Masked.agent.speed = 0f;
 
             SetMaskShaking();
             if (IsOwnerPlayer)
@@ -691,9 +709,6 @@ namespace LethalMon.Behaviours
 
             Masked.FinishKillAnimation();
 
-            if (IsOwner)
-                Masked.agent.speed = 5f;
-
             isWearingMask = false;
 
             SetMaskGlowNoSound(false);
@@ -705,7 +720,7 @@ namespace LethalMon.Behaviours
 
             yield return null;
 
-            if (IsOwnerPlayer)
+            if (IsOwner)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
 
@@ -879,8 +894,6 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Compatibility
-
-        /*#region MirageCompatibility
         public const string MirageReferenceChain = "Mirage";
 
         private static bool? _mirageEnabled;
@@ -890,12 +903,25 @@ namespace LethalMon.Behaviours
             get
             {
                 if (_mirageEnabled == null)
+                {
                     _mirageEnabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(MirageReferenceChain);
+                    LethalMon.Log("Mirage enabled? " + _mirageEnabled);
+                }
 
                 return _mirageEnabled.Value;
             }
         }
-        #endregion*/
+
+        public void ShowMask(bool show = true)
+        {
+            if (!MirageEnabled) return;
+
+            foreach (var transform in Masked.GetComponentsInChildren<Transform>())
+            {
+                if (transform.name.StartsWith("HeadMask"))
+                    transform.gameObject.SetActive(show);
+            }
+        }
 
         [ServerRpc(RequireOwnership = false)] // Required reroute as the original RPC is prefix-patched by Mirage
         public void HandsOutRerouteServerRpc(NetworkObjectReference maskedRef, bool handsOut)
