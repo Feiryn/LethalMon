@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System;
 using System.Collections;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -36,6 +37,12 @@ namespace LethalMon.Behaviours
         private Coroutine? _smashCoroutine = null;
         
         private int _stuckTries = 0;
+        
+        private float _afraidTimer = 0f;
+        
+        private float _followEnemyTimer = 0f;
+        
+        private EnemyAI? _targetEnemy = null;
 
         private const float CheckDoorsAndTurretsInterval = 1.5f;
 
@@ -45,15 +52,26 @@ namespace LethalMon.Behaviours
 
         private const int MaxStuckTries = 30;
 
-        private const int SmashNumberOfTimesSmallDoorLocked = 4;
+        private const int SmashNumberOfTimesSmallDoorLocked = 5;
         
         private const int SmashNumberOfTimesSmallDoorUnlocked = 2;
 
-        private const int SmashNumberOfTimesBigDoor = 6;
+        private const int SmashNumberOfTimesBigDoor = 12;
 
         private const int SmashNumberOfTimesTurret = 4;
+        
+        private const int CloseBigDoorAfterSeconds = 5;
+        
+        private const float AfraidTime = 5f;
+        
+        private const float FollowEnemyTime = 10f;
 
         private static readonly int SpeedMultiplier = Animator.StringToHash("speedMultiplier");
+
+        internal override float MaxFollowDistance => 150f;
+
+        internal override bool CanDefend => false;
+
         #endregion
         
         #region Custom behaviours
@@ -65,7 +83,9 @@ namespace LethalMon.Behaviours
             DisableTurret = 3,
             GoToSmallDoor = 4,
             GoToBigDoor = 5,
-            GoToTurret = 6
+            GoToTurret = 6,
+            AfraidOfTurret = 7,
+            FollowEnemy = 8
         }
         internal override List<Tuple<string, string, Action>> CustomBehaviourHandler => new()
         {
@@ -74,7 +94,9 @@ namespace LethalMon.Behaviours
             new (CustomBehaviour.DisableTurret.ToString(), "Smashes a turret!", OnDisableTurret),
             new (CustomBehaviour.GoToSmallDoor.ToString(), "Saw a closed door!", OnGoToSmallDoor),
             new (CustomBehaviour.GoToBigDoor.ToString(), "Saw a secured door!", OnGoToBigDoor),
-            new (CustomBehaviour.GoToTurret.ToString(), "Saw a turret!", OnGoToTurretDoor)
+            new (CustomBehaviour.GoToTurret.ToString(), "Saw a turret!", OnGoToTurretDoor),
+            new (CustomBehaviour.AfraidOfTurret.ToString(), "Got scared by a turret!", OnAfraidOfTurret),
+            new (CustomBehaviour.FollowEnemy.ToString(), "Follows an enemy...", OnFollowEnemy)
         };
         
         private void OpenSmallDoor()
@@ -92,11 +114,15 @@ namespace LethalMon.Behaviours
                     trigger.TriggerAnimationNonPlayer(false, true);
                 }
                 _targetSmallDoor.OpenDoorAsEnemyServerRpc();
+                BreakDoorServerRpc(_targetSmallDoor.NetworkObject);
                 
                 _targetSmallDoor = null;
                 
                 LethalMon.Log("Door opened!");
-            });
+            }, () =>
+            {
+                ChooseCloseEnemy(false);
+            }, AttackType.SmallDoor);
         }
         
         private void OnOpenBigDoor()
@@ -108,11 +134,16 @@ namespace LethalMon.Behaviours
             {
                 // targetBigDoor.SetDoorOpenServerRpc(true);
                 _targetBigDoor!.GetComponentInParent<TerminalAccessibleObject>().CallFunctionFromTerminal();
+
+                StartCoroutine(CloseBigDoorAfterTime(_targetBigDoor));
                 
                 _targetBigDoor = null;
                 
                 LethalMon.Log("Big door opened!");
-            });
+            }, () =>
+            {
+                ChooseCloseEnemy(false);
+            }, AttackType.BigDoor);
         }
         
         private void OnDisableTurret()
@@ -122,13 +153,33 @@ namespace LethalMon.Behaviours
             
             AttackAndSync(SmashNumberOfTimesTurret, () =>
             {
-                // targetTurret.ToggleTurretEnabled(false);
-                _targetTurret!.GetComponentInParent<TerminalAccessibleObject>().CallFunctionFromTerminal();
+                _targetTurret!.SwitchTurretMode((int) TurretMode.Detection);
+                _targetTurret.Update(); // Make it stop firing
+                _targetTurret.GetComponentInParent<TerminalAccessibleObject>().CallFunctionFromTerminal();
             
                 _targetTurret = null;
                 
                 LethalMon.Log("Turret disabled!");
-            });
+            }, () =>
+            {
+                if (_targetTurret!.turretMode != TurretMode.Berserk)
+                {
+                    _targetTurret.SwitchTurretMode((int) TurretMode.Berserk);
+                    _targetTurret.EnterBerserkModeServerRpc((int) ownClientId);
+
+                    if (UnityEngine.Random.Range(0f, 1f) < 0.5f)
+                    {
+                        _targetPos = Crawler.ChooseFarthestNodeFromPosition(_targetTurret.transform.position).position;
+                        Crawler.SetDestinationToPosition(_targetPos);
+                        _targetTurret = null;
+                        _afraidTimer = 0f;
+                        SwitchToCustomBehaviour((int) CustomBehaviour.AfraidOfTurret);
+                        return;
+                    }
+                }
+                
+                ChooseCloseEnemy(false);
+            }, AttackType.Turret);
         }
 
         private void OnGoToSmallDoor()
@@ -154,6 +205,30 @@ namespace LethalMon.Behaviours
             
             OnGoToTarget(2f, CustomBehaviour.DisableTurret); // Minimum: 0.7321472
         }
+
+        private void OnAfraidOfTurret()
+        {
+            _afraidTimer += Time.deltaTime;
+            
+            if (_afraidTimer >= AfraidTime)
+            {
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
+        }
+
+        private void OnFollowEnemy()
+        {
+            if (_targetEnemy == null || _followEnemyTimer >= FollowEnemyTime)
+            {
+                _targetEnemy = null;
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                return;
+            }
+            
+            _followEnemyTimer += Time.deltaTime;
+            
+            FollowPosition(_targetEnemy.transform.position);
+        }
         #endregion
 
         #region Base Methods
@@ -163,12 +238,14 @@ namespace LethalMon.Behaviours
 
             if (ownerPlayer == null) return;
             
-            Crawler.transform.localScale *= 0.5f;
+            Crawler.transform.localScale *= 0.8f;
             Crawler.openDoorSpeedMultiplier = 0f;
 
-            Crawler.GetComponent<AudioSource>().pitch = 2f;
+            Crawler.creatureVoice.pitch = 1.5f;
             // Crawler.GetComponentInChildren<PlayAudioAnimationEvent>().randomClips = new AudioClip[] { null! };
             Crawler.GetComponentInChildren<PlayAudioAnimationEvent>().audioToPlay.volume = 0.5f;
+            
+            Crawler.creatureAnimator.Play("Base Layer.CrawlSlow");
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -189,9 +266,16 @@ namespace LethalMon.Behaviours
         {
             base.InitCustomBehaviour(behaviour);
 
+            Crawler.agent.speed = 8f;
+            
             if (behaviour is >= (int)CustomBehaviour.GoToSmallDoor and <= (int)CustomBehaviour.GoToTurret)
             {
                 _stuckTries = 0;
+            }
+            else if (_smashCoroutine != null)
+            {
+                StopCoroutine(_smashCoroutine);
+                _smashCoroutine = null;
             }
         }
 
@@ -204,13 +288,7 @@ namespace LethalMon.Behaviours
             {
                 _iaTimer = 0f;
 
-                if (CheckForSmallDoor())
-                    return;
-
-                if (CheckForBigDoor())
-                    return;
-
-                CheckForTurret();
+                ChooseClosestTarget();
             }
         }
 
@@ -233,12 +311,13 @@ namespace LethalMon.Behaviours
             Crawler.creatureAnimator.SetFloat(SpeedMultiplier, Vector3.ClampMagnitude(position - Crawler.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
             var previousPosition = Crawler.previousPosition;
             Crawler.previousPosition = position;
+            int? currentCustomBehaviour = CurrentCustomBehaviour;
 
             if (_smashCoroutine != null)
             {
                 TurnTowardsPosition(_targetPos);
             }
-            else if (Utils.IsHost && !IsCurrentBehaviourTaming(TamingBehaviour.TamedFollowing) && Vector3.Distance(position, previousPosition) < 0.0005f)
+            else if (Utils.IsHost && currentCustomBehaviour is >= (int) CustomBehaviour.GoToSmallDoor and <= (int) CustomBehaviour.GoToTurret && Vector3.Distance(position, previousPosition) < 0.0005f)
             {
                 _stuckTries++;
                 LethalMon.Log("Incrementing stuck tries: " + _stuckTries);
@@ -261,29 +340,56 @@ namespace LethalMon.Behaviours
         }
         #endregion
 
-        #region CheckForTargetsMethods
-        
-        private void CheckForTurret()
+        #region Methods
+
+        private bool ChooseCloseEnemy(bool checkChance)
         {
-            var turrets = FindObjectsOfType<Turret>();
-            foreach (var turret in turrets)
+            if (!checkChance || UnityEngine.Random.Range(0f, 1f) < 0.15f)
             {
-                var turretPosition = turret.transform.position;
-                if (turret.turretActive &&
-                    Vector3.Distance(turretPosition, Crawler.transform.position) <= MaxDoorAndTurretDistance &&
-                    !Physics.Linecast(Crawler.transform.position, turretPosition, out _,
-                        StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                EnemyAI? nearestEnemy = NearestEnemy(true, false);
+                if (nearestEnemy != null)
                 {
-                    _targetTurret = turret;
-                    _targetPos = turretPosition;
-                    SwitchToCustomBehaviour((int)CustomBehaviour.GoToTurret);
-                    return;
+                    _targetEnemy = nearestEnemy;
+                    _targetSmallDoor = null;
+                    _targetBigDoor = null;
+                    _targetTurret = null;
+                    _followEnemyTimer = 0f;
+                    SwitchToCustomBehaviour((int)CustomBehaviour.FollowEnemy);
+                    return true;
                 }
             }
-        }
 
-        private bool CheckForBigDoor()
+            return false;
+        }
+        
+        private void ChooseClosestTarget()
         {
+            if (ChooseCloseEnemy(true))
+                return;
+            
+            float closestDistance = float.MaxValue;
+            DoorLock? closestSmallDoor = null;
+            TerminalAccessibleObject? closestBigDoor = null;
+            Turret? closestTurret = null;
+            
+            var smallDoors = FindObjectsOfType<DoorLock>();
+            foreach (var door in smallDoors)
+            {
+                var doorComponent = door.GetComponent<AnimatedObjectTrigger>();
+                var doorPosition = doorComponent.transform.position;
+                if (!door.isDoorOpened)
+                {
+                    var distance = Vector3.Distance(doorPosition, Crawler.transform.position);
+                    if (distance <= MaxDoorAndTurretDistance &&
+                        distance <= closestDistance &&
+                        !Physics.Linecast(Crawler.transform.position, doorPosition, out _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                    {
+                        closestDistance = distance;
+                        closestSmallDoor = door;
+                    }
+                }
+            }
+            
             var bigDoors = FindObjectsOfType<TerminalAccessibleObject>();
             foreach (var door in bigDoors)
             {
@@ -292,49 +398,66 @@ namespace LethalMon.Behaviours
                     continue;
 
                 var doorPosition = doorCollider.transform.position;
-                if (door is { isBigDoor: true, isDoorOpen: false } &&
-                    Vector3.Distance(doorPosition, Crawler.transform.position) <= MaxDoorAndTurretDistance)
+                if (door is { isBigDoor: true, isDoorOpen: false })
                 {
-                    Physics.Linecast(Crawler.transform.position, doorPosition, out RaycastHit hit,
-                        StartOfRound.Instance.collidersAndRoomMaskAndDefault);
-                    if (hit.collider == doorCollider)
+                    var distance = Vector3.Distance(doorPosition, Crawler.transform.position);
+                    if (distance <= MaxDoorAndTurretDistance &&
+                        distance <= closestDistance)
                     {
-                        _targetBigDoor = door;
-                        _targetPos = doorPosition;
-                        SwitchToCustomBehaviour((int)CustomBehaviour.GoToBigDoor);
-                        return true;
+                        Physics.Linecast(Crawler.transform.position, doorPosition, out RaycastHit hit,
+                            StartOfRound.Instance.collidersAndRoomMaskAndDefault);
+                        if (hit.collider == doorCollider)
+                        {
+                            closestDistance = distance;
+                            closestBigDoor = door;
+                            closestSmallDoor = null;
+                        }
                     }
                 }
             }
-
-            return false;
-        }
-
-        private bool CheckForSmallDoor()
-        {
-            var smallDoors = FindObjectsOfType<DoorLock>();
-            foreach (var door in smallDoors)
+            
+            var turrets = FindObjectsOfType<Turret>();
+            foreach (var turret in turrets)
             {
-                var doorComponent = door.GetComponent<AnimatedObjectTrigger>();
-                var doorPosition = doorComponent.transform.position;
-                if (!door.isDoorOpened &&
-                    Vector3.Distance(doorPosition, Crawler.transform.position) <= MaxDoorAndTurretDistance && !Physics.Linecast(
-                        Crawler.transform.position, doorPosition, out _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                var turretPosition = turret.transform.position;
+                if (turret.turretActive)
                 {
-                    _targetSmallDoor = door;
-                    _targetPos = doorPosition;
-                    SwitchToCustomBehaviour((int)CustomBehaviour.GoToSmallDoor);
-                    return true;
+                    var distance = Vector3.Distance(turretPosition, Crawler.transform.position);
+                    if (turret.turretActive &&
+                        distance <= MaxDoorAndTurretDistance &&
+                        distance <= closestDistance &&
+                        !Physics.Linecast(Crawler.transform.position, turretPosition, out _,
+                            StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                    {
+                        closestDistance = distance;
+                        closestTurret = turret;
+                        closestBigDoor = null;
+                        closestSmallDoor = null;
+                    }
                 }
             }
-
-            return false;
+            
+            if (closestSmallDoor != null)
+            {
+                _targetSmallDoor = closestSmallDoor;
+                _targetPos = closestSmallDoor.GetComponent<AnimatedObjectTrigger>().transform.position;
+                SwitchToCustomBehaviour((int)CustomBehaviour.GoToSmallDoor);
+            }
+            else if (closestBigDoor != null)
+            {
+                _targetBigDoor = closestBigDoor;
+                _targetPos = closestBigDoor.GetComponentInParent<Collider>().transform.position;
+                SwitchToCustomBehaviour((int)CustomBehaviour.GoToBigDoor);
+            }
+            else if (closestTurret != null)
+            {
+                _targetTurret = closestTurret;
+                _targetPos = closestTurret.transform.position;
+                SwitchToCustomBehaviour((int)CustomBehaviour.GoToTurret);
+            }
         }
-        #endregion
-
-        #region Methods
         
-        private IEnumerator SmashAnimationCoroutine(int smashTimes, Action callback)
+        private IEnumerator SmashAnimationCoroutine(int smashTimes, Action callback, Action smashAction)
         {
             Crawler.agent.speed = 0f;
 
@@ -343,6 +466,7 @@ namespace LethalMon.Behaviours
                 yield return new WaitForSeconds(1f);
                 Crawler.creatureAnimator.Play("Base Layer.Attack");
                 RoundManager.PlayRandomClip(Crawler.creatureSFX, Crawler.hitWallSFX);
+                smashAction.Invoke();
             }
             
             _smashCoroutine = null;
@@ -401,32 +525,84 @@ namespace LethalMon.Behaviours
             ClearTargetsAndSwitchToFollowing();
             return true;
         }
+
+        private IEnumerator CloseBigDoorAfterTime(TerminalAccessibleObject bigDoor)
+        {
+            yield return new WaitForSeconds(CloseBigDoorAfterSeconds);
+            if (bigDoor.isDoorOpen)
+                bigDoor.CallFunctionFromTerminal();
+        }
         #endregion
         
         #region RPCs
 
-        public void AttackAndSync(int numberOfTimes, Action callback)
+        public void AttackAndSync(int numberOfTimes, Action callback, Action smashAction, AttackType attackType)
         {
-            _smashCoroutine = StartCoroutine(SmashAnimationCoroutine(numberOfTimes, callback));
+            _smashCoroutine = StartCoroutine(SmashAnimationCoroutine(numberOfTimes, callback, smashAction));
             
-            AttackTargetServerRpc(numberOfTimes);
+            AttackTargetServerRpc(numberOfTimes, attackType);
+        }
+
+        public enum AttackType
+        {
+            SmallDoor,
+            BigDoor,
+            Turret
         }
         
         [ServerRpc(RequireOwnership = false)]
-        public void AttackTargetServerRpc(int numberOfTimes)
+        public void AttackTargetServerRpc(int numberOfTimes, AttackType attackType)
         {
             // HOST ONLY
-            AttackTargetClientRpc(_targetPos, numberOfTimes);
+            AttackTargetClientRpc(_targetPos, numberOfTimes, (int) attackType);
         }
 
         [ClientRpc]
-        public void AttackTargetClientRpc(Vector3 targetPosition, int numberOfTimes)
+        public void AttackTargetClientRpc(Vector3 targetPosition, int numberOfTimes, int attackType)
         {
             // ANY CLIENT (HOST INCLUDED)
             if (Utils.IsHost) return;
             
             _targetPos = targetPosition;
-            _smashCoroutine = StartCoroutine(SmashAnimationCoroutine(numberOfTimes, () => {}));
+            _smashCoroutine = StartCoroutine(SmashAnimationCoroutine(numberOfTimes, () =>
+            {
+                if (attackType == (int) AttackType.Turret)
+                {
+                    _targetTurret!.SwitchTurretMode((int) TurretMode.Detection);
+                    _targetTurret.Update();
+                }
+            }, () => {}));
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void BreakDoorServerRpc(NetworkObjectReference door)
+        {
+            BreakDoorClientRpc(door);
+        }
+        
+        [ClientRpc]
+        public void BreakDoorClientRpc(NetworkObjectReference door)
+        {
+            if (door.TryGet(out NetworkObject networkObject))
+            {
+                DoorLock? doorLock = FindObjectsOfType<DoorLock>().FirstOrDefault(dl => dl.NetworkObject == networkObject);
+                if (doorLock != null)
+                {
+                    doorLock.doorTrigger.interactable = false;
+                    doorLock.doorTrigger.timeToHold = float.MaxValue;
+                    doorLock.doorTrigger.disabledHoverTip = "Broken"; 
+                    doorLock.navMeshObstacle.carving = true;
+                    doorLock.navMeshObstacle.carveOnlyStationary = true;
+                }
+                else
+                {
+                    LethalMon.Log("Door not found", LethalMon.LogType.Warning);
+                }
+            }
+            else
+            {
+                LethalMon.Log("Door NetworkObject not found", LethalMon.LogType.Warning);
+            }
         }
         #endregion
     }

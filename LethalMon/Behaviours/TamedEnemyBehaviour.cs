@@ -98,6 +98,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual bool CanDefend => true;
 
+    internal virtual float MaxFollowDistance => 30f;
+
     public TamingBehaviour? CurrentTamingBehaviour
     {
         get
@@ -565,24 +567,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region Methods
-    public void FollowOwner()
-    {
-        if (ownerPlayer == null) return;
 
-        var ownerPosition = ownerPlayer.transform.position;
-        if (Vector3.Distance(Enemy.destination, ownerPosition) > 2f)
+    public void FollowPosition(Vector3 targetPosition)
+    {
+        if (Vector3.Distance(Enemy.destination, targetPosition) > 2f)
         {
             //LethalMon.Logger.LogInfo("Follow owner");
             var enemyPosition = Enemy.transform.position;
-            if (Vector3.Distance(enemyPosition, ownerPosition) > 30f)
+            if (Vector3.Distance(enemyPosition, targetPosition) > MaxFollowDistance)
             {
                 TeleportBehindOwner();
                 return;
             }
 
-            if (Vector3.Distance(ownerPosition, enemyPosition) > 4f && FindRaySphereIntersections(enemyPosition, (ownerPosition - enemyPosition).normalized, ownerPosition, 4f,
-                         out Vector3 potentialPosition1,
-                         out Vector3 potentialPosition2))
+            if (Vector3.Distance(targetPosition, enemyPosition) > 4f && FindRaySphereIntersections(enemyPosition, (targetPosition - enemyPosition).normalized, targetPosition, 4f,
+                    out Vector3 potentialPosition1,
+                    out Vector3 potentialPosition2))
             {
                 var position = enemyPosition;
                 float distance1 = Vector3.Distance(position, potentialPosition1);
@@ -603,7 +603,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         // Turn in the direction of the owner gradually
-        TurnTowardsPosition(ownerPosition);
+        TurnTowardsPosition(targetPosition);
+    }
+    
+    public void FollowOwner()
+    {
+        if (ownerPlayer == null) return;
+        
+        FollowPosition(ownerPlayer.transform.position);
     }
 
     private void TeleportBehindOwner()
