@@ -52,7 +52,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     public PlayerControllerB? ownerPlayer = null;
-    public bool IsOwnerPlayer => ownerPlayer == CurrentPlayer;
+    public bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
 
     public EnemyAI? targetEnemy = null;
 
@@ -676,6 +676,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             }
         }
 
+        return target;
         return target;
     }
 
