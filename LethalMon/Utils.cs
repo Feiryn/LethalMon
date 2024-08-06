@@ -323,6 +323,20 @@ public class Utils
     }
     #endregion
 
+    #region Effects
+    public static void SpawnPoofCloudAt(Vector3 position)
+    {
+        Item? giftBox = Utils.GiftBoxItem;
+        if (giftBox != null && giftBox.spawnPrefab != null)
+        {
+            GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
+            var presentParticles = Object.Instantiate(giftBoxItem.PoofParticle);
+            presentParticles.transform.position = position;
+            presentParticles.Play();
+        }
+    }
+    #endregion
+
     #region Shader & Materials
     public static List<MeshRenderer> GetMeshRenderers(GameObject g)
     {
