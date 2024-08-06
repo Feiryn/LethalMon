@@ -56,7 +56,7 @@ namespace LethalMon.Behaviours
         Color? originalNightVisionColor = null;
         float originalNightVisionIntensity = 366f;
 
-        public NetworkVariable<bool> escapeFromBallEventRunning = new NetworkVariable<bool>(false);
+        public bool escapeFromBallEventRunning = false;
         static readonly float MaximumGhostChaseTime = 5f;
         bool isEscapedDEBUG = false;
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
@@ -66,36 +66,33 @@ namespace LethalMon.Behaviours
         {
             get
             {
-                if( _ghostMaterial == null)
+                if (_ghostMaterial == null)
                 {
                     _ghostMaterial = new Material(Utils.WireframeMaterial);
                     _ghostMaterial.SetColor("_EdgeColor", new Color(0.8f, 0.9f, 1f, 0.15f));
                     _ghostMaterial.SetFloat("_WireframeVal", 1f);
-                    _ghostMaterial.SetFloat("_MaxVisibilityDistance", 40f);
-                    return _ghostMaterial;
+                    _ghostMaterial.SetFloat("_MaxVisibilityDistance", 15f);
                 }
 
                 return _ghostMaterial;
             }
         }
-        #endregion
 
-        /*#region MirageCompatibility
-        public const string MirageReferenceChain = "Mirage";
-
-        private static bool? _mirageEnabled;
-
-        public static bool MirageEnabled
+        private Material? _ghostEyesMaterial = null;
+        internal Material GhostEyesMaterial
         {
             get
             {
-                if (_mirageEnabled == null)
-                    _mirageEnabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(MirageReferenceChain);
+                if (_ghostEyesMaterial == null)
+                {
+                    _ghostEyesMaterial = new Material(Shader.Find("HDRP/Unlit"));
+                    _ghostEyesMaterial.color = new Color(0.8f, 0.9f, 1f);
+                }
 
-                return _mirageEnabled.Value;
+                return _ghostEyesMaterial;
             }
         }
-        #endregion*/
+        #endregion
 
         #region Cooldowns
         private static readonly string CooldownId = "masked_lendmask";
@@ -168,10 +165,7 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            
-             Ghostify(Masked);
-            return;
-            /*if (!escapeFromBallEventRunning.Value)
+            if (!escapeFromBallEventRunning)
             {
                 isEscapedDEBUG = true;
                 SwitchToDefaultBehaviour(0);
@@ -179,7 +173,6 @@ namespace LethalMon.Behaviours
                 OnEscapedFromBall(ownerPlayer!);
             }
             return;
-            */
 
             if (ownerPlayer == null || maskTransferCoroutine != null) return;
 
@@ -201,15 +194,26 @@ namespace LethalMon.Behaviours
 
             lendMaskCooldown = GetCooldownWithId(CooldownId);
 
-            ownerPlayer = Utils.AlivePlayers.Where((p) => p.playerClientId == 0ul).First();
-            ownClientId = 0ul;
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            Masked.EnableEnemyMesh(true);
-
             if (Mask != null)
             {
                 originalMaskParent = Mask.transform.parent;
                 originalMaskLocalPosition = Mask.transform.localPosition;
+            }
+
+            StartCoroutine(SetOwnerDEBUG());
+        }
+
+        internal IEnumerator SetOwnerDEBUG()
+        {
+            ownerPlayer = Utils.AlivePlayers.Where((p) => p.playerClientId == 0ul).First();
+            ownClientId = 0ul;
+            Masked.EnableEnemyMesh(true);
+            Masked.enabled = false;
+
+            if (IsOwner)
+            {
+                yield return new WaitForSeconds(0.3f);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
         }
 
@@ -234,6 +238,9 @@ namespace LethalMon.Behaviours
             {
                 case TamingBehaviour.TamedFollowing:
                     EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+
+                    TurnTowardsPosition(ownerPlayer!.transform.position);
+                    Masked.LookAtFocusedPosition();
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -261,153 +268,6 @@ namespace LethalMon.Behaviours
             base.OnTamedDefending();
 
             // idea: decoy
-        }
-
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
-        {
-            // ANY CLIENT
-            base.OnEscapedFromBall(playerWhoThrewBall);
-            LethalMon.Log("OnEscapedFromBall");
-
-            Masked.inSpecialAnimationWithPlayer = playerWhoThrewBall;
-            if (IsOwner)
-                StartCoroutine(MaskedEscapeFromBallCoroutine(playerWhoThrewBall));
-        }
-
-        internal IEnumerator MaskedEscapeFromBallCoroutine(PlayerControllerB playerWhoThrewBall)
-        {
-            SetEscapeFromBallEventRunningServerRpc(true);
-
-            LethalMon.Log("MaskedEscapeFromBallCoroutine");
-            Masked.agent.enabled = false;
-            Masked.enabled = false;
-            yield return new WaitForSeconds(1f);
-            SetMaskGlowNoSound(true);
-            //Masked.creatureSFX.PlayOneShot(Masked.enemyType.audioClips[0]);
-            yield return new WaitForSeconds(0.5f);
-
-            float timeGlowingUp = 0f; // Fallback
-            float startIntensity = Masked.maskEyesGlowLight.intensity;
-            float finalIntensity = startIntensity * 50f;
-            while (Masked.maskEyesGlowLight.intensity < finalIntensity && timeGlowingUp < 2f)
-            {
-                Masked.maskEyesGlowLight.intensity += Time.deltaTime * 50f;
-                timeGlowingUp += Time.deltaTime;
-                yield return null;
-            }
-
-            yield return new WaitForSeconds(0.3f);
-
-            StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
-            Masked.maskEyesGlowLight.intensity /= 2f;
-            yield return new WaitForSeconds(3.5f);
-
-            StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
-            Masked.maskEyesGlowLight.intensity = startIntensity;
-
-            float fallbackTimer = 0f;
-            yield return new WaitWhile(() =>
-            {
-                fallbackTimer += Time.deltaTime;
-                return spawnedGhostMimics.Count > 0 && fallbackTimer < 10f;
-            });
-
-            CleanUp();
-
-            if (!isEscapedDEBUG)
-                Masked.enabled = true;
-            else
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            Masked.agent.enabled = true;
-
-            SetMaskGlowNoSound(false);
-
-            isEscapedDEBUG = false;
-
-            SetEscapeFromBallEventRunningServerRpc(false);
-        }
-
-        internal IEnumerator SpawnAndHandleGhostMimic(PlayerControllerB targetPlayer)
-        {
-            var ghostMimic = SpawnMimic(targetPlayer, Masked.transform.position);
-            if (ghostMimic == null)
-                yield break;
-
-            ghostMimic.enabled = false;
-            spawnedGhostMimics.Add(ghostMimic);
-
-            yield return null;
-
-            Ghostify(ghostMimic);
-
-            RoundManager.Instance.FlickerLights(true, false);
-            var mainParticle = ghostMimic.teleportParticle.main;
-            mainParticle.simulationSpeed = 15f;
-            ghostMimic.teleportParticle.Play();
-
-            ghostMimic.maskEyesGlow[ghostMimic.maskTypeIndex].enabled = true;
-            ghostMimic.maskEyesGlowLight.enabled = true;
-            ghostMimic.maskEyesGlowLight.color = Color.blue;
-            ghostMimic.maskEyesGlowLight.intensity *= 50f;
-
-            yield return new WaitForSeconds(3.5f);
-
-            int counter = 0;
-            float timeChasing = 0f;
-            while (timeChasing < MaximumGhostChaseTime && !targetPlayer.isPlayerDead)
-            {
-                if (ghostMimic.agent != null)
-                    ghostMimic.agent.speed = 10f;
-
-                counter++;
-                if (counter > 10)
-                {
-                    counter = 0;
-                    ghostMimic.SetDestinationToPosition(targetPlayer.transform.position);
-                    ghostMimic.SetHandsOutServerRpc(true);
-                }
-
-                ghostMimic.CalculateAnimationDirection();
-
-                if (Vector3.Distance(ghostMimic.transform.position, targetPlayer.transform.position) < 1f)
-                {
-                    targetPlayer.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 1);
-                    break;
-                }
-
-                timeChasing += Time.deltaTime;
-                yield return null;
-            }
-
-            Item? giftBox = Utils.GiftBoxItem;
-            if (giftBox != null && giftBox.spawnPrefab != null)
-            {
-                GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
-                var presentParticles = Instantiate(giftBoxItem.PoofParticle);
-                presentParticles.transform.position = ghostMimic.transform.position;
-                presentParticles.Play();
-            }
-
-            spawnedGhostMimics.Remove(ghostMimic);
-            RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
-        }
-
-        internal MaskedPlayerEnemy? SpawnMimic(PlayerControllerB imitatingPlayer, Vector3 position)
-        {
-            GameObject maskedObject = Instantiate(Masked.enemyType.enemyPrefab, position, Quaternion.Euler(new Vector3(0f, 0f, 0f)));
-            maskedObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-
-            LethalMon.Log("Spawned masked");
-            MaskedPlayerEnemy maskedEnemy = maskedObject.GetComponent<MaskedPlayerEnemy>();
-            maskedEnemy.SetEnemyOutside(Masked.isOutside);
-
-            return maskedEnemy;
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        internal void SetEscapeFromBallEventRunningServerRpc(bool running = true)
-        {
-            escapeFromBallEventRunning.Value = running;
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -463,6 +323,258 @@ namespace LethalMon.Behaviours
             base.LateUpdate();
 
             Masked.LookAtFocusedPosition();
+        }
+        #endregion
+
+        #region EscapedFromBall - GhostEvent
+        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        {
+            // ANY CLIENT
+            base.OnEscapedFromBall(playerWhoThrewBall);
+            LethalMon.Log("OnEscapedFromBall");
+
+            Masked.inSpecialAnimationWithPlayer = playerWhoThrewBall;
+            StartCoroutine(MaskedEscapeFromBallCoroutine(playerWhoThrewBall));
+        }
+
+        internal IEnumerator MaskedEscapeFromBallCoroutine(PlayerControllerB playerWhoThrewBall)
+        {
+            escapeFromBallEventRunning = true;
+
+            LethalMon.Log("MaskedEscapeFromBallCoroutine");
+            if(IsOwner)
+            {
+                Masked.agent.enabled = false;
+                Masked.enabled = false;
+            }
+            yield return new WaitForSeconds(0.5f);
+
+            SetMaskGlowNoSound(true);
+
+            yield return new WaitForSeconds(0.5f);
+
+            float timeGlowingUp = 0f; // Fallback
+            float startIntensity = Masked.maskEyesGlowLight.intensity;
+            float finalIntensity = startIntensity * 50f;
+            while (Masked.maskEyesGlowLight.intensity < finalIntensity && timeGlowingUp < 2f)
+            {
+                Masked.maskEyesGlowLight.intensity += Time.deltaTime * 50f;
+                timeGlowingUp += Time.deltaTime;
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(0.2f);
+
+            if (IsOwner)
+                StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
+            Masked.maskEyesGlowLight.intensity /= 2f;
+            yield return new WaitForSeconds(3.5f);
+
+            if (IsOwner)
+                StartCoroutine(SpawnAndHandleGhostMimic(playerWhoThrewBall));
+            Masked.maskEyesGlowLight.intensity = startIntensity;
+
+            if (!IsOwner) yield break;
+
+            // Owner only from here on
+            float fallbackTimer = 0f;
+            yield return new WaitWhile(() =>
+            {
+                fallbackTimer += Time.deltaTime;
+                return spawnedGhostMimics.Count > 0 && fallbackTimer < 10f;
+            });
+
+            CleanUp();
+            Masked.agent.enabled = true;
+
+            if (!isEscapedDEBUG)
+                Masked.enabled = true;
+            else
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+
+            EscapeFromBallEventEndedServerRpc();
+        }
+
+        [ServerRpc]
+        public void EscapeFromBallEventEndedServerRpc()
+        {
+            EscapeFromBallEventEndedClientRpc();
+
+            escapeFromBallEventRunning = false;
+        }
+
+        [ClientRpc]
+        public void EscapeFromBallEventEndedClientRpc()
+        {
+            SetMaskGlowNoSound(false);
+
+            isEscapedDEBUG = false;
+
+            escapeFromBallEventRunning = false;
+            Masked.inSpecialAnimationWithPlayer = null;
+        }
+
+        internal IEnumerator SpawnAndHandleGhostMimic(PlayerControllerB targetPlayer)
+        {
+            var ghostMimic = SpawnMimic(Masked.transform.position);
+            if (ghostMimic == null)
+                yield break;
+
+            ghostMimic.enabled = false;
+            spawnedGhostMimics.Add(ghostMimic);
+
+            yield return null;
+
+            GhostAppearedServerRpc(ghostMimic.NetworkObject);
+
+            yield return new WaitForSeconds(3.5f);
+
+            int counter = 0;
+            float timeChasing = 0f;
+            while (timeChasing < MaximumGhostChaseTime && !targetPlayer.isPlayerDead)
+            {
+                if (ghostMimic.agent != null)
+                    ghostMimic.agent.speed = 10f;
+
+                counter++;
+                if (counter > 10)
+                {
+                    counter = 0;
+                    ghostMimic.SetDestinationToPosition(targetPlayer.transform.position);
+                    ghostMimic.SetHandsOutServerRpc(true);
+                    ghostMimic.SyncPositionToClients();
+                }
+
+                ghostMimic.CalculateAnimationDirection();
+
+                if (Vector3.Distance(ghostMimic.transform.position, targetPlayer.transform.position) < 1f)
+                {
+                    targetPlayer.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 1);
+                    break;
+                }
+
+                timeChasing += Time.deltaTime;
+                yield return null;
+            }
+
+            spawnedGhostMimics.Remove(ghostMimic);
+            GhostDisappearsServerRpc(ghostMimic.NetworkObject);
+        }
+
+        [ServerRpc]
+        public void GhostAppearedServerRpc(NetworkObjectReference ghostRef)
+        {
+            GhostAppearedClientRpc(ghostRef);
+        }
+
+        [ClientRpc]
+        public void GhostAppearedClientRpc(NetworkObjectReference ghostRef)
+        {
+            if (!ghostRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out MaskedPlayerEnemy ghost))
+            {
+                LethalMon.Log("GhostAppearedClientRpc: Unable to get ghost from reference.", LethalMon.LogType.Error);
+                return;
+            }
+
+            Ghostify(ghost);
+
+            var mainParticle = ghost.teleportParticle.main;
+            mainParticle.simulationSpeed = 20f;
+            ghost.teleportParticle.Play();
+
+            if (Vector3.Distance(ghost.transform.position, Utils.CurrentPlayer.transform.position) > 20f)
+                RoundManager.Instance.FlickerLights(true, false);
+        }
+
+        [ServerRpc]
+        public void GhostDisappearsServerRpc(NetworkObjectReference ghostRef)
+        {
+            GhostDisappearsClientRpc(ghostRef);
+        }
+
+        [ClientRpc]
+        public void GhostDisappearsClientRpc(NetworkObjectReference ghostRef)
+        {
+            if (!ghostRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out MaskedPlayerEnemy ghost))
+            {
+                LethalMon.Log("GhostDisappearsClientRpc: Unable to get ghost from reference.", LethalMon.LogType.Error);
+                return;
+            }
+
+            StartCoroutine(MakeGhostDisappear(ghost));
+        }
+
+        internal IEnumerator MakeGhostDisappear(MaskedPlayerEnemy ghost)
+        {
+            while (ghost.transform.localScale.y > 0f)
+                ghost.transform.localScale -= Vector3.one * Time.deltaTime * 5f;
+
+            // Poof effect
+            Item? giftBox = Utils.GiftBoxItem;
+            if (giftBox != null && giftBox.spawnPrefab != null)
+            {
+                GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
+                var presentParticles = Instantiate(giftBoxItem.PoofParticle);
+                presentParticles.transform.position = ghost.transform.position;
+                presentParticles.Play();
+            }
+
+            if (IsOwner)
+            {
+                yield return new WaitForSeconds(0.5f);
+                RoundManager.Instance.DespawnEnemyGameObject(ghost.NetworkObject);
+            }
+        }
+
+        internal MaskedPlayerEnemy? SpawnMimic(Vector3 position)
+        {
+            GameObject maskedObject = Instantiate(Masked.enemyType.enemyPrefab, position, Quaternion.Euler(new Vector3(0f, 0f, 0f)));
+            maskedObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+
+            MaskedPlayerEnemy maskedEnemy = maskedObject.GetComponent<MaskedPlayerEnemy>();
+            maskedEnemy.SetEnemyOutside(Masked.isOutside);
+
+            return maskedEnemy;
+        }
+
+        private void Ghostify(MaskedPlayerEnemy maskedEnemy)
+        {
+            if (maskedEnemy.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
+                tamedBehaviour.enabled = false;
+
+            // Ghostify masked body
+            maskedEnemy.rendererLOD0.materials = Enumerable.Repeat(false, Masked.rendererLOD0.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
+
+            // Remove unmodified badges
+            var spineTransform = maskedEnemy.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003");
+            if (spineTransform != null)
+            {
+                spineTransform.Find("LevelSticker")?.gameObject.SetActive(false);
+                spineTransform.Find("BetaBadge")?.gameObject.SetActive(false);
+            }
+
+            var mask = maskedEnemy.maskTypes[maskedEnemy.maskTypeIndex];
+            if (mask != null)
+            {
+                // Set mask invisible and stable
+                foreach (var mr in Utils.GetMeshRenderers(mask))
+                    mr.enabled = false;
+                mask.GetComponent<Animator>().speed = 0f;
+
+                // Add light
+                if (!mask.gameObject.TryGetComponent(out Light light))
+                    light = mask.gameObject.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.range = 5f;
+                light.intensity = 3f;
+                light.color = new Color(0.8f, 0.9f, 1f);
+                light.enabled = true;
+            }
+
+            // Change eye color to blue-white
+            var eyeRenderer = maskedEnemy.maskEyesGlow[maskedEnemy.maskTypeIndex];
+            eyeRenderer.material = new Material(GhostEyesMaterial);
+            eyeRenderer.enabled = true;
         }
         #endregion
 
@@ -691,6 +803,7 @@ namespace LethalMon.Behaviours
 
         void SetMaskGlowNoSound(bool enable = true) // SetMaskGlow without sound
         {
+            LethalMon.Log("SetMaskGlowNoSound: " + enable);
             Masked.maskEyesGlow[Masked.maskTypeIndex].enabled = enable;
             Masked.maskEyesGlowLight.enabled = enable;
         }
@@ -734,14 +847,10 @@ namespace LethalMon.Behaviours
 
         void SetRedVision(bool enable = true)
         {
-            LethalMon.Log("1", LethalMon.LogType.Warning);
             if (ownerPlayer == null) return;
-            LethalMon.Log("2", LethalMon.LogType.Warning);
 
             if (enable)
             {
-                LethalMon.Log("2.1", LethalMon.LogType.Warning);
-                LethalMon.Log("Night vision activation", LethalMon.LogType.Warning);
                 originalNightVisionColor = ownerPlayer.nightVision.color;
                 ownerPlayer.nightVision.color = Color.red;
                 originalNightVisionIntensity = ownerPlayer.nightVision.intensity;
@@ -749,33 +858,32 @@ namespace LethalMon.Behaviours
             }
             else
             {
-                LethalMon.Log("2.2", LethalMon.LogType.Warning);
                 ownerPlayer.nightVision.color = originalNightVisionColor.GetValueOrDefault(Color.white);
                 ownerPlayer.nightVision.intensity = originalNightVisionIntensity;
             }
 
             ownerPlayer.nightVision.enabled = enable;
         }
-
-        private void Ghostify(MaskedPlayerEnemy maskedEnemy)
-        {
-            maskedEnemy.rendererLOD0.materials = Enumerable.Repeat(false, Masked.rendererLOD0.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
-            maskedEnemy.rendererLOD1.materials = Enumerable.Repeat(false, Masked.rendererLOD1.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
-            maskedEnemy.rendererLOD2.materials = Enumerable.Repeat(false, Masked.rendererLOD2.materials.Length).Select(x => new Material(GhostMaterial)).ToArray();
-            Utils.ReplaceAllMaterialsWith(maskedEnemy.gameObject, (Material _) => GhostMaterial);
-
-            var mask = maskedEnemy.maskTypes[maskedEnemy.maskTypeIndex];
-            if (mask == null) return;
-
-            if(!mask.gameObject.TryGetComponent(out Light light))
-                light = mask.gameObject.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.range = 10f;
-            light.intensity = 2f;
-            light.enabled = true;
-            light.color = new Color(0.8f, 0.9f, 1f);
-        }
         #endregion
+
+        #region Compatibility
+
+        /*#region MirageCompatibility
+        public const string MirageReferenceChain = "Mirage";
+
+        private static bool? _mirageEnabled;
+
+        public static bool MirageEnabled
+        {
+            get
+            {
+                if (_mirageEnabled == null)
+                    _mirageEnabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(MirageReferenceChain);
+
+                return _mirageEnabled.Value;
+            }
+        }
+        #endregion*/
 
         [ServerRpc(RequireOwnership = false)] // Required reroute as the original RPC is prefix-patched by Mirage
         public void HandsOutRerouteServerRpc(NetworkObjectReference maskedRef, bool handsOut)
@@ -795,6 +903,7 @@ namespace LethalMon.Behaviours
             maskedEnemy.creatureAnimator.SetBool("HandsOut", handsOut);
             maskedEnemy.handsOut = handsOut;
         }
+        #endregion
     }
 #endif
 }
