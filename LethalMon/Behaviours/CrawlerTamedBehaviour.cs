@@ -165,7 +165,6 @@ namespace LethalMon.Behaviours
                 if (_targetTurret!.turretMode != TurretMode.Berserk)
                 {
                     _targetTurret.SwitchTurretMode((int) TurretMode.Berserk);
-                    _targetTurret.EnterBerserkModeServerRpc((int) ownClientId);
 
                     if (UnityEngine.Random.Range(0f, 1f) < 0.5f)
                     {
@@ -554,24 +553,63 @@ namespace LethalMon.Behaviours
         public void AttackTargetServerRpc(int numberOfTimes, AttackType attackType)
         {
             // HOST ONLY
-            AttackTargetClientRpc(_targetPos, numberOfTimes, (int) attackType);
+            AttackTargetClientRpc(_targetPos, numberOfTimes, (int) attackType, attackType switch
+            {
+                AttackType.Turret => _targetTurret!.NetworkObject,
+                AttackType.BigDoor => _targetBigDoor!.NetworkObject,
+                _ => _targetSmallDoor!.NetworkObject
+            });
         }
 
         [ClientRpc]
-        public void AttackTargetClientRpc(Vector3 targetPosition, int numberOfTimes, int attackType)
+        public void AttackTargetClientRpc(Vector3 targetPosition, int numberOfTimes, int attackType, NetworkObjectReference target)
         {
             // ANY CLIENT (HOST INCLUDED)
             if (Utils.IsHost) return;
             
             _targetPos = targetPosition;
+            
+            target.TryGet(out NetworkObject networkObject);
+            switch (attackType)
+            {
+                case (int) AttackType.Turret:
+                    _targetTurret = FindObjectsOfType<Turret>().FirstOrDefault(t => t.NetworkObject == networkObject);
+                    break;
+                case (int) AttackType.BigDoor:
+                    _targetBigDoor = FindObjectsOfType<TerminalAccessibleObject>().FirstOrDefault(d => d.NetworkObject == networkObject);
+                    break;
+                default:
+                    _targetSmallDoor = FindObjectsOfType<DoorLock>().FirstOrDefault(d => d.NetworkObject == networkObject);
+                    break;
+            }
             _smashCoroutine = StartCoroutine(SmashAnimationCoroutine(numberOfTimes, () =>
             {
                 if (attackType == (int) AttackType.Turret)
                 {
-                    _targetTurret!.SwitchTurretMode((int) TurretMode.Detection);
-                    _targetTurret.Update();
+                    _targetTurret!.turretModeLastFrame = TurretMode.Detection;
+                    _targetTurret!.rotatingClockwise = false;
+                    _targetTurret!.mainAudio.Stop();
+                    _targetTurret!.farAudio.Stop();
+                    _targetTurret!.berserkAudio.Stop();
+                    if (_targetTurret!.fadeBulletAudioCoroutine != null)
+                    {
+                        StopCoroutine(_targetTurret!.fadeBulletAudioCoroutine);
+                    }
+                    _targetTurret!.fadeBulletAudioCoroutine = StartCoroutine(_targetTurret!.FadeBulletAudio());
+                    _targetTurret!.bulletParticles.Stop(withChildren: true, ParticleSystemStopBehavior.StopEmitting);
+                    _targetTurret!.rotationSpeed = 28f;
+                    _targetTurret!.rotatingSmoothly = true;
+                    _targetTurret!.turretAnimator.SetInteger("TurretMode", 0);
+                    _targetTurret!.turretAnimator.SetBool("turretActive", _targetTurret!.turretActive);
+                    _targetTurret!.turretInterval = UnityEngine.Random.Range(0f, 0.15f);
                 }
-            }, () => {}));
+            }, () =>
+            {
+                if (_targetTurret!.turretMode != TurretMode.Berserk)
+                {
+                    _targetTurret.SwitchTurretMode((int)TurretMode.Berserk);
+                }
+            }));
         }
 
         [ServerRpc(RequireOwnership = false)]
