@@ -43,7 +43,7 @@ Here are the implementation status of monsters:
 |   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |
 |   Snare Flea    |     No      |                                  TBD                                   |
 |  Spore Lizard   |     Yes     |                          Can be used as mount                          |
-|     Thumper     |     No      |                                  TBD                                   |
+|     Thumper     |     Yes     |   Can open all doors and disable turrets, but is not really obedient   |
 |      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |
 |    Manticoil    |     No      |                                  TBD                                   |
 | Roaming Locusts | Will not be |                                   -                                    |
@@ -55,7 +55,7 @@ Here are the implementation status of monsters:
 |    Old Bird     |     No      |                                  TBD                                   |
 |  Mask Hornets   |     No      |                                  TBD                                   |
 |     Barber      |     No      |                                  TBD                                   |
-|  Kidnapper Fox  |     No      |             Shoots its tongue at enemies and can kill them             |
+|  Kidnapper Fox  |     Yes     |             Shoots its tongue at enemies and can kill them             |
 
 ## Capture probabilities
 

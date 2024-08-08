@@ -1,3 +1,7 @@
+# 0.4.5
+
+- Thumper is now catchable
+
 # 0.4.4
 
 - Added a lot of fields to the configuration file (host and clients are synced):
