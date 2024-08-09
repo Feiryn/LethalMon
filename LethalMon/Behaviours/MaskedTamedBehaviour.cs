@@ -61,7 +61,7 @@ namespace LethalMon.Behaviours
 
         internal float ghostLifetime = 0f;
         static readonly float GhostSpawnTime = 3f;
-        static readonly float MaximumGhostLifeTime = GhostSpawnTime + 15f;
+        static readonly float MaximumGhostLifeTime = 15f;
 
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         MaskedTamedBehaviour? parentMimic = null;
@@ -203,10 +203,10 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > 30f)
+            if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > 25f)
                 Masked.agent!.speed = 100f; // zooming!
             else
-                Masked.agent!.speed = 8f;
+                Masked.agent!.speed = 10f;
             Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
         }
@@ -284,7 +284,7 @@ namespace LethalMon.Behaviours
                 parentMimic.spawnedGhostMimics.Remove(Masked);
 
             StopAllCoroutines();
-            for (int i = spawnedGhostMimics.Count; i >= 0; i--)
+            for (int i = spawnedGhostMimics.Count - 1; i >= 0; i--)
             {
                 var ghostMimic = spawnedGhostMimics[i];
                 if (ghostMimic == null || !ghostMimic.IsSpawned) continue;
@@ -941,7 +941,7 @@ namespace LethalMon.Behaviours
             if (enable)
             {
                 originalNightVisionColor = ownerPlayer.nightVision.color;
-                ownerPlayer.nightVision.color = Color.red;
+                ownerPlayer.nightVision.color = Masked.maskEyesGlowLight.color;
                 originalNightVisionIntensity = ownerPlayer.nightVision.intensity;
                 ownerPlayer.nightVision.intensity /= 1.5f;
             }

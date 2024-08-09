@@ -22,6 +22,7 @@ namespace LethalMon.Patches
                     PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
                     if (player != null)
                     {
+                        LethalMon.Log("Ghost hitting player " + player.playerClientId);
                         lastGhostColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
                         tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
                     }
