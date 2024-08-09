@@ -529,9 +529,16 @@ namespace LethalMon.Behaviours
             yield return null; // Call Start() once before switching
 
             tamedBehaviour.parentMimic = this;
-            tamedBehaviour.targetPlayer = targetPlayer;
+            if(targetPlayer != null)
+                tamedBehaviour.SyncGhostTargetServerRpc(targetPlayer.playerClientId);
             tamedBehaviour.SwitchToCustomBehaviour((int)CustomBehaviour.Ghostified);
         }
+
+        [ServerRpc]
+        public void SyncGhostTargetServerRpc(ulong playerID) => SyncGhostTargetClientRpc(playerID);
+
+        [ClientRpc]
+        public void SyncGhostTargetClientRpc(ulong playerID) => targetPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == playerID).First();
 
         [ServerRpc]
         public void GhostHitPlayerServerRpc(ulong playerID)
