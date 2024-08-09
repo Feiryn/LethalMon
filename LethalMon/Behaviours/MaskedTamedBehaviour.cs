@@ -99,7 +99,7 @@ namespace LethalMon.Behaviours
         }
 
         // Audio
-        internal static AudioClip? ghostAmbientSFX = null, ghostAmbientFarSFX = null, ghostHissSFX = null;
+        internal static AudioClip? ghostAmbientSFX = null, ghostAmbientFarSFX = null, ghostHissSFX = null, ghostHissFastSFX = null;
         internal AudioSource? farAudio = null;
         const float AudioToggleDistance = 15f;
         #endregion
@@ -141,16 +141,20 @@ namespace LethalMon.Behaviours
 
                     if (targetPlayer == null) return;
 
-                    Masked.stareAtTransform = targetPlayer.gameplayCamera.transform;
                     GhostAppearedServerRpc();
+                    Masked.SetMovingTowardsTargetPlayer(targetPlayer);
+
+                    var pitch = UnityEngine.Random.Range(0.75f, 1.25f);
 
                     Masked.movementAudio.clip = ghostAmbientSFX;
                     Masked.movementAudio.Play();
+                    Masked.movementAudio.pitch = pitch;
 
                     if (farAudio != null)
                     {
                         farAudio.clip = ghostAmbientFarSFX;
                         farAudio.Play();
+                        farAudio.pitch = pitch;
                     }
 
                     RoundManager.Instance.tempTransform.position = Masked.transform.position;
@@ -205,16 +209,18 @@ namespace LethalMon.Behaviours
             if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > 25f)
                 Masked.agent!.speed = 100f; // zooming!
             else
-                Masked.agent!.speed = 10f;
+                Masked.agent!.speed = 7f;
+
             Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
         }
 
         internal static void LoadGhostAudio(AssetBundle assetBundle)
         {
-            ghostAmbientSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbient.ogg");
-            ghostAmbientFarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
-            ghostHissSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
+            ghostAmbientSFX =       assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbient.ogg");
+            ghostAmbientFarSFX =    assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
+            ghostHissSFX =          assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
+            ghostHissFastSFX =      assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHissFast.ogg");
 
             if (ghostAmbientSFX == null)
                 LethalMon.Log("Error while loading masked audio files!", LethalMon.LogType.Error);
@@ -258,7 +264,7 @@ namespace LethalMon.Behaviours
                 originalMaskLocalPosition = Mask.transform.localPosition;
             }
 
-            StartCoroutine(SetOwnerDEBUG());
+            //StartCoroutine(SetOwnerDEBUG());
         }
 
         internal IEnumerator SetOwnerDEBUG()
@@ -360,12 +366,6 @@ namespace LethalMon.Behaviours
 
             if (maskTransferCoroutine != null) return;
 
-            if (CurrentCustomBehaviour.GetValueOrDefault(0) == (int)CustomBehaviour.Ghostified && targetPlayer != null)
-            {
-                Masked.SetDestinationToPosition(targetPlayer.transform.position);
-                return;
-            }
-
             if (ownerPlayer != null)
             {
                 if (maskTransferCoroutine == null)
@@ -393,8 +393,11 @@ namespace LethalMon.Behaviours
 
             Masked.EnableEnemyMesh(true);
 
-            if(ownerPlayer != null)
+            if (ownerPlayer != null)
+            {
                 Masked.stareAtTransform = ownerPlayer.gameplayCamera.transform;
+                Masked.lookAtPositionTimer = 0f;
+            }
         }
 
         internal override void TurnTowardsPosition(Vector3 position)
@@ -539,7 +542,12 @@ namespace LethalMon.Behaviours
         public void SyncGhostTargetServerRpc(ulong playerID) => SyncGhostTargetClientRpc(playerID);
 
         [ClientRpc]
-        public void SyncGhostTargetClientRpc(ulong playerID) => targetPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == playerID).First();
+        public void SyncGhostTargetClientRpc(ulong playerID)
+        {
+            targetPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == playerID).First();
+            Masked.stareAtTransform = targetPlayer.transform;
+            Masked.lookAtPositionTimer = 0f;
+        }
 
         [ServerRpc]
         public void GhostHitPlayerServerRpc(ulong playerID)
@@ -565,8 +573,13 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         public void GhostHitNonTargetPlayerClientRpc(ulong playerID)
         {
-            if (playerID == Utils.CurrentPlayerID && ghostHissSFX != null)
-                Utils.PlaySoundAtPosition(Utils.CurrentPlayer.transform.position, ghostHissSFX);
+            if (playerID == Utils.CurrentPlayerID)
+            {
+                if(Masked.agent.speed > 50f && ghostHissFastSFX != null)
+                    Utils.PlaySoundAtPosition(Utils.CurrentPlayer.transform.position, ghostHissFastSFX);
+                else if (ghostHissSFX != null)
+                    Utils.PlaySoundAtPosition(Utils.CurrentPlayer.transform.position, ghostHissSFX);
+            }
         }
 
         [ServerRpc]
@@ -593,13 +606,6 @@ namespace LethalMon.Behaviours
 
             if (Vector3.Distance(Masked.transform.position, Utils.CurrentPlayer.transform.position) > 20f)
                 RoundManager.Instance.FlickerLights(true, false);
-
-            if (targetPlayer != null)
-            {
-                Masked.stareAtTransform = targetPlayer.gameplayCamera.transform;
-                Masked.lookAtPositionTimer = 0f;
-                Masked.LookAtFocusedPosition();
-            }
         }
 
         [ServerRpc]
