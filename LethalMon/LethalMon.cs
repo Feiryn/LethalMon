@@ -21,8 +21,6 @@ public class LethalMon : BaseUnityPlugin
     internal new static ManualLogSource Logger { get; private set; } = null!;
     internal static Harmony? Harmony { get; set; }
 
-    internal static AudioClip HoardingBugFlySfx;
-
     internal static GameObject hudPrefab;
 
     internal static Dictionary<string, Sprite> monstersSprites = new();
@@ -36,6 +34,9 @@ public class LethalMon : BaseUnityPlugin
         LoadAssetBundle();
         NetcodePatching();
         ApplyHarmonyPatches();
+
+        // Static RPCs
+        PlayerControllerBPatch.InitializeRPCS();
 
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }
@@ -65,9 +66,13 @@ public class LethalMon : BaseUnityPlugin
         Greatball.Setup(assetBundle);
         Ultraball.Setup(assetBundle);
         Masterball.Setup(assetBundle);
+
         Utils.LoadSeeThroughShader(assetBundle);
         Utils.LoadWireframeMaterial(assetBundle);
-        HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("Assets/HoardingBug_Fly.ogg");
+
+        MaskedTamedBehaviour.LoadGhostAudio(assetBundle);
+        HoarderBugTamedBehaviour.LoadAudio(assetBundle);
+
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
 
         // Load monsters sprites
@@ -84,22 +89,27 @@ public class LethalMon : BaseUnityPlugin
     {
         Harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
 
-        Harmony.PatchAll(typeof(PlayerControllerBPatch));
-        Harmony.PatchAll(typeof(RedLocustBeesPatch));
-        Harmony.PatchAll(typeof(StartOfRoundPatch));
-        Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
+        // LethalMon specific
         Harmony.PatchAll(typeof(DebugPatches));
-        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
-        Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
-        Harmony.PatchAll(typeof(MouthDogPatch));
-        Harmony.PatchAll(typeof(EnemyAIPatch));
+        Harmony.PatchAll(typeof(ModConfig.SyncHandshake));
+
+        // Misc
+        Harmony.PatchAll(typeof(PlayerControllerBPatch));
+        Harmony.PatchAll(typeof(StartOfRoundPatch));
+        Harmony.PatchAll(typeof(RoundManagerPatch));
         Harmony.PatchAll(typeof(HUDManagerPatch));
+
+        // Enemies
+        Harmony.PatchAll(typeof(EnemyAIPatch));
+        Harmony.PatchAll(typeof(RedLocustBeesPatch));
+        Harmony.PatchAll(typeof(MouthDogPatch));
         Harmony.PatchAll(typeof(FlowermanAIPatch));
         Harmony.PatchAll(typeof(BushWolfEnemyPatch));
-        Harmony.PatchAll(typeof(RoundManagerPatch));
+        Harmony.PatchAll(typeof(MaskedPlayerEnemyPatch));
 
-        // Static RPCs
-        PlayerControllerBPatch.InitializeRPCS();
+        // Enemy behaviours
+        Harmony.PatchAll(typeof(TamedEnemyBehaviour));
+        Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
     }
 
     private static void Unpatch()
