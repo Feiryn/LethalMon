@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
