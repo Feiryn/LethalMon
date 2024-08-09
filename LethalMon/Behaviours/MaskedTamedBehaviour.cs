@@ -37,7 +37,7 @@ namespace LethalMon.Behaviours
         Vector3 originalMaskLocalPosition = Vector3.zero;
 
         static readonly float MaximumMaskWearingTime = 10f;
-        float timeSinceWearingMask = 0f;
+        float timeWearingMask = 0f;
 
         Coroutine? maskTransferCoroutine = null;
 
@@ -171,13 +171,12 @@ namespace LethalMon.Behaviours
             {
                 StartOfRound.Instance.fearLevel += Time.deltaTime / 10f;
 
-                timeSinceWearingMask += Time.deltaTime;
-                if (MaskAnimator != null && timeSinceWearingMask > (MaximumMaskWearingTime / 1.5f))
+                timeWearingMask += Time.deltaTime;
+                if (MaskAnimator != null && timeWearingMask > (MaximumMaskWearingTime / 1.5f))
                     MaskAnimator.speed += Time.deltaTime / (MaximumMaskWearingTime / 4f);
 
-                if (timeSinceWearingMask > MaximumMaskWearingTime)
+                if (timeWearingMask > MaximumMaskWearingTime)
                 {
-                    timeSinceWearingMask = 0f;
                     ownerPlayer!.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 8);
 
                     if (!ownerPlayer.isPlayerDead)
@@ -258,6 +257,8 @@ namespace LethalMon.Behaviours
                 originalMaskParent = Mask.transform.parent;
                 originalMaskLocalPosition = Mask.transform.localPosition;
             }
+
+            StartCoroutine(SetOwnerDEBUG());
         }
 
         internal IEnumerator SetOwnerDEBUG()
@@ -779,6 +780,7 @@ namespace LethalMon.Behaviours
             Masked.FinishKillAnimation();
 
             isWearingMask = false;
+            timeWearingMask = 0f;
 
             SetMaskGlowNoSound(false);
 
@@ -948,7 +950,7 @@ namespace LethalMon.Behaviours
             if (enable)
             {
                 originalNightVisionColor = ownerPlayer.nightVision.color;
-                ownerPlayer.nightVision.color = Masked.maskEyesGlowLight.color;
+                ownerPlayer.nightVision.color = new Color(1f, 0.42f, 0f);
                 originalNightVisionIntensity = ownerPlayer.nightVision.intensity;
                 ownerPlayer.nightVision.intensity /= 1.5f;
             }
