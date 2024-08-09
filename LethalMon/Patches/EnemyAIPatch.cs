@@ -24,7 +24,27 @@ public class EnemyAIPatch
             LethalMon.Log("No TamedEnemyBehaviour component found before EnemyAI OnDestroy", LethalMon.LogType.Warning);
         }
     }
-    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.SwitchToBehaviourStateOnLocalClient))]
+    [HarmonyPrefix]
+    private static void SwitchToBehaviourStateOnLocalClientPrefix(EnemyAI __instance)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        if (tamedEnemyBehaviour != null)
+        {
+            if (__instance.currentBehaviourStateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
+            {
+                if (__instance.currentBehaviourStateIndex <= tamedEnemyBehaviour.LastDefaultBehaviourIndex + TamedEnemyBehaviour.TamedBehaviourCount)
+                {
+                    tamedEnemyBehaviour.LeaveTamingBehaviour((TamedEnemyBehaviour.TamingBehaviour)__instance.currentBehaviourStateIndex - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
+                }
+                else
+                {
+                    tamedEnemyBehaviour.LeaveCustomBehaviour(__instance.currentBehaviourStateIndex - TamedEnemyBehaviour.TamedBehaviourCount - tamedEnemyBehaviour.LastDefaultBehaviourIndex);
+                }
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.SwitchToBehaviourStateOnLocalClient))]
     [HarmonyPostfix]
     private static void SwitchToBehaviourStateOnLocalClientPostfix(EnemyAI __instance, int stateIndex)

@@ -116,9 +116,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
     }
-    internal virtual void InitTamingBehaviour(TamingBehaviour behaviour)
-    {
-    }
+    internal virtual void InitTamingBehaviour(TamingBehaviour behaviour) {}
+    internal virtual void LeaveTamingBehaviour(TamingBehaviour behaviour) {}
 
     public void SwitchToCustomBehaviour(int behaviour)
     {
@@ -128,10 +127,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + TamedBehaviourCount + behaviour);
         Enemy.enabled = false;
     }
-    internal virtual void InitCustomBehaviour(int behaviour)
-    {
-
-    }
+    internal virtual void InitCustomBehaviour(int behaviour) {}
+    internal virtual void LeaveCustomBehaviour(int behaviour) {}
 
     public void SwitchToDefaultBehaviour(int behaviour)
     {

@@ -18,6 +18,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     internal override bool CanDefend => false;
 
+    internal static AudioClip? flySfx = null;
+
     #endregion
 
     #region Custom behaviours
@@ -164,7 +166,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         hoarderBug.CalculateAnimationDirection();
     }
 
-    public override PokeballItem RetrieveInBall(Vector3 position)
+    public override PokeballItem? RetrieveInBall(Vector3 position)
     {
         // Drop held item if any
         if (hoarderBug.heldItem != null)
@@ -177,6 +179,11 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     #endregion
 
     #region Methods
+    public static void LoadAudio(AssetBundle assetBundle)
+    {
+        flySfx = assetBundle.LoadAsset<AudioClip>("Assets/Audio/HoardingBug/Fly.ogg");
+    }
+
     private bool GrabTargetItemIfClose()
     {
         if (hoarderBug.targetItem != null && hoarderBug.heldItem == null && Vector3.Distance(hoarderBug.transform.position, hoarderBug.targetItem.transform.position) < 0.75f)
@@ -213,7 +220,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         // todo: maybe original one is re-useable till here
         
         hoarderBug.creatureAnimator.SetBool("Chase", true);
-        hoarderBug.creatureSFX.clip = LethalMon.HoardingBugFlySfx;
+        hoarderBug.creatureSFX.clip = flySfx;
         hoarderBug.creatureSFX.Play();
         RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
     }
