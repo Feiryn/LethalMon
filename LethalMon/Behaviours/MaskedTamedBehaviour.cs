@@ -7,6 +7,7 @@ using System.Collections;
 using LethalMon.CustomPasses;
 using Unity.Netcode;
 using System.Linq;
+using LethalMon.Patches;
 
 namespace LethalMon.Behaviours
 {
@@ -60,7 +61,7 @@ namespace LethalMon.Behaviours
 
         internal float ghostLifetime = 0f;
         static readonly float GhostSpawnTime = 3f;
-        static readonly float MaximumGhostLifeTime = GhostSpawnTime + 5f;
+        static readonly float MaximumGhostLifeTime = GhostSpawnTime + 15f;
 
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         MaskedTamedBehaviour? parentMimic = null;
@@ -96,6 +97,11 @@ namespace LethalMon.Behaviours
                 return _ghostEyesMaterial;
             }
         }
+
+        // Audio
+        internal static AudioClip? ghostAmbientSFX = null, ghostAmbientFarSFX = null, ghostHissSFX = null;
+        internal AudioSource? farAudio = null;
+        const float AudioToggleDistance = 15f;
         #endregion
 
         #region Cooldowns
@@ -130,11 +136,22 @@ namespace LethalMon.Behaviours
                     break;
 
                 case CustomBehaviour.Ghostified:
+                    Masked.updateDestinationInterval = 0.1f;
+                    ghostLifetime = 0f;
+
                     if (targetPlayer == null) return;
 
-                    ghostLifetime = 0f;
                     Masked.stareAtTransform = targetPlayer.gameplayCamera.transform;
                     GhostAppearedServerRpc();
+
+                    Masked.movementAudio.clip = ghostAmbientSFX;
+                    Masked.movementAudio.Play();
+
+                    if (farAudio != null)
+                    {
+                        farAudio.clip = ghostAmbientFarSFX;
+                        farAudio.Play();
+                    }
 
                     RoundManager.Instance.tempTransform.position = Masked.transform.position;
                     RoundManager.Instance.tempTransform.LookAt(targetPlayer.transform);
@@ -179,16 +196,29 @@ namespace LethalMon.Behaviours
 
             if (targetPlayer == null || targetPlayer.isPlayerDead || ghostLifetime > MaximumGhostLifeTime)
             {
+                if (targetPlayer == null)
+                    LethalMon.Log("NO TARGET PLAYER");
+                LethalMon.Log("Player dead or ghost lifetime reached. Despawn ghost.");
                 GhostDisappearsServerRpc();
                 return;
             }
 
-            Masked.agent!.speed = 10f;
+            if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > 30f)
+                Masked.agent!.speed = 100f; // zooming!
+            else
+                Masked.agent!.speed = 8f;
             Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
+        }
 
-            if (Vector3.Distance(Masked.transform.position, targetPlayer.transform.position) < 1f)
-                GhostHitPlayerServerRpc(targetPlayer.playerClientId);
+        internal static void LoadGhostAudio(AssetBundle assetBundle)
+        {
+            ghostAmbientSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbient.ogg");
+            ghostAmbientFarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
+            ghostHissSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
+
+            if (ghostAmbientSFX == null)
+                LethalMon.Log("Error while loading masked audio files!", LethalMon.LogType.Error);
         }
         #endregion
 
@@ -254,14 +284,17 @@ namespace LethalMon.Behaviours
                 parentMimic.spawnedGhostMimics.Remove(Masked);
 
             StopAllCoroutines();
-            foreach (var ghostMimic in spawnedGhostMimics)
+            for (int i = spawnedGhostMimics.Count; i >= 0; i--)
             {
-                if(ghostMimic == null || !ghostMimic.IsSpawned) continue;
+                var ghostMimic = spawnedGhostMimics[i];
+                if (ghostMimic == null || !ghostMimic.IsSpawned) continue;
 
                 RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
                 DestroyImmediate(ghostMimic);
             }
             spawnedGhostMimics.Clear();
+
+            MaskedPlayerEnemyPatch.lastGhostColliderIDs.Remove(Masked.GetInstanceID());
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -439,14 +472,15 @@ namespace LethalMon.Behaviours
             if (!IsOwner) yield break;
 
             // Owner only from here on
+            float triggerFallbackAfter = MaximumGhostLifeTime + 1f;
             float fallbackTimer = 0f;
             yield return new WaitWhile(() =>
             {
                 fallbackTimer += Time.deltaTime;
-                return spawnedGhostMimics.Count > 0 && fallbackTimer < 10f;
+                return spawnedGhostMimics.Count > 0 && fallbackTimer < triggerFallbackAfter;
             });
 
-            if (fallbackTimer >= 10f)
+            if (fallbackTimer >= triggerFallbackAfter)
                 LethalMon.Log("Fallback triggered on MaskedEscapeFromBallCoroutine.", LethalMon.LogType.Warning);
 
             CleanUp();
@@ -502,15 +536,29 @@ namespace LethalMon.Behaviours
         [ServerRpc]
         public void GhostHitPlayerServerRpc(ulong playerID)
         {
-            GhostHitPlayerClientRpc(playerID);
-            GhostDisappearsClientRpc();
+            if (targetPlayer != null && targetPlayer.playerClientId == playerID)
+            {
+                GhostHitTargetPlayerClientRpc();
+                GhostDisappearsClientRpc();
+            }
+            else
+            {
+                GhostHitNonTargetPlayerClientRpc(playerID);
+            }
         }
 
         [ClientRpc]
-        public void GhostHitPlayerClientRpc(ulong playerID)
+        public void GhostHitTargetPlayerClientRpc()
         {
-            if (playerID == Utils.CurrentPlayerID)
-                Utils.CurrentPlayer.DamagePlayer(1, true, true, CauseOfDeath.Unknown, 1);
+            if (targetPlayer == Utils.CurrentPlayer)
+                targetPlayer.DamagePlayer(2, true, true, CauseOfDeath.Unknown, 1);
+        }
+
+        [ClientRpc]
+        public void GhostHitNonTargetPlayerClientRpc(ulong playerID)
+        {
+            if (playerID == Utils.CurrentPlayerID && ghostHissSFX != null)
+                Utils.PlaySoundAtPosition(Utils.CurrentPlayer.transform.position, ghostHissSFX);
         }
 
         [ServerRpc]
@@ -612,6 +660,20 @@ namespace LethalMon.Behaviours
             var eyeRenderer = maskedEnemy.maskEyesGlow[maskedEnemy.maskTypeIndex];
             eyeRenderer.material = new Material(GhostEyesMaterial);
             eyeRenderer.enabled = true;
+
+            // Add farAudio
+            farAudio = Masked.gameObject.AddComponent<AudioSource>();
+            farAudio.maxDistance = AudioToggleDistance * 5f;
+            farAudio.minDistance = AudioToggleDistance;
+            farAudio.rolloffMode = AudioRolloffMode.Linear;
+            farAudio.volume = 0.5f;
+            farAudio.spatialBlend = 1f; // default 0
+            farAudio.priority = 127; // default 128
+
+            Masked.movementAudio.maxDistance = AudioToggleDistance * 1.5f;
+            Masked.movementAudio.rolloffMode = AudioRolloffMode.Linear;
+
+            LethalLib.Modules.Utilities.FixMixerGroups(Masked.gameObject);
         }
         #endregion
 
