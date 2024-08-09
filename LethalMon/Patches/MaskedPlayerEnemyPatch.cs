@@ -15,17 +15,18 @@ namespace LethalMon.Patches
         {
             if (lastGhostColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return false; // Hit player as ghost. Don't re-run every frame
 
+            PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
+            if(player == null) return false;
+
+            lastGhostColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
+
             if (__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
             {
+                LethalMon.Log("Collided -> Collider: " + other.name + " / Target: " + tamedBehaviour.targetPlayer?.name + " / Behaviour:" + (tamedBehaviour.CurrentCustomBehaviour == null ? "" : ((MaskedTamedBehaviour.CustomBehaviour)tamedBehaviour.CurrentCustomBehaviour!).ToString()));
                 if (tamedBehaviour.targetPlayer != null && tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
                 {
-                    PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
-                    if (player != null)
-                    {
-                        LethalMon.Log("Ghost hitting player " + player.playerClientId);
-                        lastGhostColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
-                        tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
-                    }
+                    LethalMon.Log("Ghost hitting player " + player.playerClientId);
+                    tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
                     return false;
                 }
             }
