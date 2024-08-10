@@ -11,7 +11,6 @@ using LethalMon.Patches;
 
 namespace LethalMon.Behaviours
 {
-#if DEBUG
     internal class MaskedTamedBehaviour : TamedEnemyBehaviour
     {
         #region Static Properties
@@ -1043,5 +1042,4 @@ namespace LethalMon.Behaviours
         }
         #endregion
     }
-#endif
 }
