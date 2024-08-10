@@ -14,6 +14,22 @@ namespace LethalMon.Behaviours
 #if DEBUG
     internal class MaskedTamedBehaviour : TamedEnemyBehaviour
     {
+        #region Static Properties
+        static readonly float MaskedNormalSpeed = 3.5f;
+        static readonly float MaskedRunningSpeed = 7f;
+
+        static readonly float MaximumMaskWearingTime = 10f;
+
+        static readonly float EscapeEventLightIntensity = 50f;
+
+        static readonly float GhostSpawnTime = 3f;
+        static readonly float MaximumGhostLifeTime = 15f;
+        static readonly float GhostChaseSpeed = 3f;
+        static readonly float GhostZoomUntilDistance = 25f;
+
+        static readonly float GhostAudioToggleDistance = 15f;
+        #endregion
+
         #region Properties
         internal MaskedPlayerEnemy? _masked = null;
         internal MaskedPlayerEnemy Masked
@@ -36,7 +52,6 @@ namespace LethalMon.Behaviours
         Transform? originalMaskParent = null;
         Vector3 originalMaskLocalPosition = Vector3.zero;
 
-        static readonly float MaximumMaskWearingTime = 10f;
         float timeWearingMask = 0f;
 
         Coroutine? maskTransferCoroutine = null;
@@ -60,8 +75,6 @@ namespace LethalMon.Behaviours
         public bool escapeFromBallEventRunning = false;
 
         internal float ghostLifetime = 0f;
-        static readonly float GhostSpawnTime = 3f;
-        static readonly float MaximumGhostLifeTime = 15f;
 
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         MaskedTamedBehaviour? parentMimic = null;
@@ -99,9 +112,8 @@ namespace LethalMon.Behaviours
         }
 
         // Audio
-        internal static AudioClip? ghostAmbientSFX = null, ghostAmbientFarSFX = null, ghostHissSFX = null, ghostHissFastSFX = null;
+        internal static AudioClip? ghostAmbientSFX = null, ghostAmbientFarSFX = null, ghostHissSFX = null, ghostHissFastSFX = null, ghostPoofSFX = null;
         internal AudioSource? farAudio = null;
-        const float AudioToggleDistance = 15f;
         #endregion
 
         #region Cooldowns
@@ -206,10 +218,10 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > 25f)
+            if(Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > GhostZoomUntilDistance)
                 Masked.agent!.speed = 100f; // zooming!
             else
-                Masked.agent!.speed = 7f;
+                Masked.agent!.speed = GhostChaseSpeed;
 
             Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
@@ -221,6 +233,7 @@ namespace LethalMon.Behaviours
             ghostAmbientFarSFX =    assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
             ghostHissSFX =          assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
             ghostHissFastSFX =      assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHissFast.ogg");
+            ghostPoofSFX =          assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostPoof.ogg");
 
             if (ghostAmbientSFX == null)
                 LethalMon.Log("Error while loading masked audio files!", LethalMon.LogType.Error);
@@ -263,6 +276,9 @@ namespace LethalMon.Behaviours
                 originalMaskParent = Mask.transform.parent;
                 originalMaskLocalPosition = Mask.transform.localPosition;
             }
+
+            if (ownerPlayer != null) // Baye Layers: Roam, Follow, Wait
+                Masked.creatureAnimator.Play("Base Layer.Wait"); // wip, not working yet
 
             //StartCoroutine(SetOwnerDEBUG());
         }
@@ -352,8 +368,6 @@ namespace LethalMon.Behaviours
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
-            if (maskTransferCoroutine != null) return;
-
             base.OnUpdate(update, doAIInterval);
 
             Masked.CalculateAnimationDirection();
@@ -364,19 +378,26 @@ namespace LethalMon.Behaviours
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();
 
-            if (maskTransferCoroutine != null) return;
-
             if (ownerPlayer != null)
             {
                 if (maskTransferCoroutine == null)
                 {
-                    Masked.running = Vector3.Distance(Masked.transform.position, ownerPlayer.transform.position) > 5f;
-                    Masked.agent.speed = Masked.running ? 7f : 3.8f;
+                    var shouldRun = Vector3.Distance(Masked.transform.position, ownerPlayer.transform.position) > 8f;
+                    if(shouldRun != Masked.running)
+                    {
+                        Masked.running = shouldRun;
+                        Masked.creatureAnimator.SetBool("Running", shouldRun);
+                        if(IsOwner)
+                            Masked.agent.speed = Masked.running ? MaskedRunningSpeed : MaskedNormalSpeed;
+                    }
                 }
                 else
                 {
+                    if (Masked.running)
+                        Masked.creatureAnimator.SetBool("Running", false);
                     Masked.running = false;
-                    Masked.agent.speed = 0f;
+                    if (IsOwner)
+                        Masked.agent.speed = 0f;
                 }
             }
         }
@@ -454,10 +475,10 @@ namespace LethalMon.Behaviours
 
             float timeGlowingUp = 0f; // Fallback
             float startIntensity = Masked.maskEyesGlowLight.intensity;
-            float finalIntensity = startIntensity * 50f;
+            float finalIntensity = startIntensity * EscapeEventLightIntensity;
             while (Masked.maskEyesGlowLight.intensity < finalIntensity && timeGlowingUp < 2f)
             {
-                Masked.maskEyesGlowLight.intensity += Time.deltaTime * 50f;
+                Masked.maskEyesGlowLight.intensity += Time.deltaTime * EscapeEventLightIntensity;
                 timeGlowingUp += Time.deltaTime;
                 yield return null;
             }
@@ -618,6 +639,8 @@ namespace LethalMon.Behaviours
         public void GhostDisappearsClientRpc()
         {
             Utils.SpawnPoofCloudAt(Masked.transform.position);
+            if(ghostPoofSFX != null)
+                Utils.PlaySoundAtPosition(Masked.transform.position, ghostPoofSFX);
 
             if (IsOwner)
             {
@@ -677,14 +700,14 @@ namespace LethalMon.Behaviours
 
             // Add farAudio
             farAudio = Masked.gameObject.AddComponent<AudioSource>();
-            farAudio.maxDistance = AudioToggleDistance * 5f;
-            farAudio.minDistance = AudioToggleDistance;
+            farAudio.maxDistance = GhostAudioToggleDistance * 5f;
+            farAudio.minDistance = GhostAudioToggleDistance;
             farAudio.rolloffMode = AudioRolloffMode.Linear;
             farAudio.volume = 0.5f;
             farAudio.spatialBlend = 1f; // default 0
             farAudio.priority = 127; // default 128
 
-            Masked.movementAudio.maxDistance = AudioToggleDistance * 1.5f;
+            Masked.movementAudio.maxDistance = GhostAudioToggleDistance * 1.5f;
             Masked.movementAudio.rolloffMode = AudioRolloffMode.Linear;
 
             LethalLib.Modules.Utilities.FixMixerGroups(Masked.gameObject);
