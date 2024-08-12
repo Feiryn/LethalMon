@@ -414,7 +414,7 @@ namespace LethalMon.Behaviours
 
         void OnDisable() => CleanUp();
 
-        void CleanUp()
+        internal void CleanUp()
         {
             if(parentMimic != null)
                 parentMimic.spawnedGhostMimics.Remove(Masked);
@@ -618,7 +618,7 @@ namespace LethalMon.Behaviours
             EscapeFromBallEventEndedServerRpc();
         }
 
-        [ServerRpc]
+        [ServerRpc(RequireOwnership = false)]
         public void EscapeFromBallEventEndedServerRpc()
         {
             EscapeFromBallEventEndedClientRpc();
