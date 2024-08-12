@@ -454,7 +454,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void LateUpdate() { }
 
-    internal void Awake()
+    internal virtual void Awake()
     {
         CooldownNetworkBehaviour[] cooldownComponents = GetComponents<CooldownNetworkBehaviour>();
         if (cooldownComponents.Length != Cooldowns.Length)
