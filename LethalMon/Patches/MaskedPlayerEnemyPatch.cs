@@ -23,11 +23,26 @@ namespace LethalMon.Patches
             if (__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
             {
                 LethalMon.Log("Collided -> Collider: " + other.name + " / Target: " + tamedBehaviour.targetPlayer?.name + " / Behaviour:" + (tamedBehaviour.CurrentCustomBehaviour == null ? "" : ((MaskedTamedBehaviour.CustomBehaviour)tamedBehaviour.CurrentCustomBehaviour!).ToString()));
-                if (tamedBehaviour.targetPlayer != null && tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
+                if (tamedBehaviour.targetPlayer != null)
                 {
-                    LethalMon.Log("Ghost hitting player " + player.playerClientId);
-                    tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
-                    return false;
+                    if (tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
+                    {
+                        LethalMon.Log("Ghost hitting player " + player.playerClientId);
+                        tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
+                        return false;
+                    }
+                    else if(tamedBehaviour.escapeFromBallEventRunning && player == tamedBehaviour.targetPlayer)
+                    {
+                        LethalMon.Log("Player " + player.playerClientId + " ran into the masked that does the escape event.");
+                        tamedBehaviour.CleanUp();
+                        tamedBehaviour.Masked.maskEyesGlowLight.intensity = 0.6f;
+
+                        if (tamedBehaviour.Masked.agent != null)
+                            tamedBehaviour.Masked.agent.enabled = true;
+                        tamedBehaviour.Masked.enabled = true;
+
+                        tamedBehaviour.EscapeFromBallEventEndedServerRpc();
+                    }
                 }
             }
             return true;
