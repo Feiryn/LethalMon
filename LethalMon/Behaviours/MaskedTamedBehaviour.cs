@@ -21,7 +21,6 @@ namespace LethalMon.Behaviours
 
         static readonly float EscapeEventLightIntensity = 75f;
 
-        static readonly float GhostSpawnTime = 3.5f;
         static readonly float MaximumGhostLifeTime = 15f;
         static readonly float GhostChaseSpeed = 7f;
         static readonly float GhostZoomUntilDistance = 25f;
@@ -75,10 +74,13 @@ namespace LethalMon.Behaviours
 
         public bool escapeFromBallEventRunning = false;
 
+        internal List<GameObject>? headMasks = null;
+
         // Ghosts
         internal bool isGhostified = false;
         internal float ghostLifetime = 0f;
         internal bool IsGhostAboutToDie => (MaximumGhostLifeTime - ghostLifetime) < 2f;
+        internal float GhostSpawnTime => 3.5f + 1f - (GhostChaseSpeed / 3f);
         List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         MaskedTamedBehaviour? parentMimic = null;
         float glitchCooldown = 0f;
@@ -370,6 +372,12 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
+        internal override void Awake()
+        {
+            base.Awake();
+            headMasks = Masked.GetComponentsInChildren<Transform>().Where((t) => t.name.StartsWith("HeadMask")).Select((t) => t.gameObject).ToList();
+        }
+
         internal override void Start()
         {
             base.Start();
@@ -529,28 +537,34 @@ namespace LethalMon.Behaviours
             escapeFromBallEventRunning = true;
 
             LethalMon.Log("MaskedEscapeFromBallCoroutine");
-            if(IsOwner)
-            {
-                if(Masked.agent != null)
-                    Masked.agent.enabled = false;
-                Masked.enabled = false;
-            }
 
-            if(targetPlayer != null)
+            Masked.enabled = false;
+            if (IsOwner)
+                Masked.agent.enabled = false;
+
+            if (targetPlayer != null)
             {
                 RoundManager.Instance.tempTransform.position = Masked.transform.position;
                 RoundManager.Instance.tempTransform.LookAt(targetPlayer.transform);
                 Masked.transform.rotation = RoundManager.Instance.tempTransform.rotation;
             }
 
-            yield return new WaitForSeconds(0.5f);
-
-            if (MirageEnabled)
+            bool maskEnabled = IsMaskEnabled();
+            if (!maskEnabled)
             {
-                ShowMask(true);
+                // Mask disabled by another mod (e.g. Mirage)
+                LethalMon.Log("Mask disabled.");
+                ShowMask();
+
                 if (Mask != null)
-                    Mask.gameObject.SetActive(false);
+                {
+                    LethalMon.Log("Disable mask renderer");
+                    foreach (var mr in Utils.GetMeshRenderers(Mask))
+                        mr.enabled = false;
+                }
             }
+
+            yield return new WaitForSeconds(0.5f);
 
             SetMaskGlowNoSound(true);
 
@@ -558,6 +572,7 @@ namespace LethalMon.Behaviours
 
             float timeGlowingUp = 0f; // Fallback
             float startIntensity = Masked.maskEyesGlowLight.intensity;
+            LethalMon.Log("StartIntensity: " + startIntensity);
             float finalIntensity = startIntensity * EscapeEventLightIntensity;
             while (Masked.maskEyesGlowLight.intensity < finalIntensity && timeGlowingUp < 2f)
             {
@@ -577,6 +592,9 @@ namespace LethalMon.Behaviours
             if (IsOwner)
                 StartCoroutine(SpawnGhostMimic());
             Masked.maskEyesGlowLight.intensity = startIntensity;
+
+            if (!maskEnabled)
+                ShowMask(false); // return to previous state
 
             if (!IsOwner) yield break;
 
@@ -636,6 +654,13 @@ namespace LethalMon.Behaviours
             yield return null; // Call Start() once before switching
 
             tamedBehaviour.Masked.enabled = false;
+
+            if(!tamedBehaviour.IsMaskEnabled()) // Mask disabled by another mod (e.g. Mirage)
+                tamedBehaviour.ShowMask();
+
+            Masked.maskEyesGlow[Masked.maskTypeIndex].enabled = true;
+            Masked.maskEyesGlowLight.enabled = true;
+            LethalMon.Log("Intensity: " + Masked.maskEyesGlowLight.intensity);
 
             tamedBehaviour.parentMimic = this;
             if(targetPlayer != null)
@@ -698,20 +723,12 @@ namespace LethalMon.Behaviours
         {
             Ghostify(Masked);
 
-            if (MirageEnabled)
-            {
-                ShowMask(true);
-                if (Mask != null)
-                    Mask.gameObject.SetActive(false);
-            }
-
             var mainParticle = Masked.teleportParticle.main;
             mainParticle.simulationSpeed = 20f;
             Masked.teleportParticle.Play();
 
             if (Vector3.Distance(Masked.transform.position, Utils.CurrentPlayer.transform.position) > 20f)
                 RoundManager.Instance.FlickerLights(true, false);
-
 
             Masked.creatureAnimator.SetFloat("VelocityY", 1f);
             Masked.creatureAnimator.speed *= GhostChaseSpeed / 5f;
@@ -765,7 +782,7 @@ namespace LethalMon.Behaviours
                 spineTransform.Find("BetaBadge")?.gameObject.SetActive(false);
             }
 
-            var mask = maskedEnemy.maskTypes[maskedEnemy.maskTypeIndex];
+            var mask = Mask;
             if (mask != null)
             {
                 // Set mask invisible and stable
@@ -1115,13 +1132,23 @@ namespace LethalMon.Behaviours
 
         public void ShowMask(bool show = true)
         {
-            if (!MirageEnabled) return;
+            if (!MirageEnabled || headMasks == null) return;
 
-            foreach (var transform in Masked.GetComponentsInChildren<Transform>())
+            foreach (var mask in headMasks)
+                mask.SetActive(show);
+        }
+
+        public bool IsMaskEnabled()
+        {
+            if (!MirageEnabled) return true;
+
+            if (headMasks == null || headMasks.Count == 0)
             {
-                if (transform.name.StartsWith("HeadMask"))
-                    transform.gameObject.SetActive(show);
+                LethalMon.Log("No HeadMasks saved..", LethalMon.LogType.Warning);
+                return false;
             }
+
+            return headMasks.First().activeSelf;
         }
         #endregion
     }
