@@ -241,7 +241,7 @@ public class Utils
     #region LayerMasks
     internal class LayerMasks
     {
-        /* for (int i = 0; i <= 29; i++)
+        /* for (int i = 0; i <= 30; i++)
             {
                 if(LayerMask.LayerToName(i) != "")
                     log(LayerMask.LayerToName(i) + " = " + i + ",");
