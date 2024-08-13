@@ -27,8 +27,8 @@ namespace LethalMon.Patches
                     if (tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
                     {
                         LethalMon.Log("Ghost hitting player " + player.playerClientId);
+                        tamedBehaviour.Masked.startingKillAnimationLocalClient = true; // Make player unkillable by this ghost
                         tamedBehaviour.GhostHitPlayerServerRpc(player.playerClientId);
-                        return false;
                     }
                     else if(tamedBehaviour.escapeFromBallEventRunning && player == tamedBehaviour.targetPlayer)
                     {
@@ -43,9 +43,8 @@ namespace LethalMon.Patches
                         tamedBehaviour.EscapeFromBallEventEndedServerRpc();
 
                         // Assure player can die from masked
-                        tamedBehaviour.Masked.startingKillAnimationLocalClient = true;
-                        tamedBehaviour.Masked.KillPlayerAnimationServerRpc((int)player.playerClientId);
-                        return false;
+                        if (Time.realtimeSinceStartup - tamedBehaviour.Masked.timeAtLastUsingEntrance < 1.75f)
+                            tamedBehaviour.Masked.timeAtLastUsingEntrance = Time.realtimeSinceStartup - 2f;
                     }
                 }
             }
