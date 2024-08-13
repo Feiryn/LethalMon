@@ -1,7 +1,6 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
 using System;
-using LethalMon.Items;
 using UnityEngine;
 using System.Collections;
 using LethalMon.CustomPasses;
@@ -9,7 +8,6 @@ using Unity.Netcode;
 using System.Linq;
 using LethalMon.Patches;
 using LethalLib.Modules;
-using ModelReplacement;
 using LethalMon.Compatibility;
 
 namespace LethalMon.Behaviours
@@ -723,7 +721,7 @@ namespace LethalMon.Behaviours
             {
                 var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(Masked.gameObject, isEnemy: true);
                 if (model != null)
-                    Utils.CallNextFrame(() => Utils.ReplaceAllMaterialsWith(model, (_) => new Material(Utils.GhostMaterial)));
+                    Utils.ReplaceAllMaterialsWith(model, (_) => new Material(Utils.GhostMaterial));
                 eyeRenderer.enabled = false;
             }
             else
@@ -995,7 +993,7 @@ namespace LethalMon.Behaviours
             if (glassified)
             {
                 if (originalMaskMaterials.Length > 0) return; // Already glassified
-                originalMaskMaterials = Utils.ReplaceAllMaterialsWith(mr, (m) => Utils.Glass);
+                originalMaskMaterials = Utils.ReplaceAllMaterialsWith(mr, (m) => new Material(Utils.Glass));
             }
             else
             {
