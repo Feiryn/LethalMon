@@ -9,13 +9,21 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 using Random = System.Random;
 using UnityEngine.AI;
-using HarmonyLib;
+using System.Collections;
 
 namespace LethalMon;
 
 public class Utils
 {
     public static readonly Random Random = new Random();
+
+    public static void CallNextFrame(Action action) => GameNetworkManager.Instance.StartCoroutine(CallNextFrameCoroutine(action));
+
+    public static IEnumerator CallNextFrameCoroutine(Action action)
+    {
+        yield return null;
+        action();
+    }
     
     public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
@@ -338,24 +346,24 @@ public class Utils
     #endregion
 
     #region Shader & Materials
-    public static List<MeshRenderer> GetMeshRenderers(GameObject g)
+    public static List<Renderer> GetRenderers(GameObject g)
     {
-        List<MeshRenderer> listOfMesh = [];
-        foreach (MeshRenderer mesh in g.GetComponentsInChildren<MeshRenderer>())
+        List<Renderer> listOfRenderer = [];
+        foreach (var renderer in g.GetComponentsInChildren<Renderer>())
         {
-            listOfMesh.Add(mesh);
+            listOfRenderer.Add(renderer);
         }
-        return listOfMesh;
+        return listOfRenderer;
     }
 
     public static void ReplaceAllMaterialsWith(GameObject g, Func<Material, Material> materialReplacer)
     {
-        var meshRenderer = GetMeshRenderers(g);
+        var meshRenderer = GetRenderers(g);
         foreach (var mr in meshRenderer)
             ReplaceAllMaterialsWith(mr, materialReplacer);
     }
 
-    public static void ReplaceAllMaterialsWith(MeshRenderer mr, Func<Material, Material> materialReplacer)
+    public static void ReplaceAllMaterialsWith(Renderer mr, Func<Material, Material> materialReplacer)
     {
         var materials = new List<Material>();
         foreach (var m in mr.materials)
