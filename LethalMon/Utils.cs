@@ -345,12 +345,13 @@ public class Utils
     #endregion
 
     #region Shader & Materials
-    public static List<Renderer> GetRenderers(GameObject g)
+    public static List<Renderer> GetRenderers(GameObject? g)
     {
         List<Renderer> listOfRenderer = [];
-        foreach (var renderer in g.GetComponentsInChildren<Renderer>())
+        if (g != null)
         {
-            listOfRenderer.Add(renderer);
+            foreach (var renderer in g.GetComponentsInChildren<Renderer>())
+                listOfRenderer.Add(renderer);
         }
         return listOfRenderer;
     }
@@ -430,6 +431,37 @@ public class Utils
                 _glassMaterial.name = GlassName;
             }
             return _glassMaterial;
+        }
+    }
+    private static Material? _ghostMaterial = null;
+    internal static Material GhostMaterial
+    {
+        get
+        {
+            if (_ghostMaterial == null)
+            {
+                _ghostMaterial = new Material(Utils.WireframeMaterial);
+                _ghostMaterial.SetColor("_EdgeColor", new Color(0.8f, 0.9f, 1f, 0.15f));
+                _ghostMaterial.SetFloat("_WireframeVal", 1f);
+                _ghostMaterial.SetFloat("_MaxVisibilityDistance", 15f);
+            }
+
+            return _ghostMaterial;
+        }
+    }
+
+    private static Material? _ghostEyesMaterial = null;
+    internal static Material GhostEyesMaterial
+    {
+        get
+        {
+            if (_ghostEyesMaterial == null)
+            {
+                _ghostEyesMaterial = new Material(Shader.Find("HDRP/Unlit"));
+                _ghostEyesMaterial.color = new Color(0.8f, 0.9f, 1f);
+            }
+
+            return _ghostEyesMaterial;
         }
     }
     #endregion
