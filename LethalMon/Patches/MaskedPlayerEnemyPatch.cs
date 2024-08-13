@@ -8,17 +8,16 @@ namespace LethalMon.Patches
 {
     internal class MaskedPlayerEnemyPatch
     {
-        internal static Dictionary<int, int> lastGhostColliderIDs = new Dictionary<int, int>();
+        internal static Dictionary<int, int> lastColliderIDs = new Dictionary<int, int>();
         [HarmonyPrefix]
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.OnCollideWithPlayer))]
         public static bool OnCollideWithPlayerPrefix(MaskedPlayerEnemy __instance, Collider other)
         {
-            if (lastGhostColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return false; // Hit player as ghost. Don't re-run every frame
+            if (lastColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return true; // Don't re-run this patch every frame
+            lastColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
 
             PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
-            if(player == null) return false;
-
-            lastGhostColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
+            if (player == null) return true; // For mod compatibility purposes return true
 
             if (__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
             {

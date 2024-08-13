@@ -5,6 +5,7 @@ using System.Linq;
 using GameNetcodeStuff;
 using LethalLib.Modules;
 using LethalMon.Behaviours;
+using LethalMon.Compatibility;
 using LethalMon.Patches;
 using LethalMon.Throw;
 using Unity.Netcode;
@@ -120,6 +121,12 @@ public abstract class PokeballItem : ThrowableItem
             if (this.enemyAI != null)
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
+                if (ModelReplacementAPICompatibility.Enabled)
+                {
+                    var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true);
+                    if (model != null)
+                        model.SetActive(true);
+                }
 
                 Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower);
                 if (Utils.IsHost)
@@ -289,6 +296,12 @@ public abstract class PokeballItem : ThrowableItem
         
         Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
+        if (ModelReplacementAPICompatibility.Enabled)
+        {
+            var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true);
+            if (model != null)
+                model.SetActive(false);
+        }
 
         this.PlayCaptureAnimationAnimator();
     }
