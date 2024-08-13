@@ -29,9 +29,15 @@ namespace LethalMon.Compatibility
             if (gameObject == null) return null;
 
             if (isEnemy)
-                return gameObject.GetComponent<MaskedReplacementBase>()?.replacementModel;
+            {
+                var replacementBase = gameObject.GetComponent<MaskedReplacementBase>();
+                return replacementBase != null && replacementBase.IsActive ? replacementBase.replacementModel : null;
+            }
             else
-                return gameObject.GetComponent<BodyReplacementBase>()?.replacementModel;
+            {
+                var replacementBase = gameObject.GetComponent<BodyReplacementBase>();
+                return replacementBase != null && replacementBase.IsActive ? replacementBase.replacementModel : null;
+            }
         }
     }
 }

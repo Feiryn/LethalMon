@@ -9,6 +9,7 @@ using System.Linq;
 using LethalMon.Patches;
 using LethalLib.Modules;
 using LethalMon.Compatibility;
+using ModelReplacement.Monobehaviors.Enemies;
 
 namespace LethalMon.Behaviours
 {
@@ -23,11 +24,11 @@ namespace LethalMon.Behaviours
         static readonly float EscapeEventLightIntensity = 75f;
 
         static readonly float MaximumGhostLifeTime = 15f;
-        static readonly float GhostChaseSpeed = 7f;
+        static readonly float GhostChaseSpeed = 4f;
         static readonly float GhostZoomUntilDistance = 25f;
+        static readonly float GhostGlitchMaxDuration = 1.5f;
 
         static readonly float GhostAudioToggleDistance = 15f;
-        static readonly Tuple<float, float> GhostVoiceIntervalRange = new Tuple<float, float>(6f, 9f);
         #endregion
 
         #region Properties
@@ -42,8 +43,6 @@ namespace LethalMon.Behaviours
                 return _masked;
             }
         }
-
-        // internal override string DefendingBehaviourDescription => "Y";
 
         internal override bool CanDefend => false;
 
@@ -78,22 +77,20 @@ namespace LethalMon.Behaviours
         internal bool ghostAnimationInitialized = false;
         internal bool isGhostified = false;
         internal float ghostLifetime = 0f;
-        internal float glitchCooldown = 0f;
-        internal bool IsGhostAboutToDie => (MaximumGhostLifeTime - ghostLifetime) < 2f;
         internal static float GhostSpawnTime => 3.5f + 1f - (GhostChaseSpeed / 3f);
+        internal float GhostTimeToLive => MaximumGhostLifeTime - ghostLifetime;
 
         internal List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         internal MaskedTamedBehaviour? parentMimic = null;
 
         // Audio
+        internal static List<Tuple<AudioClip, AudioClip>> GhostVoices = new List<Tuple<AudioClip, AudioClip>>();
         internal static AudioClip? ghostAmbientSFX = null, ghostHissSFX = null, ghostHissFastSFX = null, ghostPoofSFX = null;
 
         // Audio (Far)
         internal AudioSource? farAudio = null;
         internal static AudioClip? ghostAmbientFarSFX = null;
 
-        internal static List<Tuple<AudioClip, AudioClip>> GhostVoices = new List<Tuple<AudioClip, AudioClip>>();
-        internal float timeTillNextGhostVoice = 0f;
         #endregion
 
         #region Cooldowns
@@ -150,6 +147,10 @@ namespace LethalMon.Behaviours
                     }
 
                     Masked.transform.LookAt(targetPlayer.transform);
+
+                    Invoke(nameof(GhostGlitchAnimationServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 2f));
+                    if (GhostVoices.Count > 0)
+                        Invoke(nameof(PlayRandomGhostVoiceServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 4f));
                     break;
             }
         }
@@ -198,52 +199,33 @@ namespace LethalMon.Behaviours
 
             Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
-
-            if (IsOwner)
-            {
-                glitchCooldown -= Time.deltaTime;
-                if (glitchCooldown <= 0f)
-                {
-                    if (!IsGhostAboutToDie)
-                        GhostGlitchAnimationServerRpc();
-                    glitchCooldown = UnityEngine.Random.Range(2f, 4f);
-                }
-
-                timeTillNextGhostVoice -= Time.deltaTime;
-                if (timeTillNextGhostVoice <= 0f)
-                {
-                    timeTillNextGhostVoice = UnityEngine.Random.Range(GhostVoiceIntervalRange.Item1, GhostVoiceIntervalRange.Item2);
-                    if (!IsGhostAboutToDie)
-                        PlayRandomGhostVoiceServerRpc();
-                }
-            }
         }
 
         internal static void LoadGhostAudio(AssetBundle assetBundle)
         {
-            ghostAmbientSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbient.ogg");
-            ghostAmbientFarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
-            ghostHissSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
-            ghostHissFastSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHissFast.ogg");
-            ghostPoofSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostPoof.ogg");
+            ghostAmbientSFX =       assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbient.ogg");
+            ghostAmbientFarSFX =    assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostAmbientFar.ogg");
+            ghostHissSFX =          assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHiss.ogg");
+            ghostHissFastSFX =      assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostHissFast.ogg");
+            ghostPoofSFX =          assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostPoof.ogg");
 
-            var ghostLaughSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaugh.ogg");
-            var ghostLaughFarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaughFar.ogg");
+            var ghostLaughSFX =     assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaugh.ogg");
+            var ghostLaughFarSFX =  assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaughFar.ogg");
             if (ghostLaughSFX != null && ghostLaughFarSFX != null)
                 GhostVoices.Add(new Tuple<AudioClip, AudioClip>(ghostLaughSFX, ghostLaughFarSFX));
 
-            var ghostLaugh2SFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaugh2.ogg");
+            var ghostLaugh2SFX =    assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaugh2.ogg");
             var ghostLaugh2FarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostLaugh2Far.ogg");
             if (ghostLaugh2SFX != null && ghostLaugh2FarSFX != null)
                 GhostVoices.Add(new Tuple<AudioClip, AudioClip>(ghostLaugh2SFX, ghostLaugh2FarSFX));
 
-            var ghostCrySFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry.ogg");
-            var ghostCryFarSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCryFar.ogg");
+            var ghostCrySFX =       assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry.ogg");
+            var ghostCryFarSFX =    assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCryFar.ogg");
             if (ghostCrySFX != null && ghostCryFarSFX != null)
                 GhostVoices.Add(new Tuple<AudioClip, AudioClip>(ghostCrySFX, ghostCryFarSFX));
 
-            var ghostCry2SFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry2.ogg");
-            var ghostCry2SFarFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry2Far.ogg");
+            var ghostCry2SFX =      assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry2.ogg");
+            var ghostCry2SFarFX =   assetBundle.LoadAsset<AudioClip>("Assets/Audio/Masked/GhostCry2Far.ogg");
             if (ghostCry2SFX != null && ghostCry2SFarFX != null)
                 GhostVoices.Add(new Tuple<AudioClip, AudioClip>(ghostCry2SFX, ghostCry2SFarFX));
         }
@@ -251,48 +233,33 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         internal void PlayRandomGhostVoiceServerRpc()
         {
-            LethalMon.Log("PlayRandomGhostVoiceServerRpc. Voices: " + GhostVoices.Count);
-            if (GhostVoices.Count == 0) return;
+            PlayRandomGhostVoiceClientRpc(UnityEngine.Random.RandomRangeInt(0, GhostVoices.Count - 1));
 
-            var index = UnityEngine.Random.RandomRangeInt(0, GhostVoices.Count - 1);
-            PlayRandomGhostVoiceClientRpc(index);
+            var nextGhostVoiceIn = UnityEngine.Random.Range(3f, Mathf.Max(4f, 8f));
+            if (GhostTimeToLive > nextGhostVoiceIn + 2f)
+                Invoke(nameof(PlayRandomGhostVoiceClientRpc), nextGhostVoiceIn);
         }
 
         [ClientRpc]
         internal void PlayRandomGhostVoiceClientRpc(int index)
         {
-            if (GhostVoices.Count == 0) return;
-
-            if (index >= GhostVoices.Count)
-                index = GhostVoices.Count - 1;
-
             var usingFarSFX = Vector3.Distance(Masked.transform.position, Utils.CurrentPlayer.transform.position) > GhostAudioToggleDistance;
-            LethalMon.Log("PlayRandomGhostVoiceClientRpc. Play voice: " + index);
             Masked.creatureVoice.PlayOneShot(usingFarSFX ? GhostVoices[index].Item2 : GhostVoices[index].Item1);
         }
 
-        [ServerRpc(RequireOwnership = false)] // Required reroute as the original RPC is prefix-patched by Mirage
+        [ServerRpc(RequireOwnership = false)]
         public void GhostGlitchAnimationServerRpc()
         {
-            GhostGlitchAnimationClientRpc(UnityEngine.Random.Range(1f, 1.5f));
+            GhostGlitchAnimationClientRpc(UnityEngine.Random.Range(1f, GhostGlitchMaxDuration));
+
+            var nextGhostGlitchIn = UnityEngine.Random.Range(2f, 4f);
+            if (GhostTimeToLive > nextGhostGlitchIn + GhostGlitchMaxDuration)
+                Invoke(nameof(GhostGlitchAnimationServerRpc), nextGhostGlitchIn);
         }
 
         [ClientRpc]
         public void GhostGlitchAnimationClientRpc(float duration)
         {
-            /*
-             IsMoving / Bool
-             VelocityZ / Float
-             VelocityX / Float
-             Running / Bool
-             HandsOut / Bool
-             killing / Bool
-             Dead / Bool
-             Crouching / Bool
-             HitEnemy / Trigger
-             Stunned / Bool
-             */
-
             StartCoroutine(GlitchAnimation(duration));
         }
 
@@ -350,25 +317,6 @@ namespace LethalMon.Behaviours
                 originalMaskParent = Mask.transform.parent;
                 originalMaskLocalPosition = Mask.transform.localPosition;
             }
-
-            if (ownerPlayer != null) // Baye Layers: Roam, Follow, Wait
-                Masked.creatureAnimator.Play("Base Layer.Wait"); // wip, not working yet
-
-            //StartCoroutine(SetOwnerDEBUG());
-        }
-
-        internal IEnumerator SetOwnerDEBUG()
-        {
-            ownerPlayer = Utils.AlivePlayers.Where((p) => p.playerClientId == 0ul).First();
-            ownClientId = 0ul;
-            Masked.EnableEnemyMesh(true);
-            Masked.enabled = false;
-
-            if (IsOwner)
-            {
-                yield return new WaitForSeconds(0.3f);
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            }
         }
 
         void OnDestroy() => CleanUp();
@@ -377,6 +325,9 @@ namespace LethalMon.Behaviours
 
         internal void CleanUp()
         {
+            if (farAudio != null)
+                Destroy(farAudio);
+
             if (parentMimic != null)
                 parentMimic.spawnedGhostMimics.Remove(Masked);
 
@@ -388,7 +339,7 @@ namespace LethalMon.Behaviours
 
                 if(ghostMimic.IsSpawned)
                     RoundManager.Instance.DespawnEnemyGameObject(ghostMimic.NetworkObject);
-                DestroyImmediate(ghostMimic);
+                Destroy(ghostMimic);
             }
             spawnedGhostMimics.Clear();
 
@@ -716,19 +667,15 @@ namespace LethalMon.Behaviours
                 spineTransform.Find("BetaBadge")?.gameObject.SetActive(false);
             }
 
-            var eyeRenderer = maskedEnemy.maskEyesGlow[maskedEnemy.maskTypeIndex];
+            var enableMaskEyes = true;
             if (ModelReplacementAPICompatibility.Enabled)
             {
                 var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(Masked.gameObject, isEnemy: true);
                 if (model != null)
+                {
                     Utils.ReplaceAllMaterialsWith(model, (_) => new Material(Utils.GhostMaterial));
-                eyeRenderer.enabled = false;
-            }
-            else
-            {
-                // Change eye color to blue-white
-                eyeRenderer.material = new Material(Utils.GhostEyesMaterial);
-                eyeRenderer.enabled = true;
+                    enableMaskEyes = false;
+                }
             }
 
             var mask = Mask;
@@ -746,6 +693,14 @@ namespace LethalMon.Behaviours
                 light.intensity = 3f;
                 light.color = new Color(0.8f, 0.9f, 1f);
                 light.enabled = true;
+            }
+
+            var eyeRenderer = maskedEnemy.maskEyesGlow[maskedEnemy.maskTypeIndex];
+            if (eyeRenderer != null)
+            {
+                // Change eye color to blue-white
+                eyeRenderer.material = new Material(Utils.GhostEyesMaterial);
+                eyeRenderer.enabled = enableMaskEyes;
             }
 
             // Add farAudio
@@ -782,8 +737,6 @@ namespace LethalMon.Behaviours
 
         IEnumerator LendMaskCoroutine()
         {
-            if (ownerPlayer == null) yield break;
-
             isTransferingMask = true;
 
             Masked.inSpecialAnimationWithPlayer = ownerPlayer;
@@ -841,8 +794,6 @@ namespace LethalMon.Behaviours
 
         IEnumerator GiveBackMaskCoroutine()
         {
-            if (ownerPlayer == null) yield break;
-
             isTransferingMask = true;
 
             Masked.inSpecialAnimationWithPlayer = ownerPlayer;
@@ -880,8 +831,6 @@ namespace LethalMon.Behaviours
             Masked.inSpecialAnimationWithPlayer = null;
 
             lendMaskCooldown?.Reset();
-
-            yield return null;
 
             if (IsOwner)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
