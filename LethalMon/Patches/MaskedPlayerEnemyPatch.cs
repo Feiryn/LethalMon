@@ -21,7 +21,6 @@ namespace LethalMon.Patches
 
             if (__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour))
             {
-                LethalMon.Log("Collided -> Collider: " + other.name + " / Target: " + tamedBehaviour.targetPlayer?.name + " / Behaviour:" + (tamedBehaviour.CurrentCustomBehaviour == null ? "" : ((MaskedTamedBehaviour.CustomBehaviour)tamedBehaviour.CurrentCustomBehaviour!).ToString()));
                 if (tamedBehaviour.targetPlayer != null)
                 {
                     if (tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)

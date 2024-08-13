@@ -49,8 +49,10 @@ namespace LethalMon
             public float HoardingBugBringItemCooldown { get; set; }
             
             public float FoxTongueHitCooldown { get; set; }
-            
+
             public float EyelessDogHowlCooldown { get; set; }
+
+            public float MaskedLendCooldown { get; set; }
         }
 
         public ConfigValues values = new ConfigValues();
@@ -98,7 +100,8 @@ namespace LethalMon
             values.HoardingBugBringItemCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "HoardingBugBringItemCooldown", 5f, "Bring item cooldown time in seconds for the hoarder bug").Value;
             values.FoxTongueHitCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "FoxTongueHitCooldown", 5f, "Tongue hit cooldown time in seconds for the fox").Value;
             values.EyelessDogHowlCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "EyelessDogHowlCooldown", 5f, "Howl cooldown time in seconds for the eyeless dog").Value;
-            
+            values.MaskedLendCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "MaskedLendCooldown", 7f, "Mask lending cooldown time in seconds for the masked").Value;
+
             // Save the config for game changes
             originalValues = values;
         }
