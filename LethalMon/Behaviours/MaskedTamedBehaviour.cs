@@ -10,6 +10,7 @@ using LethalMon.Patches;
 using LethalLib.Modules;
 using LethalMon.Compatibility;
 using ModelReplacement.Monobehaviors.Enemies;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -618,6 +619,7 @@ namespace LethalMon.Behaviours
             Masked.creatureAnimator.speed *= GhostChaseSpeed / 5f;
 
             Masked.SetMovingTowardsTargetPlayer(targetPlayer);
+            Masked.addPlayerVelocityToDestination = 0f;
         }
 
         [ServerRpc]
