@@ -41,6 +41,10 @@ namespace LethalMon.Patches
                         tamedBehaviour.Masked.enabled = true;
 
                         tamedBehaviour.EscapeFromBallEventEndedServerRpc();
+
+                        // Assure player can die from masked
+                        if (Time.realtimeSinceStartup - tamedBehaviour.Masked.timeAtLastUsingEntrance < 1.75f)
+                            tamedBehaviour.Masked.timeAtLastUsingEntrance = Time.realtimeSinceStartup - 2f;
                     }
                 }
             }
