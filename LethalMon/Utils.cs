@@ -363,12 +363,15 @@ public class Utils
             ReplaceAllMaterialsWith(mr, materialReplacer);
     }
 
-    public static void ReplaceAllMaterialsWith(Renderer mr, Func<Material, Material> materialReplacer)
+    // Replaces all materials and returns the original materials
+    public static Material[] ReplaceAllMaterialsWith(Renderer mr, Func<Material, Material> materialReplacer)
     {
         var materials = new List<Material>();
         foreach (var m in mr.materials)
             materials.Add(materialReplacer(m));
+        var originalMaterials = mr.materials;
         mr.materials = materials.ToArray();
+        return originalMaterials;
     }
 
     // SeeThrough shader
