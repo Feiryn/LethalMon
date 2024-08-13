@@ -116,7 +116,7 @@ namespace LethalMon.Behaviours
 
         internal override void InitCustomBehaviour(int behaviour)
         {
-            // OWNER ONLY
+            // ANY CLIENT
             base.InitCustomBehaviour(behaviour);
 
             switch ((CustomBehaviour)behaviour)
@@ -130,7 +130,7 @@ namespace LethalMon.Behaviours
 
                     if (targetPlayer == null) return;
 
-                    GhostAppearedServerRpc();
+                    GhostAppeared();
 
                     var pitch = UnityEngine.Random.Range(0.75f, 1.25f);
 
@@ -148,10 +148,14 @@ namespace LethalMon.Behaviours
                     }
 
                     Masked.transform.LookAt(targetPlayer.transform);
+                    Masked.AIIntervalTime = 0.05f;
 
-                    Invoke(nameof(GhostGlitchAnimationServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 2f));
-                    if (GhostVoices.Count > 0)
-                        Invoke(nameof(PlayRandomGhostVoiceServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 4f));
+                    if (IsOwner)
+                    {
+                        Invoke(nameof(GhostGlitchAnimationServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 2f));
+                        if (GhostVoices.Count > 0)
+                            Invoke(nameof(PlayRandomGhostVoiceServerRpc), GhostSpawnTime + UnityEngine.Random.Range(0f, 4f));
+                    }
                     break;
             }
         }
@@ -597,14 +601,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        [ServerRpc]
-        public void GhostAppearedServerRpc()
-        {
-            GhostAppearedClientRpc();
-        }
-
-        [ClientRpc]
-        public void GhostAppearedClientRpc()
+        public void GhostAppeared()
         {
             Ghostify(Masked);
 
