@@ -69,6 +69,12 @@
       <Reference Include="TerminalApi">
         <HintPath>TerminalApi.dll</HintPath>
       </Reference>
+      <Reference Include="ModelReplacementAPI">
+        <HintPath>ModelReplacementAPI.dll</HintPath>
+      </Reference>
+      <Reference Include="Mirage">
+        <HintPath>Mirage.dll</HintPath>
+      </Reference>
     </ItemGroup>
     
     <Target Name="NetcodePatchLinux" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'true'">
