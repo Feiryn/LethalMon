@@ -237,6 +237,7 @@ namespace LethalMon.Behaviours
             else
                 Masked.agent!.speed = GhostChaseSpeed;
 
+            Masked.CalculateAnimationDirection();
             Masked.LookAtFocusedPosition();
 
             if (IsOwner)
