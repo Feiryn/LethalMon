@@ -31,9 +31,9 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private static readonly string CooldownId = "monstername_cooldownname";
     
-        internal override Cooldown[] Cooldowns => new[] { new Cooldown(CooldownId, "Display text", 20f) };
+        internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
 
-        private CooldownNetworkBehaviour cooldown;
+        private CooldownNetworkBehaviour? cooldown;
         #endregion
         
         #region Custom behaviours
