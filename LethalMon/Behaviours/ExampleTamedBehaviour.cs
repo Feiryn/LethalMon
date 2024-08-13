@@ -48,7 +48,7 @@ namespace LethalMon.Behaviours
 
         internal override void InitCustomBehaviour(int behaviour)
         {
-            // OWNER ONLY
+            // ANY CLIENT
             base.InitCustomBehaviour(behaviour);
 
             switch ((CustomBehaviour)behaviour)
