@@ -51,9 +51,9 @@ namespace LethalMon.Behaviours
 
         // Mask
         bool isTransferingMask = false;
-        List<Material> originalMaskMaterials = new();
+        Material[] originalMaskMaterials = [];
         Transform? originalMaskParent = null;
-        Vector3 originalMaskLocalPosition = Vector3.zero;
+        Vector3 originalMaskLocalPosition = new Vector3(-0.01f, 0.14f, 0.22f);
         float timeWearingMask = 0f;
         bool isWearingMask = false;
 
@@ -901,22 +901,12 @@ namespace LethalMon.Behaviours
 
         IEnumerator RotateMaskOnMaskedFace()
         {
-            if (ownerPlayer == null) yield break;
+            if (ownerPlayer == null || originalMaskParent == null) yield break;
 
-            Vector3 endPosition;
-            Quaternion endRotation;
-            if (originalMaskParent != null)
-            {
-                endPosition = originalMaskParent.transform.position + Vector3.up * originalMaskLocalPosition.y + Masked.transform.forward * originalMaskLocalPosition.z; // todo: find better way
-                endRotation = originalMaskParent.transform.rotation;
-            }
-            else
-            {
-                endPosition = Masked.transform.position + Vector3.up * 2.3f + Masked.transform.forward * 0.15f;
-                endRotation = Masked.transform.rotation;
-            }
+            LethalMon.Log("originalMaskLocalPosition: " + originalMaskLocalPosition);
+            var endPosition = originalMaskParent.transform.position + Vector3.up * originalMaskLocalPosition.y + Masked.transform.forward * originalMaskLocalPosition.z;
 
-            yield return StartCoroutine(RotateMaskTo(endPosition, endRotation, 1f, originalMaskParent != null ? originalMaskParent : Masked.transform));
+            yield return StartCoroutine(RotateMaskTo(endPosition, originalMaskParent.transform.rotation, 1f, originalMaskParent != null ? originalMaskParent : Masked.transform));
 
             if (Mask != null)
                 Mask.transform.localPosition = originalMaskLocalPosition;
@@ -999,39 +989,31 @@ namespace LethalMon.Behaviours
 
         void SetMaskGlassified(bool glassified = true)
         {
-            var currentMask = Mask;
-            if (currentMask == null) return;
-
-            var mr = currentMask.transform.Find("Mesh").GetComponent<MeshRenderer>();
+            var mr = Mask?.transform.Find("Mesh").GetComponent<MeshRenderer>();
             if (mr == null) return;
 
             if (glassified)
             {
-                if (originalMaskMaterials.Count > 0) return; // Already glassified
-
-                List<Material> materials = [];
-                foreach (var m in mr.materials)
-                {
-                    materials.Add(Utils.Glass);
-                    originalMaskMaterials.Add(m);
-                }
-                mr.materials = materials.ToArray();
+                if (originalMaskMaterials.Length > 0) return; // Already glassified
+                originalMaskMaterials = Utils.ReplaceAllMaterialsWith(mr, (m) => Utils.Glass);
             }
             else
             {
-                if (originalMaskMaterials.Count == 0) return; // Unable to revert materials
+                if (originalMaskMaterials.Length == 0) return; // Unable to revert materials
+
                 foreach (var m in mr.materials)
                     DestroyImmediate(m);
 
-                mr.materials = originalMaskMaterials.ToArray();
-                originalMaskMaterials.Clear();
+                mr.materials = originalMaskMaterials;
+                originalMaskMaterials = [];
             }
         }
 
         void SetMaskShaking(bool shaking = true)
         {
-            if (MaskAnimator != null)
-                MaskAnimator.speed = shaking ? 1f : 0f; // 1f is default.. unsure why it's constantly shaking by default
+            if (MaskAnimator == null) return;
+
+            MaskAnimator.speed = shaking ? 1f : 0f; // 1f is default.. unsure why it's constantly shaking by default
         }
 
         void SetRedVision(bool enable = true)

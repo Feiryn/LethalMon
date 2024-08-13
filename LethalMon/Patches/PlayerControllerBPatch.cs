@@ -74,7 +74,9 @@ public class PlayerControllerBPatch
     private static void PetRetrieve(PlayerControllerB player, TamedEnemyBehaviour tamedEnemyBehaviour)
     {
         Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
-        PokeballItem pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
+        PokeballItem? pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
+        if (pokeballItem == null) return;
+
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
         player.SetItemInElevator(inShip, inShip, pokeballItem);
         pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
