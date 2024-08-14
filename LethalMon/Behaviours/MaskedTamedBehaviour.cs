@@ -10,8 +10,6 @@ using System.Reflection;
 using LethalMon.Patches;
 using LethalLib.Modules;
 using LethalMon.Compatibility;
-using ModelReplacement.Monobehaviors.Enemies;
-using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -84,6 +82,8 @@ namespace LethalMon.Behaviours
 
         internal List<MaskedPlayerEnemy> spawnedGhostMimics = new List<MaskedPlayerEnemy>();
         internal MaskedTamedBehaviour? parentMimic = null;
+        
+        internal float aiIntervalTimeBackup = 0f;
 
         // Audio
         internal static List<Tuple<AudioClip, AudioClip>> GhostVoices = new List<Tuple<AudioClip, AudioClip>>();
@@ -149,6 +149,7 @@ namespace LethalMon.Behaviours
                     }
 
                     Masked.transform.LookAt(targetPlayer.transform);
+                    aiIntervalTimeBackup = Masked.AIIntervalTime;
                     Masked.AIIntervalTime = 0.05f;
 
                     if (IsOwner)
@@ -328,7 +329,12 @@ namespace LethalMon.Behaviours
                 Masked.creatureAnimator.Play("Base Layer.Idle");
         }
 
-        void OnDestroy() => CleanUp();
+        void OnDestroy()
+        {
+            CleanUp();
+            
+            base.OnDestroy();
+        }
 
         void OnDisable() => CleanUp();
 
@@ -364,6 +370,16 @@ namespace LethalMon.Behaviours
             {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
                 SetMaskShaking(false);
+            }
+        }
+
+        internal override void LeaveCustomBehaviour(int behaviour)
+        {
+            base.LeaveCustomBehaviour(behaviour);
+            
+            if (behaviour == (int) CustomBehaviour.Ghostified)
+            {
+                Masked.AIIntervalTime = aiIntervalTimeBackup;
             }
         }
 
