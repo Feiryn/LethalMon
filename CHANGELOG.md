@@ -1,3 +1,7 @@
+# 0.4.7
+
+- Fixed a bug that made the host freeze if they died with a monster out
+
 # 0.4.6
 
 - Masked is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
