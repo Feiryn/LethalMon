@@ -182,13 +182,13 @@ public class PlayerControllerBPatch
         }
     }
     
-    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayerServerRpc))]
     [HarmonyPostfix]
-    private static void KillPlayerPostfix(PlayerControllerB __instance)
+    private static void KillPlayerServerRpcPostfix(PlayerControllerB __instance)
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
         
-        if (tamedBehaviour != null)
+        if (tamedBehaviour != null && Utils.IsHost)
         {
             LethalMon.Log("Owner is dead, go back to the ball");
             tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
