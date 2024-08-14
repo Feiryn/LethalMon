@@ -322,6 +322,9 @@ namespace LethalMon.Behaviours
                 originalMaskParent = Mask.transform.parent;
                 originalMaskLocalPosition = Mask.transform.localPosition;
             }
+            
+            if (ownerPlayer != null)
+                Masked.creatureAnimator.Play("Base Layer.Idle");
         }
 
         void OnDestroy() => CleanUp();
