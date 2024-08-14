@@ -6,6 +6,7 @@ using System.Collections;
 using LethalMon.CustomPasses;
 using Unity.Netcode;
 using System.Linq;
+using System.Reflection;
 using LethalMon.Patches;
 using LethalLib.Modules;
 using LethalMon.Compatibility;
@@ -758,7 +759,7 @@ namespace LethalMon.Behaviours
             if (IsOwnerPlayer)
                 SetMaskGlassified();
 
-            Masked.FinishKillAnimation();
+            FinishKillAnimation(false);
 
             if (IsOwnerPlayer)
             {
@@ -800,7 +801,7 @@ namespace LethalMon.Behaviours
 
             Masked.inSpecialAnimationWithPlayer = ownerPlayer;
 
-            Masked.SetHandsOutServerRpc(true);
+            Masked.SetHandsOutClientRpc(true);
 
             yield return StartCoroutine(FaceOwner());
 
@@ -820,14 +821,14 @@ namespace LethalMon.Behaviours
 
             yield return StartCoroutine(RotateMaskOnMaskedFace());
 
-            Masked.FinishKillAnimation();
+            FinishKillAnimation(false);
 
             isWearingMask = false;
             timeWearingMask = 0f;
 
             SetMaskGlowNoSound(false);
 
-            Masked.SetHandsOutServerRpc(false);
+            Masked.SetHandsOutClientRpc(false);
 
             isTransferingMask = false;
             Masked.inSpecialAnimationWithPlayer = null;
@@ -983,6 +984,25 @@ namespace LethalMon.Behaviours
             }
 
             ownerPlayer.nightVision.enabled = enable;
+        }
+
+        /// <summary>
+        /// Little trick to prevent the masked from switching of state when finishing the kill animation
+        /// </summary>
+        /// <param name="killPlayer">Kill the player at the end of the animation or not</param>
+        private void FinishKillAnimation(bool killPlayer)
+        {
+            PropertyInfo? property = typeof(NetworkObject).GetProperty("IsSpawned");
+            if (Masked.NetworkObject.IsSpawned && property != null)
+            {
+                property.GetSetMethod(true).Invoke(Masked.NetworkObject, [false]);
+                Masked.FinishKillAnimation(killPlayer);
+                property.GetSetMethod(true).Invoke(Masked.NetworkObject, [true]);
+            }
+            else
+            {
+                Masked.FinishKillAnimation(killPlayer);
+            }
         }
         #endregion
     }
