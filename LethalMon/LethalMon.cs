@@ -81,6 +81,7 @@ public class LethalMon : BaseUnityPlugin
         Utils.LoadWireframeMaterial(assetBundle);
 
         MaskedTamedBehaviour.LoadGhostAudio(assetBundle);
+        BaboonHawkTamedBehaviour.LoadAudio(assetBundle);
         HoarderBugTamedBehaviour.LoadAudio(assetBundle);
 
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
