@@ -1,9 +1,11 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
+using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using System.Collections;
 using LethalMon.CustomPasses;
+using System.Linq;
 
 namespace LethalMon.Behaviours
 {
@@ -11,7 +13,7 @@ namespace LethalMon.Behaviours
     internal class BaboonHawkTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        private BaboonBirdAI? _baboonHawk = null;
+        internal BaboonBirdAI? _baboonHawk = null;
         internal BaboonBirdAI BaboonHawk
         {
             get
@@ -27,28 +29,26 @@ namespace LethalMon.Behaviours
 
         internal override bool CanDefend => false;
 
-        internal static AudioClip? EchoLotSFX = null;
+        internal static AudioClip? echoLotSFX = null;
 
-        internal const float MaximumEchoDistance = 50f;
-        internal const float EchoKeepAlive = 3f; // Keep-alive once full distance is reached
+        internal static readonly float MaximumEchoDistance = 50f;
+        internal static readonly float EchoKeepAlive = 3f; // Keep-alive once full distance is reached
         internal static readonly Color EchoLotColor = new Color(1f, 1f, 0f, 0.45f);
         #endregion
 
         #region Cooldowns
-        private const string CooldownId = "baboonhawk_echolot";
+        private static readonly string CooldownId = "baboonhawk_echolot";
     
         internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Echo lot", 10f)];
 
-        private CooldownNetworkBehaviour echoLotCooldown;
+        private CooldownNetworkBehaviour? echoLotCooldown;
         #endregion
 
-        BaboonHawkTamedBehaviour() => echoLotCooldown = GetCooldownWithId(CooldownId);
-
         #region Action Keys
-        private readonly List<ActionKey> _actionKeys =
-        [
+        private List<ActionKey> _actionKeys = new List<ActionKey>()
+        {
             new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Search for items" }
-        ];
+        };
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
         internal override void ActionKey1Pressed()
@@ -67,14 +67,14 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         internal void StartEchoLotClientRpc()
         {
-            echoLotCooldown.Reset();
+            echoLotCooldown?.Reset();
 
             HUDManager.Instance.scanEffectAnimator.transform.position = BaboonHawk.transform.position;
             HUDManager.Instance.scanEffectAnimator.SetTrigger("scan");
             StartCoroutine(EchoLotColorAdjust());
 
-            if (EchoLotSFX != null)
-                BaboonHawk.creatureSFX.PlayOneShot(EchoLotSFX);
+            if (echoLotSFX != null)
+                BaboonHawk.creatureSFX.PlayOneShot(echoLotSFX);
 
             StartCoroutine(EchoLotScanCoroutine());
         }
@@ -97,25 +97,31 @@ namespace LethalMon.Behaviours
 
             customPass.maxVisibilityDistance = 0f;
 
+            LethalMon.Log("Start of echo lot.", LethalMon.LogType.Warning);
             yield return new WaitWhile(() =>
             {
                 customPass.maxVisibilityDistance += Time.deltaTime * MaximumEchoDistance; // takes 1s
+                LethalMon.Log("Echo lot distance: " + customPass.maxVisibilityDistance);
                 return customPass.maxVisibilityDistance < MaximumEchoDistance;
             });
 
+            LethalMon.Log("Echo lot reached max distance.", LethalMon.LogType.Warning);
             yield return new WaitForSeconds(EchoKeepAlive);
+            LethalMon.Log("Echo lot reach end of lifetime.", LethalMon.LogType.Warning);
 
             yield return new WaitWhile(() =>
             {
                 customPass.maxVisibilityDistance -= Time.deltaTime * MaximumEchoDistance * 2f; // takes half a sec
+                LethalMon.Log("Echo lot distance: " + customPass.maxVisibilityDistance);
                 return customPass.maxVisibilityDistance > 0f;
             });
             customPass.enabled = false;
+            LethalMon.Log("Echo lot effect is over.", LethalMon.LogType.Warning);
         }
 
         internal static void LoadAudio(AssetBundle assetBundle)
         {
-            EchoLotSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/BaboonHawk/EchoLot.ogg");
+            echoLotSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/BaboonHawk/EchoLot.ogg");
         }
         #endregion
 
@@ -124,77 +130,21 @@ namespace LethalMon.Behaviours
         {
             base.Start();
 
+            echoLotCooldown = GetCooldownWithId(CooldownId);
+
 #if DEBUG
-            SetTamedByHost_DEBUG();
+            ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+            ownClientId = 0ul;
 #endif
 
             if (ownerPlayer != null)
-                BaboonHawk.transform.localScale = Vector3.one * 0.75f;
+                BaboonHawk.transform.localScale = Vector3.one * 0.6f;
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
-
-            if (Utils.IsHost)
-            {
-                var tinyHawk = Utils.SpawnEnemyAtPosition(Utils.Enemy.BaboonHawk, BaboonHawk.transform.position) as BaboonBirdAI;
-                if (tinyHawk != null)
-                {
-                    tinyHawk.transform.localScale = Vector3.one * 0.3f;
-                    tinyHawk.creatureVoice.pitch = 1.5f;
-                    tinyHawk.creatureVoice.volume = 0.5f;
-                    tinyHawk.targetPlayer = playerWhoThrewBall;
-
-                    if (BaboonHawk.scoutingGroup == null)
-                        BaboonHawk.StartScoutingGroup(tinyHawk, true);
-                    else
-                        tinyHawk.JoinScoutingGroup(BaboonHawk);
-
-                    if (tinyHawk.TryGetComponent(out BaboonHawkTamedBehaviour tinyHawkbehaviour))
-                        tinyHawkbehaviour.StartFocusOnPlayer(playerWhoThrewBall);
-                }
-                StartFocusOnPlayer(playerWhoThrewBall);
-            }
-        }
-
-        public void StartFocusOnPlayer(PlayerControllerB focussedPlayer)
-        {
-            BaboonHawk.fightTimer = 0f;
-            BaboonHawk.focusingOnThreat = true;
-            BaboonHawk.StartFocusOnThreatServerRpc(focussedPlayer.NetworkObject);
-            BaboonHawk.focusedThreat = MakePlayerAThreat(focussedPlayer);
-            BaboonHawk.focusedThreatTransform = focussedPlayer.transform;
-        }
-
-        public Threat MakePlayerAThreat(PlayerControllerB player)
-        {
-            if (BaboonHawk.threats.TryGetValue(player.transform, out Threat threat))
-            { // Already a threat
-                threat.threatLevel = 0;
-                threat.interestLevel = 99;
-                threat.hasAttacked = true;
-                LethalMon.Log("Made player a higher target");
-                return threat;
-            }
-
-            threat = new Threat();
-            if (player.TryGetComponent<IVisibleThreat>(out var visibleThreat))
-            {
-                threat.type = visibleThreat.type;
-                threat.threatScript = visibleThreat;
-            }
-            threat.timeLastSeen = Time.realtimeSinceStartup;
-            threat.lastSeenPosition = player.transform.position + Vector3.up * 0.5f;
-            threat.distanceToThreat = Vector3.Distance(player.transform.position, BaboonHawk.transform.position);
-            threat.distanceMovedTowardsBaboon = 0f;
-            threat.threatLevel = 0;
-            threat.interestLevel = 99;
-            threat.hasAttacked = true;
-            if (BaboonHawk.threats.TryAdd(player.transform, threat))
-                LethalMon.Log("Added player as threat");
-            return threat;
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
