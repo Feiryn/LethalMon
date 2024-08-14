@@ -22,7 +22,7 @@ You can throw the ball on the ground where you want the monster to appear.
 
 To retrieve it, press P (configurable).
 
-If a player dies or disconnects, the monster will be called in the ball at it's location.
+If a player dies or disconnects, the monster will be called in the ball at its location.
 
 
 ## Implemented monsters and behaviours
@@ -39,7 +39,7 @@ Here are the implementation status of monsters:
 |  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |
 |    Hygrodere    |     No      |                                  TBD                                   |
 |     Jester      |     No      |                                  TBD                                   |
-|     Masked      |     No      |                                  TBD                                   |
+|     Masked      |     Yes     |      Can lend you its mask to make you see enemies through walls       |
 |   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |
 |   Snare Flea    |     No      |                                  TBD                                   |
 |  Spore Lizard   |     Yes     |                          Can be used as mount                          |

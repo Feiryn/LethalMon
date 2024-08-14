@@ -1,3 +1,9 @@
+# 0.4.6
+
+- Masked is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed a bug that desynchronized the balls when a client died with a monster out
+- Hoarding bug is a bit easier to catch
+
 # 0.4.5
 
 - Thumper is now catchable
