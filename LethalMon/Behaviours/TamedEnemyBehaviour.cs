@@ -68,6 +68,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool alreadyCollectedThisRound;
 
+    public bool hasBeenRetrieved = false;
+
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
     {
@@ -537,7 +539,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
-        LethalMon.Log("balltype: " + ballType.ToString());
+        hasBeenRetrieved = true;
+        
         GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
         if (spawnPrefab == null)
         {

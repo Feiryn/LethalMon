@@ -188,7 +188,7 @@ public class PlayerControllerBPatch
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
         
-        if (tamedBehaviour != null && Utils.IsHost)
+        if (tamedBehaviour != null && Utils.IsHost && !tamedBehaviour.hasBeenRetrieved)
         {
             LethalMon.Log("Owner is dead, go back to the ball");
             tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
