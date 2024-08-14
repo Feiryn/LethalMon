@@ -247,7 +247,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex)
         {
-            return "Base behaviour (not implemented)";
+            return "Base behaviour " + Enemy.currentBehaviourStateIndex + " (not implemented)";
         }
 
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedFollowing)
@@ -515,7 +515,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             cooldown.OnDestroy();
         }
         
-        if (Utils.CurrentPlayer != null && ownClientId == Utils.CurrentPlayer.playerClientId)
+        if (ownerPlayer != null && ownerPlayer == Utils.CurrentPlayer)
         {
             HUDManagerPatch.EnableHUD(false);
         }
