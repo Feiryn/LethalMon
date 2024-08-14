@@ -27,6 +27,8 @@ public class LethalMon : BaseUnityPlugin
 
     internal static Dictionary<string, Sprite> monstersSprites = new();
 
+    internal static GameObject forceFieldPrefab;
+
     private void Awake()
     {
         Logger = base.Logger;
@@ -69,6 +71,7 @@ public class LethalMon : BaseUnityPlugin
         Utils.LoadWireframeMaterial(assetBundle);
         HoardingBugFlySfx = assetBundle.LoadAsset<AudioClip>("Assets/HoardingBug_Fly.ogg");
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
+        forceFieldPrefab = assetBundle.LoadAsset<GameObject>("Assets/ForceField/ForceField.prefab");
 
         // Load monsters sprites
         const string monstersIconsNamePath = "assets/ui/monstersicons/";

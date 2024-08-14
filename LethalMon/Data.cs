@@ -36,6 +36,7 @@ public static class Data
         { Enemy.Nutcracker.ToString(), new CatchableNutcracker() },
         { Enemy.Butler.ToString(), new CatchableButler() },
         { Enemy.BushWolf.ToString(), new CatchableKidnapperFox() },
-        { Enemy.Crawler.ToString(), new CatchableCrawler() }
+        { Enemy.Crawler.ToString(), new CatchableCrawler() },
+        { Enemy.ForestGiant.ToString(), new CatchableForestGiant() }
     };
 }
