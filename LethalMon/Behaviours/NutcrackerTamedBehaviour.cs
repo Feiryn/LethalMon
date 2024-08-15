@@ -12,10 +12,6 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     #region Properties
     
     internal NutcrackerEnemyAI nutcracker { get; private set; }
-    
-    private float lookTimer = 0f;
-
-    private readonly float lookTimerInterval = 1f;
 
     internal override string DefendingBehaviourDescription => "Shoots at an enemy!";
     #endregion
@@ -77,14 +73,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        lookTimer += Time.deltaTime;
-
-        if (lookTimer >= lookTimerInterval)
-        {
-            lookTimer = 0f;
-            
-            LookForEnemies();
-        }
+        TargetNearestEnemy();
     }
 
     private void LookForEnemies()

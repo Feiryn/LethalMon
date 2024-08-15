@@ -15,7 +15,16 @@ namespace LethalMon.Behaviours;
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
     internal virtual bool Controllable => false;
-    
+
+    internal enum TargetType
+    {
+        Any,
+        Alive,
+        Dead
+    };
+
+    internal virtual TargetType Targets => TargetType.Alive;
+
     internal virtual Cooldown[] Cooldowns => Array.Empty<Cooldown>();
 
     // Add your custom behaviour classes here
@@ -626,7 +635,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
-        return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered && !enemyAI.isEnemyDead;
+        if (Targets == TargetType.Dead && !enemyAI.isEnemyDead || Targets == TargetType.Alive && enemyAI.isEnemyDead) return false;
+
+        return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered &&
+            !(enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour) && tamedBehaviour.IsOwnedByAPlayer());
     }
 
     internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);

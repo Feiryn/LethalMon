@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System;
 using Unity.Netcode;
 using UnityEngine;
-using static LethalMon.Utils.LayerMasks;
-using HarmonyLib;
 using System.Collections;
-using System.Linq;
 
 namespace LethalMon.Behaviours
 {
@@ -29,6 +26,7 @@ namespace LethalMon.Behaviours
         internal float timeCleaning = 0f;
 
         internal override bool CanDefend => false;
+        internal override TargetType Targets => TargetType.Dead;
 
         #endregion
 
@@ -242,11 +240,6 @@ namespace LethalMon.Behaviours
             base.OnTamedFollowing();
 
             TargetNearestEnemy();
-        }
-
-        internal override bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
-        {
-            return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Mask.EnemiesNotRendered && enemyAI.isEnemyDead;
         }
 
         internal override void OnFoundTarget()
