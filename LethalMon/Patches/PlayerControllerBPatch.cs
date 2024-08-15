@@ -204,12 +204,15 @@ public class PlayerControllerBPatch
         if (tamedBehaviour != null && tamedBehaviour.CanDefend)
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
-            TamedEnemyBehaviour? tamedEnemyBehaviour = enemyAI.GetComponentInParent<TamedEnemyBehaviour>();
-
-            if (enemyAI != null && enemyAI != tamedBehaviour.Enemy && (tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null))
+            if (enemyAI != null && enemyAI != tamedBehaviour.Enemy)
             {
-                tamedBehaviour.targetEnemy = enemyAI;
-                tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);
+                TamedEnemyBehaviour? tamedEnemyBehaviour = enemyAI.GetComponentInParent<TamedEnemyBehaviour>();
+
+                if (tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null)
+                {
+                    tamedBehaviour.targetEnemy = enemyAI;
+                    tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedDefending);
+                }
             }
         }
     }
