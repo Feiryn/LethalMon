@@ -73,22 +73,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        TargetNearestEnemy();
-    }
-
-    private void LookForEnemies()
-    {
-        foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies) // todo: maybe SphereCast with fixed radius instead of checking LoS for any enemy for performance?
-        {
-            TamedEnemyBehaviour? tamedEnemyBehaviour = spawnedEnemy.GetComponentInParent<TamedEnemyBehaviour>();
-            if (spawnedEnemy != null && spawnedEnemy.transform != null && spawnedEnemy != nutcracker && !spawnedEnemy.isEnemyDead && nutcracker.CheckLineOfSightForPosition(spawnedEnemy.transform.position, 70f, 60, 1f) && (tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsOwnedByAPlayer()))
-            {
-                targetEnemy = spawnedEnemy;
-                SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
-                LethalMon.Log("Targeting " + spawnedEnemy.enemyType.name);
-                return;
-            }
-        }
+        TargetNearestEnemy(true, false);
     }
 
     internal override void InitTamingBehaviour(TamingBehaviour behaviour)
