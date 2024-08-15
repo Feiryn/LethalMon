@@ -626,7 +626,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
-        return enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered && !enemyAI.isEnemyDead;
+        return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered && !enemyAI.isEnemyDead;
     }
 
     internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);

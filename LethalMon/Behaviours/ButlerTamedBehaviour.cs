@@ -246,7 +246,7 @@ namespace LethalMon.Behaviours
 
         internal override bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
         {
-            return enemyAI.gameObject.layer != (int)Mask.EnemiesNotRendered && enemyAI.isEnemyDead;
+            return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Mask.EnemiesNotRendered && enemyAI.isEnemyDead;
         }
 
         internal override void OnFoundTarget()
