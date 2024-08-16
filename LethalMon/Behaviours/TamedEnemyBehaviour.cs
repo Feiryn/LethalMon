@@ -257,7 +257,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void OnRetrieveInBall() { }
+    internal virtual void OnRetrieveInBall()
+    {
+        if (IsOwnerPlayer)
+            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+    }
 
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
 
@@ -814,7 +818,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
 #if DEBUG
     #region DEBUG
-    private void SetTamedByHost_DEBUG()
+    internal void SetTamedByHost_DEBUG()
     {
         ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
