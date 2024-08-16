@@ -100,10 +100,8 @@ namespace LethalMon.Behaviours
 
         internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Lending mask", ModConfig.Instance.values.MaskedLendCooldown)];
 
-        private readonly CooldownNetworkBehaviour lendMaskCooldown;
+        private CooldownNetworkBehaviour? lendMaskCooldown;
         #endregion
-
-        MaskedTamedBehaviour() => lendMaskCooldown = GetCooldownWithId(CooldownId);
 
         #region Custom behaviours
         internal enum CustomBehaviour
@@ -318,6 +316,8 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
+            
+            lendMaskCooldown = GetCooldownWithId(CooldownId);
 
             if (Mask != null)
             {

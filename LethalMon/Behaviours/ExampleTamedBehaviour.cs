@@ -33,11 +33,8 @@ namespace LethalMon.Behaviours
     
         internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
 
-        private readonly CooldownNetworkBehaviour cooldown;
+        private CooldownNetworkBehaviour? cooldown;
         #endregion
-
-        // Call cooldown.Reset() somewhere to start the cooldown
-        ExampleTamedBehaviour() => cooldown = GetCooldownWithId(CooldownId);
 
         #region Custom behaviours
         internal enum CustomBehaviour
@@ -93,6 +90,8 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
+
+            cooldown = GetCooldownWithId(CooldownId);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)

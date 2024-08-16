@@ -559,7 +559,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
         DateTime now = SystemClock.now;
-        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
+        var cooldowns = GetComponents<CooldownNetworkBehaviour>().Where(item => item?.Id != null);
+        if(cooldowns.Any())
+            pokeballItem.cooldowns = cooldowns.ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
         pokeballItem.fallTime = 0f;
         pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
         pokeballItem.SetScrapValue(ballValue);
@@ -748,13 +750,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         DateTime now = SystemClock.now;
         foreach (KeyValuePair<string, Tuple<float, DateTime>> cooldownTimer in cooldownsTimers)
         {
-            GetComponents<CooldownNetworkBehaviour>().Where(cooldown => cooldown.Id != null).FirstOrDefault(cooldown => cooldown.Id!.Value.Value == cooldownTimer.Key)?.InitTimer(cooldownTimer.Value.Item1 + (float) (now - cooldownTimer.Value.Item2).TotalSeconds);
+            GetComponents<CooldownNetworkBehaviour>().FirstOrDefault(cooldown => cooldown.Id != null && cooldown.Id.Value.Value == cooldownTimer.Key)?.InitTimer(cooldownTimer.Value.Item1 + (float) (now - cooldownTimer.Value.Item2).TotalSeconds);
         }
     }
 
     public CooldownNetworkBehaviour GetCooldownWithId(string id)
     {
-        return GetComponents<CooldownNetworkBehaviour>().Where(cooldown => cooldown.Id != null).First(cooldown => cooldown.Id!.Value.Value == id);
+        return GetComponents<CooldownNetworkBehaviour>().FirstOrDefault(cooldown => cooldown.Id != null && cooldown.Id.Value.Value == id);
     }
     
     public bool IsOwnedByAPlayer()

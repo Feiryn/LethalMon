@@ -71,15 +71,15 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     
     internal override Cooldown[] Cooldowns => [new Cooldown(HowlCooldownId, "Howl", ModConfig.Instance.values.EyelessDogHowlCooldown)];
 
-    private readonly CooldownNetworkBehaviour howlCooldown;
+    private CooldownNetworkBehaviour? howlCooldown;
     #endregion
-
-    MouthDogTamedBehaviour() => howlCooldown = GetCooldownWithId(HowlCooldownId);
 
     #region Base Methods
     internal override void Start()
     {
         base.Start();
+
+        howlCooldown = GetCooldownWithId(HowlCooldownId);
 
         if (IsTamed)
         {
@@ -110,7 +110,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (howlCooldown.IsFinished())
+        if (howlCooldown != null && howlCooldown.IsFinished())
         {
             DefendOwnerFromCloseDogs();
         }
@@ -125,7 +125,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         if (Vector3.Distance(MouthDog.transform.position, MouthDog.destination) < 1f)
         {
             _howlTimer = MouthDog.screamSFX.length;
-            howlCooldown.Reset();
+            howlCooldown?.Reset();
             var noisePosition = MouthDog.transform.position;
             _targetDog.lastHeardNoisePosition = noisePosition;
             _targetDog.DetectNoise(noisePosition, float.MaxValue);

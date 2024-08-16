@@ -162,17 +162,18 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     
     internal override Cooldown[] Cooldowns => [new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown)];
 
-    private readonly CooldownNetworkBehaviour grabCooldown;
+    private CooldownNetworkBehaviour? grabCooldown;
 
-    internal override bool CanDefend => grabCooldown.IsFinished();
+    internal override bool CanDefend => grabCooldown != null && grabCooldown.IsFinished();
     #endregion
 
     #region Base Methods
-    FlowermanTamedBehaviour() => grabCooldown = GetCooldownWithId(GrabCooldownId);
     internal override void Start()
     {
         base.Start();
-        
+
+        grabCooldown = GetCooldownWithId(GrabCooldownId);
+
         if (IsTamed)
         {
             Bracken.creatureAnimator.SetBool("sneak", value: true);
@@ -213,7 +214,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (grabCooldown.IsFinished())
+        if (grabCooldown != null && grabCooldown.IsFinished())
             TargetNearestEnemy();
     }
 
@@ -340,8 +341,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
         var farthestPosition = Bracken.ChooseFarthestNodeFromPosition(enemyAI.transform.position).position;
         Bracken.SetDestinationToPosition(farthestPosition);
-        grabCooldown.Reset();
-        grabCooldown.Pause();
+        grabCooldown?.Reset();
+        grabCooldown?.Pause();
         LethalMon.Log("Moving to " + farthestPosition);
         
         SwitchToCustomBehaviour((int) CustomBehaviour.DragEnemyAway);
@@ -366,7 +367,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void ReleaseEnemy()
     {
-        grabCooldown.Resume();
+        grabCooldown?.Resume();
         
         if (_grabbedEnemyAi == null) return;
 

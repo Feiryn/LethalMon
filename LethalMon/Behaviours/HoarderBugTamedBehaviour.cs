@@ -96,20 +96,17 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     
     internal override Cooldown[] Cooldowns => [new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown)];
 
-    private readonly CooldownNetworkBehaviour bringItemCooldown;
+    private CooldownNetworkBehaviour? bringItemCooldown;
 
     #endregion
 
     #region Base Methods
-    HoarderBugTamedBehaviour()
-    {
-        bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
-    }
-
     internal override void Start()
     {
         base.Start();
-        
+
+        bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
+
         if (IsTamed)
             HoarderBug.creatureAnimator.Play("Base Layer.Walking");
         
@@ -119,7 +116,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (!IsTamed || !bringItemCooldown.IsFinished()) return;
+        if (!IsTamed || (bringItemCooldown != null && !bringItemCooldown.IsFinished())) return;
         
         _currentTimer += Time.deltaTime;
         if (_currentTimer > SearchTimer)
@@ -271,7 +268,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     [ServerRpc(RequireOwnership = false)]
 	public void DropHeldItemServerRpc(Vector3 targetFloorPosition)
     {
-        bringItemCooldown.Resume();
+        bringItemCooldown?.Resume();
 		DropHeldItemClientRpc(targetFloorPosition);
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 	}
@@ -285,8 +282,8 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void GrabItemServerRpc(NetworkObjectReference objectRef)
     {
-        bringItemCooldown.Reset();
-        bringItemCooldown.Pause();
+        bringItemCooldown?.Reset();
+        bringItemCooldown?.Pause();
         GrabItemClientRpc(objectRef);
         SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
     }

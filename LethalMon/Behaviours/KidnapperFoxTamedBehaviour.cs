@@ -56,7 +56,7 @@ namespace LethalMon.Behaviours
 
         internal override string DefendingBehaviourDescription => "Hits an enemy with its tongue!";
 
-        internal override bool CanDefend => tongueCooldown.IsFinished();
+        internal override bool CanDefend => tongueCooldown != null && tongueCooldown.IsFinished();
 
         #endregion
 
@@ -65,15 +65,15 @@ namespace LethalMon.Behaviours
     
         internal override Cooldown[] Cooldowns => [new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown)];
 
-        private readonly CooldownNetworkBehaviour tongueCooldown;
+        private CooldownNetworkBehaviour? tongueCooldown;
         #endregion
-
-        KidnapperFoxTamedBehaviour() => tongueCooldown = GetCooldownWithId(TongueCooldownId);
 
         #region Base Methods
         internal override void Start()
         {
             base.Start();
+
+            tongueCooldown = GetCooldownWithId(TongueCooldownId);
 
             if (IsTamed)
                 Fox.transform.localScale *= 0.75f;
@@ -110,7 +110,7 @@ namespace LethalMon.Behaviours
             else
                 idleTime = 0f;
 
-            if (tongueCooldown.IsFinished())
+            if (tongueCooldown != null && tongueCooldown.IsFinished())
                 TargetNearestEnemy();
         }
 
