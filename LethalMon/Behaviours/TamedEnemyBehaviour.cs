@@ -87,6 +87,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public EnemyAI? targetEnemy = null;
     public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
     public float DistanceToTargetEnemy => HasTargetEnemy ? Vector3.Distance(Enemy.transform.position, targetEnemy!.transform.position) : 0f;
+    public bool IsCollidingWithTargetEnemy => HasTargetEnemy ? targetEnemy!.meshRenderers.Any(meshRendererTarget => Enemy.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))) : false;
 
     // Target player
     public PlayerControllerB? targetPlayer = null;
@@ -944,9 +945,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal void SetTamedByHost_DEBUG()
     {
         ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+    }
 
-        if(Controllable && TryGetComponent(out EnemyController controller))
+    internal void SetControllable_DEBUG()
+    {
+        if (Controllable && TryGetComponent(out EnemyController controller))
         {
             Utils.CallNextFrame(() =>
             {

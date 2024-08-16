@@ -298,8 +298,7 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            var distanceTowardsTarget = DistanceToTargetEnemy;
-            if (distanceTowardsTarget < 2f)
+            if (IsCollidingWithTargetEnemy)
             {
                 LethalMon.Log("GhostGirlTamedBehaviour: Teleporting enemy.");
 
@@ -312,7 +311,7 @@ namespace LethalMon.Behaviours
                 LethalMon.Log("GhostGirlTamedBehaviour: Moving to target");
                 GhostGirl.agent.speed = 5.25f;
                 GhostGirl.SetDestinationToPosition(targetEnemy.transform.position);
-                GhostGirl.creatureVoice.volume = Mathf.Max((20f - distanceTowardsTarget) / 15f, 0f);
+                GhostGirl.creatureVoice.volume = Mathf.Max((20f - DistanceToTargetEnemy) / 15f, 0f);
             }
         }
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
