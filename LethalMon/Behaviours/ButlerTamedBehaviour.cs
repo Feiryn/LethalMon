@@ -49,7 +49,7 @@ namespace LethalMon.Behaviours
             switch ((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.RunTowardsDeadEnemy:
-                    if (targetEnemy == null) return;
+                    if (!HasTargetEnemy) return;
 
                     Butler.agent.speed = 9f;
                     if (IsOwner)

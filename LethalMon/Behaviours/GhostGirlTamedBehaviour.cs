@@ -286,7 +286,7 @@ namespace LethalMon.Behaviours
 
             if (!IsTamed) return;
 
-            if (targetEnemy == null || targetEnemy.isEnemyDead || DistanceToOwner > 30f)
+            if (!HasTargetEnemy || targetEnemy!.isEnemyDead || DistanceToOwner > 30f)
             {
                 targetEnemy = null;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);

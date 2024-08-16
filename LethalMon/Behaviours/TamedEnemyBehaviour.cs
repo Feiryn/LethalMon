@@ -242,7 +242,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (StartOfRound.Instance.inShipPhase) return;
 
-        if (targetEnemy == null && targetPlayer == null) // lost target
+        if (!HasTargetEnemy && targetPlayer == null) // lost target
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
     

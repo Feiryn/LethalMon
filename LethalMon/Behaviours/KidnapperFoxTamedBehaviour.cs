@@ -117,7 +117,7 @@ namespace LethalMon.Behaviours
         internal override void OnTamedDefending()
         {
             // OWNER ONLY
-            if (targetEnemy == null || targetEnemy.isEnemyDead)
+            if (!HasTargetEnemy || targetEnemy!.isEnemyDead)
             {
                 if (tongueShootCoroutine != null)
                 {
@@ -186,9 +186,9 @@ namespace LethalMon.Behaviours
         #region TongueShooting
         internal void ShootTongueAtEnemy()
         {
-            if (targetEnemy == null || tongueShootCoroutine != null || !tongueCooldown.IsFinished()) return;
+            if (!HasTargetEnemy || tongueShootCoroutine != null || !tongueCooldown.IsFinished()) return;
 
-            var killEnemy = targetEnemy.enemyType.canDie && (enemyHitTimes >= 4 || Random.Range(0, 100) < TongueKillPercentage);
+            var killEnemy = targetEnemy!.enemyType.canDie && (enemyHitTimes >= 4 || Random.Range(0, 100) < TongueKillPercentage);
 
             tongueShootCoroutine = StartCoroutine(ShootTongueAtEnemyCoroutine(killEnemy));
 
@@ -208,7 +208,7 @@ namespace LethalMon.Behaviours
 
         internal IEnumerator ShootTongueAtEnemyCoroutine(bool howlAndKill = false)
         {
-            if (targetEnemy == null)
+            if (!HasTargetEnemy)
             {
                 tongueShootCoroutine = null;
                 yield break;
@@ -223,7 +223,7 @@ namespace LethalMon.Behaviours
                 while (timer < 1.5f)
                 {
                     timer += Time.deltaTime;
-                    Fox.LookAtPosition(targetEnemy.transform.position);
+                    Fox.LookAtPosition(targetEnemy!.transform.position);
                     yield return null;
                 }
             }
@@ -231,7 +231,7 @@ namespace LethalMon.Behaviours
             if (howlAndKill)
             {
                 int hits = 0;
-                while (!targetEnemy.isEnemyDead && hits < 3)
+                while (!targetEnemy!.isEnemyDead && hits < 3)
                 {
                     PushTargetEnemyWithTongueServerRpc(targetEnemy.NetworkObject, 1);
                     yield return new WaitWhile(() => pushTargetCoroutine != null);
@@ -246,7 +246,7 @@ namespace LethalMon.Behaviours
             }
             else
             {
-                PushTargetEnemyWithTongueServerRpc(targetEnemy.NetworkObject); // warning shot
+                PushTargetEnemyWithTongueServerRpc(targetEnemy!.NetworkObject); // warning shot
                 yield return new WaitWhile(() => pushTargetCoroutine != null);
             }
 
@@ -284,7 +284,7 @@ namespace LethalMon.Behaviours
 
         internal IEnumerator PushTargetEnemyWithTongue(int damageOnHit = 0)
         {
-            if (targetEnemy == null)
+            if (!HasTargetEnemy)
             {
                 pushTargetCoroutine = null;
                 yield break;
@@ -293,13 +293,13 @@ namespace LethalMon.Behaviours
             LethalMon.Log("PushTargetEnemyWithTongue started.", LethalMon.LogType.Warning);
             // Calculate enemy push path
             var force = Mathf.Min(10f - DistanceToTargetEnemy, 3f) * 10f; // smaller distance = larger flight
-            if (Utils.TryGetRealEnemyBounds(targetEnemy, out Bounds enemyBounds))
+            if (Utils.TryGetRealEnemyBounds(targetEnemy!, out Bounds enemyBounds))
             {
                 LethalMon.Log("ENEMY HEIGHT: " + enemyBounds.size.y);
                 force /= enemyBounds.size.y; // Larger enemies are less affected
             }
 
-            var direction = (targetEnemy.transform.position - Fox.transform.position).normalized;
+            var direction = (targetEnemy!.transform.position - Fox.transform.position).normalized;
             yield return PushTargetEnemyWithTongue(direction, force, damageOnHit);
             LethalMon.Log("PushTargetEnemyWithTongue finished.", LethalMon.LogType.Warning);
             pushTargetCoroutine = null;
@@ -307,13 +307,13 @@ namespace LethalMon.Behaviours
 
         private IEnumerator PushTargetEnemyWithTongue(Vector3 direction, float force, int damageOnHit = 0)
         {
-            if (targetEnemy == null) yield break;
+            if (!HasTargetEnemy) yield break;
 
             yield return ReachTargetEnemyWithTongue();
 
             LethalMon.Log("PushTargetEnemyWithTongue in direction " + direction + " with a force of " + force);
 
-            var startPosition = targetEnemy.transform.position;
+            var startPosition = targetEnemy!.transform.position;
             var landingPosition = targetEnemy.transform.position + direction * force;
 
             var distanceShortenedByWall = 0f;
@@ -376,7 +376,7 @@ namespace LethalMon.Behaviours
 
         private IEnumerator ReachTargetEnemyWithTongue()
         {
-            if (targetEnemy == null) yield break;
+            if (!HasTargetEnemy) yield break;
 
             Fox.creatureAnimator.SetBool("ShootTongue", value: true);
             Fox.creatureVoice.PlayOneShot(Fox.shootTongueSFX);
@@ -396,9 +396,9 @@ namespace LethalMon.Behaviours
 
         private IEnumerator PushTargetEnemyTo(Vector3 targetPosition, float duration, Action? onUpdate)
         {
-            if (targetEnemy == null) yield break;
+            if (!HasTargetEnemy) yield break;
 
-            var startPosition = targetEnemy.transform.position;
+            var startPosition = targetEnemy!.transform.position;
             var timer = 0f;
             while (timer < duration)
             {

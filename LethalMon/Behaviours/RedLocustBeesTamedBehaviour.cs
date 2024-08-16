@@ -162,7 +162,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
     public void ChangeAngryMode(bool angry)
     {
-        if(angry && targetEnemy == null && targetPlayer == null)
+        if(angry && !HasTargetEnemy && targetPlayer == null)
         {
             LethalMon.Logger.LogWarning("Attempting to make bees angry, but no target was defined.");
             return;
