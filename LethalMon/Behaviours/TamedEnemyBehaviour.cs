@@ -25,6 +25,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     };
 
     internal virtual TargetType Targets => TargetType.Alive;
+    internal virtual float TargetingRange => 10f;
 
     internal virtual Cooldown[] Cooldowns => [];
 
@@ -669,7 +670,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (fromOwnerPerspective && ownerPlayer == null) return null;
 
         var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
-        var enemiesInRange = Physics.OverlapSphere(startPosition, 10f, layerMask, QueryTriggerInteraction.Collide);
+        var enemiesInRange = Physics.OverlapSphere(startPosition, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
