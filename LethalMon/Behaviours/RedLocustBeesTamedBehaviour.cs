@@ -55,7 +55,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
         if (targetPlayer != null)
         {
-            float distance = Vector3.Distance(targetPlayer.transform.position, Bees.transform.position);
+            float distance = DistanceToTargetPlayer;
             LethalMon.Log("Distance to player: " + distance);
             if (targetPlayer.isPlayerDead || !targetPlayer.isPlayerControlled || distance > 25f)
             {

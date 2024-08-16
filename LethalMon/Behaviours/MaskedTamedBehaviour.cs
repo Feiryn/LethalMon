@@ -201,7 +201,7 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            if (Vector3.Distance(targetPlayer.transform.position, Masked.transform.position) > GhostZoomUntilDistance)
+            if (DistanceToTargetPlayer > GhostZoomUntilDistance)
                 Masked.agent!.speed = 100f; // zooming!
             else
                 Masked.agent!.speed = GhostChaseSpeed;

@@ -168,7 +168,7 @@ namespace LethalMon.Behaviours
                 float timeSinceAttempt = 0f;
                 yield return new WaitUntil(() =>
                 {
-                    var distanceTowardsPlayer = Vector3.Distance(GhostGirl.transform.position, targetPlayer.transform.position);
+                    var distanceTowardsPlayer = DistanceToTargetPlayer;
                     if (distanceTowardsPlayer > 2f)
                     {
                         GhostGirl.SetDestinationToPosition(targetPlayer.transform.position);
@@ -293,7 +293,7 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            var distanceTowardsTarget = Vector3.Distance(GhostGirl.transform.position, targetEnemy.transform.position);
+            var distanceTowardsTarget = DistanceToTargetEnemy;
             if (distanceTowardsTarget < 2f)
             {
                 LethalMon.Log("GhostGirlTamedBehaviour: Teleporting enemy.");

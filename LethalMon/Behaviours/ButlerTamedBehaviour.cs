@@ -82,7 +82,7 @@ namespace LethalMon.Behaviours
 
             TurnTowardsPosition(targetEnemy!.transform.position);
 
-            if (Vector3.Distance(Butler.transform.position, targetEnemy.transform.position) < 1.5f)
+            if (DistanceToTargetEnemy < 1.5f)
                 SwitchToCustomBehaviour((int)CustomBehaviour.CleanUpEnemy);
         }
 

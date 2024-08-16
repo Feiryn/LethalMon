@@ -292,7 +292,7 @@ namespace LethalMon.Behaviours
 
             LethalMon.Log("PushTargetEnemyWithTongue started.", LethalMon.LogType.Warning);
             // Calculate enemy push path
-            var force = Mathf.Min(10f - Vector3.Distance(Fox.transform.position, targetEnemy.transform.position), 3f) * 10f; // smaller distance = larger flight
+            var force = Mathf.Min(10f - DistanceToTargetEnemy, 3f) * 10f; // smaller distance = larger flight
             if (Utils.TryGetRealEnemyBounds(targetEnemy, out Bounds enemyBounds))
             {
                 LethalMon.Log("ENEMY HEIGHT: " + enemyBounds.size.y);

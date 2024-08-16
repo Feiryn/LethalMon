@@ -42,7 +42,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     void OnLookForPlayer()
     {
         Vector3 targetPlayerPos = targetPlayer!.transform.position;
-        float distanceToPlayer = Vector3.Distance(Nutcracker.transform.position, targetPlayerPos);
+        float distanceToPlayer = DistanceToTargetPlayer;
         if (distanceToPlayer > 50f)
         {
             SwitchToDefaultBehaviour(0);
