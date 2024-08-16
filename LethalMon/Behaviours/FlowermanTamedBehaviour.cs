@@ -305,20 +305,20 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void StandUp()
     {
-        Bracken.creatureAngerVoice.Play();
-        Bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
-        Bracken.creatureAnimator.SetBool("anger", true);
-        Bracken.creatureAnimator.SetBool("sneak", false);
+        if (Bracken.creatureAngerVoice != null)
+        {
+            Bracken.creatureAngerVoice.Play();
+            Bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
+        }
+        Bracken.creatureAnimator?.SetBool("anger", true);
+        Bracken.creatureAnimator?.SetBool("sneak", false);
     }
 
     public void CalmDown()
     {
-        if (Bracken != null)
-        {
-            Bracken.creatureAngerVoice.Stop();
-            Bracken.creatureAnimator.SetBool("sneak", true);
-            Bracken.creatureAnimator.SetBool("anger", false);
-        }
+        Bracken.creatureAngerVoice?.Stop();
+        Bracken.creatureAnimator?.SetBool("sneak", true);
+        Bracken.creatureAnimator?.SetBool("anger", false);
     }
 
     public void GrabEnemy(EnemyAI enemyAI)
