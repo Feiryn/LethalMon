@@ -22,6 +22,8 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     }
 
     private bool _angry = false;
+
+    internal override float TargetingRange => 3f;
     #endregion
 
     #region Base Methods
@@ -46,6 +48,13 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         Bees.beesAngry.Stop();
         Bees.beeZapAudio.Stop();
         Bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make them stick tighter together
+    }
+
+    internal override void OnTamedFollowing()
+    {
+        base.OnTamedFollowing();
+
+        TargetNearestEnemy();
     }
 
     internal override void OnTamedDefending()

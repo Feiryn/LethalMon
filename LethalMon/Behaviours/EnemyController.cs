@@ -27,7 +27,7 @@ namespace LethalMon.Behaviours
         internal float CurrentSpeed { get; private set; } = 0f;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
-        internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || _inputsBinded;
+        internal bool IsControlledByUs => IsPlayerControlled && playerControlledBy == Utils.CurrentPlayer || _inputsBinded;
 
         // Changeable variables
         internal float EnemySpeedInside = 4f;
