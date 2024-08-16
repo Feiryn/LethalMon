@@ -31,7 +31,7 @@ public class StartOfRoundPatch
 
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
     [HarmonyPrefix]
-    private static void OnPlayerDCPrefix(StartOfRound __instance, int playerObjectNumber, ulong clientId)
+    private static void OnPlayerDCPrefix(int playerObjectNumber, ulong clientId)
     {
         LethalMon.Log($"Client with ID {clientId} disconnected. Starting to delete its pets");
 

@@ -168,7 +168,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        this._angry = angry;
+        _angry = angry;
         if(!angry)
         {
             targetEnemy = null;
@@ -176,7 +176,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
 
         ResetBeeZapTimer();
-        AngryServerRpc(Bees.GetComponent<NetworkObject>(), angry);
+        AngryServerRpc(angry);
     }
     
     private void ResetBeeZapTimer()
@@ -189,7 +189,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     #region RPCs
 
     [ServerRpc(RequireOwnership = false)]
-    public void AngryServerRpc(NetworkObjectReference networkObjectReference, bool angry)
+    public void AngryServerRpc(bool angry)
     {
         AngryClientRpc(angry);
     }
@@ -202,7 +202,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void BeeDamageServerRPC(NetworkObjectReference networkObjectReference)
+    public void BeeDamageServerRPC(NetworkObjectReference networkObjectReference) // todo: check if targetPlayer is synced. if so, remove parameter
     {
         BeeDamageClientRpc(networkObjectReference);
     }

@@ -44,10 +44,10 @@ namespace LethalMon.Behaviours
         {
             TestBehavior = 1
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-        {
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
             new (CustomBehaviour.TestBehavior.ToString(), "Behaviour description text", OnTestBehavior)
-        };
+        ];
 
         internal override void InitCustomBehaviour(int behaviour)
         {

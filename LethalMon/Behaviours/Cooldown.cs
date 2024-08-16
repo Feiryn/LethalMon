@@ -1,17 +1,10 @@
 namespace LethalMon.Behaviours;
 
-public class Cooldown
+public class Cooldown(string id, string displayName, float cooldownTime)
 {
-    public string Id { get; private set;  }
-    
-    public string DisplayName { get; private set; }
-    
-    public float CooldownTime { get; private set; }
+    public string Id { get; private set; } = id;
 
-    public Cooldown(string id, string displayName, float cooldownTime)
-    {
-        Id = id;
-        DisplayName = displayName;
-        CooldownTime = cooldownTime;
-    }
+    public string DisplayName { get; private set; } = displayName;
+
+    public float CooldownTime { get; private set; } = cooldownTime;
 }

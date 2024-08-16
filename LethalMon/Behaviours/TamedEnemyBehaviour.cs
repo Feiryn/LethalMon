@@ -26,10 +26,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual TargetType Targets => TargetType.Alive;
 
-    internal virtual Cooldown[] Cooldowns => Array.Empty<Cooldown>();
+    internal virtual Cooldown[] Cooldowns => [];
 
     // Add your custom behaviour classes here
-    internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new Dictionary<Type, Type>
+    internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new()
     {
         { typeof(FlowermanAI),       typeof(FlowermanTamedBehaviour) },
         { typeof(RedLocustBees),     typeof(RedLocustBeesTamedBehaviour) },
@@ -107,7 +107,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     public static readonly int TamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
 
-    private Dictionary<int, Tuple<string, Action>> CustomBehaviours = new (); // List of behaviour state indices and their custom handler
+    private readonly Dictionary<int, Tuple<string, Action>> CustomBehaviours = []; // List of behaviour state indices and their custom handler
 
     // Override this to add more custom behaviours to your tamed enemy
     internal virtual List<Tuple<string, string, Action>>? CustomBehaviourHandler => null;
@@ -158,7 +158,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     // The last vanilla behaviour index for each enemy type
-    public static Dictionary<int, int> LastDefaultBehaviourIndices = new();
+    public static Dictionary<int, int> LastDefaultBehaviourIndices = [];
 
     // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
     [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
@@ -195,7 +195,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             // Behaviour states
             if (enemyAI.enemyBehaviourStates == null)
-                enemyAI.enemyBehaviourStates = Array.Empty<EnemyBehaviourState>();
+                enemyAI.enemyBehaviourStates = [];
             if (LastDefaultBehaviourIndices.ContainsKey(enemyType.enemyPrefab.GetInstanceID()))
             {
                 LethalMon.Logger.LogWarning("An enemy type (" + enemyType + " with instance ID " + enemyType.enemyPrefab.GetInstanceID() + ") is being registered but already has been registered before.");
@@ -494,10 +494,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsTamed)
         {
             Enemy.Start();
-            if (Enemy.creatureAnimator != null)
-            {
-                Enemy.creatureAnimator.SetBool("inSpawningAnimation", value: false);
-            }
+            Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
         }
         else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
         {
@@ -773,7 +770,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     #region Teleporting
     // Actions after teleporting an enemy
-    private static Dictionary<string, Action<EnemyAI, Vector3>> afterTeleportFunctions = new()
+    private static readonly Dictionary<string, Action<EnemyAI, Vector3>> afterTeleportFunctions = new()
     {
         {
             nameof(SandSpiderAI), (enemyAI, position) =>

@@ -31,11 +31,11 @@ public abstract class PokeballItem : ThrowableItem
 
     internal bool enemyCaptured = false;
 
-    private int captureStrength;
+    private readonly int captureStrength;
 
-    private BallType ballType;
+    private readonly BallType ballType;
 
-    public Dictionary<string, Tuple<float, DateTime>> cooldowns = new();
+    public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
     #endregion
 
     #region Initialization
@@ -123,11 +123,7 @@ public abstract class PokeballItem : ThrowableItem
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
                 if (ModelReplacementAPICompatibility.Enabled)
-                {
-                    var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true);
-                    if (model != null)
-                        model.SetActive(true);
-                }
+                    ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(true);
 
                 Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
                 if (Utils.IsHost)
@@ -298,11 +294,7 @@ public abstract class PokeballItem : ThrowableItem
         Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy!);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
         if (ModelReplacementAPICompatibility.Enabled)
-        {
-            var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true);
-            if (model != null)
-                model.SetActive(false);
-        }
+            ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(false);
 
         this.PlayCaptureAnimationAnimator();
     }
@@ -350,7 +342,7 @@ public abstract class PokeballItem : ThrowableItem
         PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }
 
-    public void CaptureEnd(string message)
+    public void CaptureEnd(/*string message*/)
     {
         LethalMon.Log("Capture animation end");
 

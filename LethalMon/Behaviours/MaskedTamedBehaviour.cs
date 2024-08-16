@@ -50,7 +50,7 @@ namespace LethalMon.Behaviours
         private bool _isTransferingMask = false;
         private Material[] _originalMaskMaterials = [];
         private Transform? _originalMaskParent = null;
-        private Vector3 _originalMaskLocalPosition = new Vector3(-0.01f, 0.14f, 0.22f);
+        private Vector3 _originalMaskLocalPosition = new(-0.01f, 0.14f, 0.22f);
         private float _timeWearingMask = 0f;
         private bool _isWearingMask = false;
 
@@ -80,13 +80,13 @@ namespace LethalMon.Behaviours
         private static float GhostSpawnTime => 3.5f + 1f - (GhostChaseSpeed / 3f);
         private float GhostTimeToLive => MaximumGhostLifeTime - ghostLifetime;
 
-        private List<MaskedPlayerEnemy> _spawnedGhostMimics = new List<MaskedPlayerEnemy>();
+        private readonly List<MaskedPlayerEnemy> _spawnedGhostMimics = [];
         private MaskedTamedBehaviour? _parentMimic = null;
 
         private float _aiIntervalTimeBackup = 0f;
 
         // Audio
-        internal static List<Tuple<AudioClip, AudioClip>> GhostVoices = new List<Tuple<AudioClip, AudioClip>>();
+        internal static List<Tuple<AudioClip, AudioClip>> GhostVoices = [];
         internal static AudioClip? GhostAmbientSFX = null, GhostHissSFX = null, GhostHissFastSFX = null, GhostPoofSFX = null;
 
         // Audio (Far)
@@ -343,8 +343,7 @@ namespace LethalMon.Behaviours
             if (_farAudio != null)
                 Destroy(_farAudio);
 
-            if (_parentMimic != null)
-                _parentMimic._spawnedGhostMimics.Remove(Masked);
+            _parentMimic?._spawnedGhostMimics.Remove(Masked);
 
             StopAllCoroutines();
             for (int i = _spawnedGhostMimics.Count - 1; i >= 0; i--)
@@ -451,10 +450,10 @@ namespace LethalMon.Behaviours
 
             Masked.inSpecialAnimationWithPlayer = playerWhoThrewBall;
             targetPlayer = playerWhoThrewBall;
-            StartCoroutine(MaskedEscapeFromBallCoroutine(playerWhoThrewBall));
+            StartCoroutine(MaskedEscapeFromBallCoroutine());
         }
 
-        internal IEnumerator MaskedEscapeFromBallCoroutine(PlayerControllerB playerWhoThrewBall)
+        internal IEnumerator MaskedEscapeFromBallCoroutine()
         {
             escapeFromBallEventRunning = true;
 
@@ -873,7 +872,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("originalMaskLocalPosition: " + _originalMaskLocalPosition);
             var endPosition = _originalMaskParent.transform.position + Vector3.up * _originalMaskLocalPosition.y + Masked.transform.forward * _originalMaskLocalPosition.z;
 
-            yield return StartCoroutine(RotateMaskTo(endPosition, _originalMaskParent.transform.rotation, 1f, _originalMaskParent != null ? _originalMaskParent : Masked.transform));
+            yield return StartCoroutine(RotateMaskTo(endPosition, _originalMaskParent.transform.rotation, 1f, _originalMaskParent ?? Masked.transform));
 
             if (Mask != null)
                 Mask.transform.localPosition = _originalMaskLocalPosition;

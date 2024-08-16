@@ -39,9 +39,9 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal static List<ulong> hidingPlayers = new();
+        internal static List<ulong> hidingPlayers = [];
 
-        internal List<GameObject> hidingSpores = new();
+        internal List<GameObject> hidingSpores = [];
         internal readonly int MaximumHidingSpores = 3;
         internal Vector3 lastHidingSporePosition = Vector3.zero;
 

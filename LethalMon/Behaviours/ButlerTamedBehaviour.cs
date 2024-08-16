@@ -181,10 +181,10 @@ namespace LethalMon.Behaviours
             }
             
             if (itemSpawned && !Utils.IsHost)
-                StartCoroutine(waitForGiftPresentToSpawnOnClient(itemRef, scrapValue));
+                StartCoroutine(WaitForGiftPresentToSpawnOnClient(itemRef, scrapValue));
         }
         
-        private IEnumerator waitForGiftPresentToSpawnOnClient(NetworkObjectReference netItemRef, int scrapValue)
+        private IEnumerator WaitForGiftPresentToSpawnOnClient(NetworkObjectReference netItemRef, int scrapValue)
         {
             NetworkObject? netObject = null;
             float startTime = Time.realtimeSinceStartup;

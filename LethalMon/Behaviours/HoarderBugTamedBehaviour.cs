@@ -38,11 +38,11 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         GettingItem = 1,
         BringBackItem
     }
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-    {
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    [
         new (CustomBehaviour.GettingItem.ToString(), "Saw an interesting item!", OnGettingItem),
         new (CustomBehaviour.BringBackItem.ToString(), "Brings an item to you!", OnBringBackItem)
-    };
+    ];
 
     public void OnGettingItem()
     {

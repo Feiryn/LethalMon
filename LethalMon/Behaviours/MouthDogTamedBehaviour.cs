@@ -39,10 +39,10 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         Howl = 1
     }
     
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-    {
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    [
         new (CustomBehaviour.Howl.ToString(), "Is howling!", OnHowl)
-    };
+    ];
 
     public void OnHowl()
     {
@@ -226,7 +226,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         Vector3[] positionsArray = new Vector3[1 + sidesPoints * 2];
         positionsArray[0] = destinationPoint;
 
-        Vector2 projectedDirectionOnXY = new Vector2(direction.x, direction.y);
+        Vector2 projectedDirectionOnXY = new(direction.x, direction.y);
         Vector2 perpendicular = Vector2.Perpendicular(projectedDirectionOnXY);
 
         for (int i = 1; i <= sidesPoints; ++i)
@@ -237,8 +237,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
         for (int i = 0; i < positionsArray.Length; ++i)
         {
-            RaycastHit hitInfo;
-            if (Physics.Raycast(new Ray(positionsArray[i], Vector3.down), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(new Ray(positionsArray[i], Vector3.down), out RaycastHit hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
             {
                 positionsArray[i] = hitInfo.point;
             }

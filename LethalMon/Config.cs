@@ -55,7 +55,7 @@ namespace LethalMon
             public float MaskedLendCooldown { get; set; }
         }
 
-        public ConfigValues values = new ConfigValues();
+        public ConfigValues values = new();
         
         public ConfigValues originalValues;
 
@@ -228,7 +228,7 @@ namespace LethalMon
                 Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
 
                 int writeSize = FastBufferWriter.GetWriteSize(json);
-                using FastBufferWriter writer = new FastBufferWriter(writeSize, Allocator.Temp);
+                using FastBufferWriter writer = new(writeSize, Allocator.Temp);
                 writer.WriteValueSafe(json);
                 NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(RECEIVE_MESSAGE, clientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
             }

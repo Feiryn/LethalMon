@@ -6,12 +6,12 @@ using LethalMon;
 
 class SeeThroughCustomPass : CustomPass
 {
-    public Material seeThroughMaterial = new Material( Utils.WireframeMaterial! );
+    public Material seeThroughMaterial = new(Utils.WireframeMaterial!);
     public LayerMask seeThroughLayer;
     public float maxVisibilityDistance = 20f;
 
     [SerializeField]
-    Shader stencilShader = Utils.SeeThroughShader!;
+    readonly Shader stencilShader = Utils.SeeThroughShader!;
 
     Material? stencilMaterial = null;
 
@@ -54,7 +54,7 @@ class SeeThroughCustomPass : CustomPass
         // CustomPassUtils.DrawRenderers(ctx, seeThroughLayer, RenderQueueType.All, overrideRenderState: stencilWriteRenderState);
 
         // Then we render the objects that are behind walls using the stencil buffer with Greater Equal ZTest:
-        StencilState seeThroughStencil = new StencilState(
+        StencilState seeThroughStencil = new(
             enabled: true,
             readMask: (byte)UserStencilUsage.UserBit0,
             compareFunction: CompareFunction.Equal

@@ -23,7 +23,7 @@ public class LethalMon : BaseUnityPlugin
 
     internal static GameObject? hudPrefab = null;
 
-    internal static Dictionary<string, Sprite> monstersSprites = new();
+    internal static Dictionary<string, Sprite> monstersSprites = [];
 
     private void Awake()
     {

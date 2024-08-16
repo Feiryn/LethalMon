@@ -36,7 +36,7 @@ namespace LethalMon.Behaviours
 
         private const string TeleportCooldownId = "dressgirl_tp";
     
-        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown) };
+        internal override Cooldown[] Cooldowns => [new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown)];
 
         private readonly CooldownNetworkBehaviour teleportCooldown;
 
@@ -51,11 +51,11 @@ namespace LethalMon.Behaviours
             RunningBackToOwner = 1,
             ScareThrowerAndHunt
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-        {
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
             new (CustomBehaviour.RunningBackToOwner.ToString(), "Runs back to you...", OnRunningBackToOwner),
             new (CustomBehaviour.ScareThrowerAndHunt.ToString(), "Is hunting you!", WhileScaringThrower)
-        };
+        ];
 
         internal override void InitCustomBehaviour(int behaviour)
         {

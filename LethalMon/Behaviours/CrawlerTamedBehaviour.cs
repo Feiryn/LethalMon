@@ -87,8 +87,8 @@ namespace LethalMon.Behaviours
             AfraidOfTurret = 7,
             FollowEnemy = 8
         }
-        internal override List<Tuple<string, string, Action>> CustomBehaviourHandler => new()
-        {
+        internal override List<Tuple<string, string, Action>> CustomBehaviourHandler =>
+        [
             new (CustomBehaviour.OpenSmallDoor.ToString(), "Smashes a closed door!", OpenSmallDoor),
             new (CustomBehaviour.OpenBigDoor.ToString(), "Smashes a secured door!", OnOpenBigDoor),
             new (CustomBehaviour.DisableTurret.ToString(), "Smashes a turret!", OnDisableTurret),
@@ -97,7 +97,7 @@ namespace LethalMon.Behaviours
             new (CustomBehaviour.GoToTurret.ToString(), "Saw a turret!", OnGoToTurretDoor),
             new (CustomBehaviour.AfraidOfTurret.ToString(), "Got scared by a turret!", OnAfraidOfTurret),
             new (CustomBehaviour.FollowEnemy.ToString(), "Follows an enemy...", OnFollowEnemy)
-        };
+        ];
         
         private void OpenSmallDoor()
         {

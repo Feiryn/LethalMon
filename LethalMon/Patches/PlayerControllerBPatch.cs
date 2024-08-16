@@ -18,7 +18,7 @@ public class PlayerControllerBPatch
 
     private static int currentTestEnemyTypeIndex = 0;
 
-    private static string[] testEnemyTypes = new List<string>(Data.CatchableMonsters.Keys).ToArray();
+    private static readonly string[] testEnemyTypes = new List<string>(Data.CatchableMonsters.Keys).ToArray();
     
     private static bool SentBallScanTip = false;
     
@@ -29,23 +29,22 @@ public class PlayerControllerBPatch
     
     public static void SendPetRetrievePacket(PlayerControllerB player)
     {
-        ServerRpcParams rpcParams = default(ServerRpcParams);
+        ServerRpcParams rpcParams = default;
         FastBufferWriter writer = (FastBufferWriter) player.GetType().GetMethod("__beginSendServerRpc", BindingFlags.NonPublic | BindingFlags.Instance)
-            .Invoke(player, new object[]
-            {
+            .Invoke(player,
+            [
                 346187524u,
                 rpcParams,
                 RpcDelivery.Reliable
-            });
-        NetworkObjectReference networkObject = player.GetComponent<NetworkObject>();
+            ]);
         player.GetType().GetMethod("__endSendServerRpc", BindingFlags.NonPublic | BindingFlags.Instance)
-            .Invoke(player, new object[]
-            {
+            .Invoke(player,
+            [
                 writer,
                 346187524u,
                 rpcParams,
                 RpcDelivery.Reliable
-            });
+            ]);
         LethalMon.Log("Send pet retrieve server rpc send finished");
     }
     
@@ -84,7 +83,7 @@ public class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ConnectClientToPlayerObject))]
     [HarmonyPostfix]
-    public static void ConnectPlayerPostfix(PlayerControllerB __instance)
+    public static void ConnectPlayerPostfix()
     {
         ModConfig.Instance.RetrieveBallKey.performed += RetrieveBallKeyPressed;
         ModConfig.Instance.ActionKey1.performed += ActionKey1Pressed;
@@ -118,9 +117,7 @@ public class PlayerControllerBPatch
     internal static void ActionKey1Pressed(InputAction.CallbackContext dashContext)
     {
         LethalMon.Log("ActionKey1Pressed");
-        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
-        if (tamedEnemyBehaviour != null)
-            tamedEnemyBehaviour.ActionKey1Pressed();
+        Utils.GetPlayerPet(Utils.CurrentPlayer)?.ActionKey1Pressed();
     }
 
 
@@ -197,7 +194,7 @@ public class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DamagePlayer))]
     [HarmonyPostfix]
-    private static void DamagePlayerPostfix(PlayerControllerB __instance, int damageNumber, bool hasDamageSFX, bool callRPC, CauseOfDeath causeOfDeath, int deathAnimation, bool fallDamage, Vector3 force)
+    private static void DamagePlayerPostfix(PlayerControllerB __instance/*, int damageNumber, bool hasDamageSFX, bool callRPC, CauseOfDeath causeOfDeath, int deathAnimation, bool fallDamage, Vector3 force*/)
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
 

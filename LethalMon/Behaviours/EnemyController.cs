@@ -40,7 +40,7 @@ namespace LethalMon.Behaviours
         internal float EnemyStaminaUseMultiplier = 1f;
         internal Vector3 EnemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
 
-        private InputAction _moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
+        private readonly InputAction _moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
 
         // Trigger
         internal virtual float ControlTriggerHoldTime => 1f;

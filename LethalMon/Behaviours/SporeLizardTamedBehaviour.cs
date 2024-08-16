@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace LethalMon.Behaviours
 {
@@ -25,7 +24,7 @@ namespace LethalMon.Behaviours
         internal override bool Controllable => true;
         internal const float RidingTriggerHoldTime = 1f;
 
-        private InteractTrigger? _ridingTrigger = null;
+        private readonly InteractTrigger? _ridingTrigger = null;
 
         private bool _nightVisionPreviouslyEnabled = false;
 

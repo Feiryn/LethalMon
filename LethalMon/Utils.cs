@@ -15,7 +15,7 @@ namespace LethalMon;
 
 public class Utils
 {
-    public static readonly Random Random = new Random();
+    public static readonly Random Random = new();
 
     public static void CallNextFrame(Action action) => GameNetworkManager.Instance.StartCoroutine(CallNextFrameCoroutine(action));
 
@@ -80,7 +80,7 @@ public class Utils
         return null;
     }
     
-    private static Dictionary<string, TerminalNode> infoNodes = new Dictionary<string, TerminalNode>();
+    private static readonly Dictionary<string, TerminalNode> infoNodes = [];
     
     public static TerminalNode CreateTerminalNode(string name, string description)
     {
@@ -95,7 +95,7 @@ public class Utils
         return node;
     }
     
-    public static Vector3 GetRandomNavMeshPositionOnRadius(Vector3 pos, float radius, NavMeshHit navHit = default(NavMeshHit))
+    public static Vector3 GetRandomNavMeshPositionOnRadius(Vector3 pos, float radius, NavMeshHit navHit = default)
     {
             float y = pos.y;
             pos = UnityEngine.Random.onUnitSphere * radius + pos;
@@ -386,13 +386,13 @@ public class Utils
     public static Shader? SeeThroughShader;
 
     public static readonly Color EnemyHighlightOutline = Color.red;
-    public static readonly Color EnemyHighlightInline = new Color(0.8f, 0f, 0f, 0.8f);
+    public static readonly Color EnemyHighlightInline = new(0.8f, 0f, 0f, 0.8f);
 
     public static readonly Color ItemHighlightOutline = Color.yellow;
-    public static readonly Color ItemHighlightInline = new Color(0.8f, 0.8f, 0f, 0.5f);
+    public static readonly Color ItemHighlightInline = new(0.8f, 0.8f, 0f, 0.5f);
 
     public static readonly Color PlayerHighlightOutline = Color.green;
-    public static readonly Color PlayerHighlightInline = new Color(0f, 0.8f, 0f, 0.6f);
+    public static readonly Color PlayerHighlightInline = new(0f, 0.8f, 0f, 0.6f);
 
     /* WIREFRAME
      * Properties: _EdgeColor, _MainColor, _WireframeVal, _MaxVisibilityDistance
@@ -421,17 +421,19 @@ public class Utils
         {
             if (_glassMaterial == null)
             {
-                _glassMaterial = new Material(Shader.Find("HDRP/Lit"));
-                _glassMaterial.color = new Color(0.5f, 0.5f, 0.6f, 0.6f);
-                _glassMaterial.renderQueue = 3300;
-                _glassMaterial.shaderKeywords = [
-                    "_SURFACE_TYPE_TRANSPARENT",
-                    "_DISABLE_SSR_TRANSPARENT",
-                    "_REFRACTION_THIN",
-                    "_NORMALMAP_TANGENT_SPACE",
-                    "_ENABLE_FOG_ON_TRANSPARENT"
-                ];
-                _glassMaterial.name = GlassName;
+                _glassMaterial = new Material(Shader.Find("HDRP/Lit"))
+                {
+                    color = new Color(0.5f, 0.5f, 0.6f, 0.6f),
+                    renderQueue = 3300,
+                    shaderKeywords = [
+                        "_SURFACE_TYPE_TRANSPARENT",
+                        "_DISABLE_SSR_TRANSPARENT",
+                        "_REFRACTION_THIN",
+                        "_NORMALMAP_TANGENT_SPACE",
+                        "_ENABLE_FOG_ON_TRANSPARENT"
+                    ],
+                    name = GlassName
+                };
             }
             return _glassMaterial;
         }
@@ -460,8 +462,10 @@ public class Utils
         {
             if (_ghostEyesMaterial == null)
             {
-                _ghostEyesMaterial = new Material(Shader.Find("HDRP/Unlit"));
-                _ghostEyesMaterial.color = new Color(0.8f, 0.9f, 1f);
+                _ghostEyesMaterial = new Material(Shader.Find("HDRP/Unlit"))
+                {
+                    color = new Color(0.8f, 0.9f, 1f)
+                };
             }
 
             return _ghostEyesMaterial;
