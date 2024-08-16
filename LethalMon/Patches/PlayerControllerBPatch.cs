@@ -170,11 +170,20 @@ public class PlayerControllerBPatch
 
         if (tamedBehaviour != null && tamedBehaviour.CanBeTeleported())
         {
-            LethalMon.Log("Teleport tamed enemy to " + pos);
+            var position = pos;
+            LethalMon.Log("Teleport tamed enemy to " + position);
             tamedBehaviour.Enemy.agent.enabled = false;
-            tamedBehaviour.Enemy.transform.position = pos;
-            tamedBehaviour.Enemy.agent.enabled = true;
-            tamedBehaviour.Enemy.serverPosition = pos;
+            var isControlled = tamedBehaviour.TryGetComponent(out EnemyController controller) && controller.IsPlayerControlled;
+            if(isControlled)
+            {
+                position += controller.EnemyOffsetWhileControlling;
+                position.y += __instance.transform.localScale.y;
+            }
+            tamedBehaviour.Enemy.transform.position = position;
+
+            if(!controller.EnemyCanFly)
+                tamedBehaviour.Enemy.agent.enabled = true;
+            tamedBehaviour.Enemy.serverPosition = position;
             tamedBehaviour.Enemy.SetEnemyOutside(!__instance.isInsideFactory);
         }
     }
