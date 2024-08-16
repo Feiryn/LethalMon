@@ -62,6 +62,7 @@ namespace LethalMon.Patches
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
                 SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Flowerman);
+                */
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)

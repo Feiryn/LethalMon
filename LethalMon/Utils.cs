@@ -259,6 +259,27 @@ public class Utils
 
         return true;
     }
+
+    public static EnemyAI? SpawnEnemyAtPosition(Enemy enemy, Vector3 position)
+    {
+        var enemyName = enemy.ToString();
+        var enemyType = EnemyTypes.Where((e) => e.name == enemyName).FirstOrDefault();
+        if (enemyType?.enemyPrefab == null)
+        {
+            LethalMon.Log("Unable to spawn enemy with name \"" + enemyName + "\". Enemy prefab not found.");
+            return null;
+        }
+
+        LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
+        GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, position, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
+        gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+        var enemyAI = gameObject.GetComponent<EnemyAI>();
+        RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
+        enemyAI.enabled = StartOfRound.Instance.testRoom == null;
+        enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || position.y > -50f);
+
+        return enemyAI;
+    }
     #endregion
 
     #region LayerMasks
