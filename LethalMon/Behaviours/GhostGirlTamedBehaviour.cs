@@ -221,10 +221,10 @@ namespace LethalMon.Behaviours
 
         #region Action Keys
 #if DEBUG
-        private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Teleport to Ghost Girl" }
-        };
+        private readonly List<ActionKey> _actionKeys =
+        [
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Teleport to Ghost Girl" }
+        ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
         internal override void ActionKey1Pressed()

@@ -73,10 +73,10 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Action Keys
-        private List<ActionKey> _actionKeys = new List<ActionKey>()
-        {
-            new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Action description here" }
-        };
+        private readonly List<ActionKey> _actionKeys =
+        [
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Action description here" }
+        ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
         internal override void ActionKey1Pressed()

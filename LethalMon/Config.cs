@@ -233,7 +233,8 @@ namespace LethalMon
                 NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(RECEIVE_MESSAGE, clientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
             }
 
-            public static void HostConfigReceived(ulong clientId, /* ref */ FastBufferReader reader) // todo: check if ref can be added to avoid warning
+            [System.Diagnostics.CodeAnalysis.SuppressMessage("Method Declaration", "Harmony003:Harmony non-ref patch parameters modified", Justification = "Not an issue")]
+            public static void HostConfigReceived(ulong clientId, FastBufferReader reader)
             {
                 reader.ReadValueSafe(out string json);
                 Debug.Log("Received host config: " + json);

@@ -296,28 +296,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal class ActionKey
     {
-        internal InputAction? actionKey { get; set; } = null;
-        internal string description { get; set; } = "";
-        internal bool visible { get; set; } = false;
+        internal InputAction? Key { get; set; } = null;
+        internal string Description { get; set; } = "";
+        internal bool Visible { get; set; } = false;
 
-        internal string Control => actionKey == null ? "" : actionKey.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
-        internal string ControlTip => $"{description}: [{Control}]";
+        internal string Control => Key == null ? "" : Key.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
+        internal string ControlTip => $"{Description}: [{Control}]";
     }
 
-    /* TEMPLATE
-    private List<ActionKey> _actionKeys = new List<ActionKey>()
-    {
-        new ActionKey() { actionKey = ModConfig.Instance.ActionKey1, description = "Event one" }
-    };
-    internal override List<ActionKey> ActionKeys => _actionKeys;*/
-    internal virtual List<ActionKey> ActionKeys => new();
+    internal virtual List<ActionKey> ActionKeys => [];
 
     internal void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
     {
-        var keys = ActionKeys.Where((ak) => ak.actionKey == actionKey);
+        var keys = ActionKeys.Where((ak) => ak.Key == actionKey);
         if (keys.Any())
         {
-            keys.First().visible = enable;
+            keys.First().Visible = enable;
             ShowVisibleActionKeyControlTips();
         }
     }
@@ -326,7 +320,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         HUDManager.Instance.ClearControlTips();
 
-        var controlTips = ActionKeys.Where((ak) => ak.visible).Select((ak) => ak.ControlTip).ToArray();
+        var controlTips = ActionKeys.Where((ak) => ak.Visible).Select((ak) => ak.ControlTip).ToArray();
         HUDManager.Instance.ChangeControlTipMultiple(
                 controlTips,
                 holdingItem: Utils.CurrentPlayer.currentlyHeldObjectServer != null,
