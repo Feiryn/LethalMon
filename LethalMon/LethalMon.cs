@@ -21,7 +21,7 @@ public class LethalMon : BaseUnityPlugin
     internal new static ManualLogSource Logger { get; private set; } = null!;
     internal static Harmony? Harmony { get; set; }
 
-    internal static GameObject hudPrefab;
+    internal static GameObject? hudPrefab = null;
 
     internal static Dictionary<string, Sprite> monstersSprites = new();
 

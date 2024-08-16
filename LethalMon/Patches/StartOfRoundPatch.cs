@@ -22,9 +22,9 @@ public class StartOfRoundPatch
             LethalMon.Log("Player is in hangar ship room: " + tamedBehaviour.ownerPlayer.isInHangarShipRoom);
             if (tamedBehaviour.ownerPlayer.isInHangarShipRoom)
             {
-                PokeballItem pokeballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
+                var pokeballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
                 tamedBehaviour.ownerPlayer.SetItemInElevator(true, true, pokeballItem);
-                pokeballItem.transform.SetParent(__instance.elevatorTransform, worldPositionStays: true);
+                pokeballItem?.transform.SetParent(__instance.elevatorTransform, worldPositionStays: true);
             }
         }
     }
@@ -39,7 +39,7 @@ public class StartOfRoundPatch
 
         foreach (TamedEnemyBehaviour tamedBehaviour in tamedBehaviours)
         {
-            if (tamedBehaviour.ownClientId == clientId)
+            if (tamedBehaviour.OwnerID == clientId)
             {
                 LethalMon.Log($"Found {tamedBehaviour.Enemy.enemyType.name}, retrieving in ball");
 

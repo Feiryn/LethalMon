@@ -8,16 +8,24 @@ namespace LethalMon.Behaviours
     internal class TulipSnakeTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
+        internal FlowerSnakeEnemy? _tulipSnake = null;
+        internal FlowerSnakeEnemy TulipSnake
+        {
+            get
+            {
+                if (_tulipSnake == null)
+                    _tulipSnake = (Enemy as FlowerSnakeEnemy)!;
+
+                return _tulipSnake;
+            }
+        }
+
         internal override bool Controllable => true;
-
-        internal FlowerSnakeEnemy tulipSnake { get; private set; }
-
-        internal InteractTrigger? flyingTrigger = null;
+        private InteractTrigger? _flyingTrigger = null;
 
         internal bool IsFlying => CurrentCustomBehaviour == (int)CustomBehaviour.Flying;
-        internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
 
-        internal EnemyController? controller = null;
+        private EnemyController? _controller = null;
         #endregion
 
         #region Custom behaviours
@@ -25,33 +33,32 @@ namespace LethalMon.Behaviours
         {
             Flying = 1,
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-        {
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
             new Tuple<string, string, Action>(CustomBehaviour.Flying.ToString(), "Is flying with you...", WhileFlying),
-        };
+        ];
 
         void WhileFlying()
         {
-            tulipSnake.CalculateAnimationSpeed();
-            //tulipSnake.SetClingingAnimationPosition();
+            TulipSnake.CalculateAnimationSpeed();
 
             if (Utils.IsHost)
             {
-                bool flying = !Physics.Raycast(new Ray(ownerPlayer!.transform.position, Vector3.down), out _, ownerPlayer!.transform.localScale.y / 2f + 0.03f, ownerPlayer!.walkableSurfacesNoPlayersMask /*StartOfRound.Instance.allPlayersCollideWithMask*/, QueryTriggerInteraction.Ignore);
+                bool flying = !Physics.Raycast(new Ray(ownerPlayer!.transform.position, Vector3.down), out _, ownerPlayer!.transform.localScale.y / 2f + 0.03f, ownerPlayer!.walkableSurfacesNoPlayersMask, QueryTriggerInteraction.Ignore);
                 if (flying)
                 {
-                    if (!tulipSnake.flapping)
+                    if (!TulipSnake.flapping)
                     {
-                        tulipSnake.SetFlappingLocalClient(setFlapping: true, isMainSnake: true);
-                        tulipSnake.SetFlappingClientRpc(setFlapping: true);
+                        TulipSnake.SetFlappingLocalClient(setFlapping: true, isMainSnake: true);
+                        TulipSnake.SetFlappingClientRpc(setFlapping: true);
                     }
                 }
                 else
                 {
-                    if (tulipSnake.flapping)
+                    if (TulipSnake.flapping)
                     {
-                        tulipSnake.SetFlappingLocalClient(setFlapping: false, isMainSnake: true);
-                        tulipSnake.SetFlappingClientRpc(setFlapping: false);
+                        TulipSnake.SetFlappingLocalClient(setFlapping: false, isMainSnake: true);
+                        TulipSnake.SetFlappingClientRpc(setFlapping: false);
                     }
                 }
             }
@@ -70,9 +77,9 @@ namespace LethalMon.Behaviours
             if(Utils.IsHost)
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
-            tulipSnake.flapping = false;
-            tulipSnake.SetFlappingLocalClient(false);
-            tulipSnake.SetFlappingClientRpc(false);
+            TulipSnake.flapping = false;
+            TulipSnake.SetFlappingLocalClient(false);
+            TulipSnake.SetFlappingClientRpc(false);
         }
 
         internal void OnMove(Vector3 direction)
@@ -85,44 +92,33 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-
-        void Start()
+        internal override void Start()
         {
             base.Start();
             
-            tulipSnake = (Enemy as FlowerSnakeEnemy)!;
-            
-            if (ownerPlayer != null)
+            if (IsTamed)
             {
-                tulipSnake.creatureVoice.volume = 0f;
-                tulipSnake.SetFlappingLocalClient(false);
+                TulipSnake.creatureVoice.volume = 0f;
+                TulipSnake.SetFlappingLocalClient(false);
             }
         }
         
-        void Awake()
+        internal override void Awake()
         {
-            tulipSnake = (Enemy as FlowerSnakeEnemy)!;
+            base.Awake();
 
-            if (TryGetComponent(out controller) && controller != null)
+            if (TryGetComponent(out _controller) && _controller != null)
             {
-                controller.OnStartControlling = OnStartFlying;
-                controller.OnStopControlling = OnStopFlying;
-                controller.OnMove = OnMove;
-
-                controller.EnemyCanFly = true;
-                controller.OnJump = OnJump;
-                controller.EnemySpeedOutside = 8f;
-                controller.EnemyDuration = 3f;
-                controller.EnemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
-                controller.EnemyStaminaUseMultiplier = 1.5f;
-
-                // Debug
-                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-                isOutsideOfBall = true;
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-                controller!.enemy = GetComponent<EnemyAI>();
-                controller!.AddTrigger("Fly");
-                controller!.SetControlTriggerVisible(true);*/
+                _controller.OnStartControlling = OnStartFlying;
+                _controller.OnStopControlling = OnStopFlying;
+                _controller.OnMove = OnMove;
+                
+                _controller.EnemyCanFly = true;
+                _controller.OnJump = OnJump;
+                _controller.EnemySpeedOutside = 8f;
+                _controller.EnemyDuration = 3f;
+                _controller.EnemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
+                _controller.EnemyStaminaUseMultiplier = 1.5f;
             }
         }
 
@@ -135,34 +131,32 @@ namespace LethalMon.Behaviours
         {
             base.OnCallFromBall();
 
-            if(flyingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
-                controller!.AddTrigger("Fly");
+            if(_flyingTrigger == null && IsOwnerPlayer)
+                _controller!.AddTrigger("Fly");
 
-            controller!.SetControlTriggerVisible();
+            _controller!.SetControlTriggerVisible();
         }
 
         internal override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
             
-            controller!.SetControlTriggerVisible(false);
+            _controller!.SetControlTriggerVisible(false);
         }
 
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
-            if(!tulipSnake.flapping)
+            if(!TulipSnake.flapping)
             {
-                tulipSnake.clingPosition = 0;
-                tulipSnake.creatureAnimator.SetInteger("clingType", 0);
-                tulipSnake.SetFlappingLocalClient(false);
+                TulipSnake.clingPosition = 0;
+                TulipSnake.creatureAnimator.SetInteger("clingType", 0);
+                TulipSnake.SetFlappingLocalClient(false);
             }
             
-            //Enemy!.transform.position = new Vector3(Enemy!.transform.position.x, ownerPlayer!.gameplayCamera.transform.position.y, Enemy!.transform.position.z);
-
-            tulipSnake.CalculateAnimationSpeed(0.5f);
-            tulipSnake.DoChuckleOnInterval();
+            TulipSnake.CalculateAnimationSpeed(0.5f);
+            TulipSnake.DoChuckleOnInterval();
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -174,37 +168,37 @@ namespace LethalMon.Behaviours
                 if (playerWhoThrewBall == null || !playerWhoThrewBall.isPlayerControlled ||
                     playerWhoThrewBall.isPlayerDead) return;
 
-                var distance = Vector3.Distance(playerWhoThrewBall.transform.position, tulipSnake.transform.position);
+                var distance = Vector3.Distance(playerWhoThrewBall.transform.position, TulipSnake.transform.position);
                 if (distance > 50f) return;
 
                 var hasLineOfSight =
-                    tulipSnake.CheckLineOfSightForPosition(playerWhoThrewBall.transform.position, 180f);
+                    TulipSnake.CheckLineOfSightForPosition(playerWhoThrewBall.transform.position, 180f);
 
                 LethalMon.Log("TulipSnake.OnEscapedFromBall distance: " + distance + " / LOS: " + hasLineOfSight);
                 if (distance > 15f || !hasLineOfSight)
                 {
                     // DOAIInterval case 0
-                    tulipSnake.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
-                    tulipSnake.timeSinceSeeingTarget = 0f;
-                    tulipSnake.SwitchToBehaviourServerRpc(1);
+                    TulipSnake.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
+                    TulipSnake.timeSinceSeeingTarget = 0f;
+                    TulipSnake.SwitchToBehaviourServerRpc(1);
                     return;
                 }
 
                 // DOAIInterval case 1
-                tulipSnake.targetPlayer = playerWhoThrewBall;
-                Vector3 vector = tulipSnake.targetPlayer.transform.position - base.transform.position;
+                TulipSnake.targetPlayer = playerWhoThrewBall;
+                Vector3 vector = TulipSnake.targetPlayer.transform.position - base.transform.position;
                 vector += UnityEngine.Random.insideUnitSphere * UnityEngine.Random.Range(0.05f, 0.15f);
                 vector.y = Mathf.Clamp(vector.y, -16f, 16f);
                 vector = Vector3.Normalize(vector * 1000f);
-                tulipSnake.StartLeapOnLocalClient(vector);
-                tulipSnake.StartLeapClientRpc(vector);
+                TulipSnake.StartLeapOnLocalClient(vector);
+                TulipSnake.StartLeapClientRpc(vector);
             }
         }
         
         public override void OnDestroy()
         {
-            controller!.StopControlling(true);
-            Destroy(controller!);
+            _controller!.StopControlling(true);
+            Destroy(_controller!);
             
             base.OnDestroy();
         }

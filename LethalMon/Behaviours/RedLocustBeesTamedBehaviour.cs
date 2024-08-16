@@ -9,9 +9,19 @@ namespace LethalMon.Behaviours;
 public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
-    internal RedLocustBees bees { get; private set; }
+    internal RedLocustBees? _bees = null;
+    internal RedLocustBees Bees
+    {
+        get
+        {
+            if (_bees == null)
+                _bees = (Enemy as RedLocustBees)!;
 
-    public bool angry = false;
+            return _bees;
+        }
+    }
+
+    private bool _angry = false;
     #endregion
 
     #region Base Methods
@@ -26,30 +36,26 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.Start();
 
-        bees = (Enemy as RedLocustBees)!;
-        if (bees == null)
-            bees = gameObject.AddComponent<RedLocustBees>();
-
-        if (this.ownerPlayer == null) return;
+        if (!IsTamed) return;
         
-        if(bees.agent != null)
-            bees.agent.speed = 10.3f;
+        if(Bees.agent != null)
+            Bees.agent.speed = 10.3f;
             
-        bees.beesIdle.volume = 0.2f;
-        bees.beesDefensive.volume = 0.2f;
-        bees.beesAngry.Stop();
-        bees.beeZapAudio.Stop();
-        bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make it smaller
+        Bees.beesIdle.volume = 0.2f;
+        Bees.beesDefensive.volume = 0.2f;
+        Bees.beesAngry.Stop();
+        Bees.beeZapAudio.Stop();
+        Bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make them stick tighter together
     }
 
     internal override void OnTamedDefending()
     {
-        if (!angry)
+        if (!_angry)
             ChangeAngryMode(true);
 
         if (targetPlayer != null)
         {
-            float distance = Vector3.Distance(targetPlayer.transform.position, bees.transform.position);
+            float distance = Vector3.Distance(targetPlayer.transform.position, Bees.transform.position);
             LethalMon.Log("Distance to player: " + distance);
             if (targetPlayer.isPlayerDead || !targetPlayer.isPlayerControlled || distance > 25f)
             {
@@ -68,15 +74,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             else
             {
                 LethalMon.Log("Follow player");
-                bees.SetDestinationToPosition(targetPlayer.transform.position);
+                Bees.SetDestinationToPosition(targetPlayer.transform.position);
                 return;
             }
         }
-        else if (targetEnemy != null)
+        else if (HasTargetEnemy)
         {
-            float distance = Vector3.Distance(targetEnemy.transform.position, bees.transform.position);
+            float distance = DistanceToTargetEnemy;
             LethalMon.Log("Distance to enemy: " + distance);
-            if (targetEnemy.isEnemyDead || distance > 25f)
+            if (targetEnemy!.isEnemyDead || distance > 25f)
             {
                 LethalMon.Log("Stop targeting enemy");
                 targetEnemy = null;
@@ -93,7 +99,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             else
             {
                 LethalMon.Log("Follow enemy");
-                bees.SetDestinationToPosition(targetEnemy.transform.position);
+                Bees.SetDestinationToPosition(targetEnemy.transform.position);
                 return;
             }
         }
@@ -107,9 +113,9 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
         if (Utils.IsHost)
         {
-            bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
-            bees.SwitchToBehaviourState(2);
-            RedLocustBeesPatch.AngryUntil.Add(bees.GetInstanceID(),
+            Bees.SetMovingTowardsTargetPlayer(playerWhoThrewBall);
+            Bees.SwitchToBehaviourState(2);
+            RedLocustBeesPatch.AngryUntil.Add(Bees.GetInstanceID(),
                 DateTime.Now.AddSeconds(10)); // todo: solve locally here instead of patch
         }
     }
@@ -118,40 +124,40 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     #region Methods
     private void BeesZapOnTimer()
     {
-        if (!angry)
+        if (!_angry)
             return;
 
-        if (bees.beeZapRandom == null)
-            bees.beeZapRandom = new System.Random();
+        if (Bees.beeZapRandom == null)
+            Bees.beeZapRandom = new System.Random();
 
-        if (bees.beesZapCurrentTimer > bees.beesZapTimer)
+        if (Bees.beesZapCurrentTimer > Bees.beesZapTimer)
         {
-            bees.beesZapCurrentTimer = 0f;
-            bees.beesZapTimer = bees.beeZapRandom.Next(1, 7) * 0.06f;
+            Bees.beesZapCurrentTimer = 0f;
+            Bees.beesZapTimer = Bees.beeZapRandom.Next(1, 7) * 0.06f;
             BeesZap();
         }
         else
         {
-            bees.beesZapCurrentTimer += Time.deltaTime;
+            Bees.beesZapCurrentTimer += Time.deltaTime;
         }
     }
     
     public void BeesZap()
     {
-        if (bees.beeParticles.GetBool("Alive"))
+        if (Bees.beeParticles.GetBool("Alive"))
         {
-            if (bees.beeZapRandom == null)
-                bees.beeZapRandom = new System.Random();
+            if (Bees.beeZapRandom == null)
+                Bees.beeZapRandom = new System.Random();
 
-            for (int i = 0; i < bees.lightningPoints.Length; i++)
+            for (int i = 0; i < Bees.lightningPoints.Length; i++)
             {
-                bees.lightningPoints[i].transform.position = RoundManager.Instance.GetRandomPositionInBoxPredictable(bees.beeParticlesTarget.transform.position, 4f, bees.beeZapRandom);
+                Bees.lightningPoints[i].transform.position = RoundManager.Instance.GetRandomPositionInBoxPredictable(Bees.beeParticlesTarget.transform.position, 4f, Bees.beeZapRandom);
             }
-            bees.lightningComponent.Trigger(0.1f);
+            Bees.lightningComponent.Trigger(0.1f);
         }
 
-        bees.beeZapAudio.pitch = UnityEngine.Random.Range(0.8f, 1.1f);
-        bees.beeZapAudio.PlayOneShot(bees.enemyType.audioClips[UnityEngine.Random.Range(0, bees.enemyType.audioClips.Length)], UnityEngine.Random.Range(0.6f, 1f));
+        Bees.beeZapAudio.pitch = UnityEngine.Random.Range(0.8f, 1.1f);
+        Bees.beeZapAudio.PlayOneShot(Bees.enemyType.audioClips[UnityEngine.Random.Range(0, Bees.enemyType.audioClips.Length)], UnityEngine.Random.Range(0.6f, 1f));
     }
 
     public void ChangeAngryMode(bool angry)
@@ -162,7 +168,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        this.angry = angry;
+        this._angry = angry;
         if(!angry)
         {
             targetEnemy = null;
@@ -170,13 +176,13 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
 
         ResetBeeZapTimer();
-        AngryServerRpc(bees.GetComponent<NetworkObject>(), angry);
+        AngryServerRpc(Bees.GetComponent<NetworkObject>(), angry);
     }
     
     private void ResetBeeZapTimer()
     {
-        bees.beesZapCurrentTimer = 0f;
-        bees.beeZapAudio.Stop();
+        Bees.beesZapCurrentTimer = 0f;
+        Bees.beeZapAudio.Stop();
     }
     #endregion
 
@@ -191,7 +197,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     [ClientRpc]
     public void AngryClientRpc(bool angry)
     {
-        this.angry = angry;
+        _angry = angry;
         ResetBeeZapTimer();
     }
 
@@ -207,13 +213,13 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         LethalMon.Log("BeeDamage client rpc received");
         if (!networkObjectReference.TryGet(out NetworkObject networkObject))
         {
-            LethalMon.Log(bees.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)", LethalMon.LogType.Error);
+            LethalMon.Log(Bees.gameObject.name + ": Failed to get network object from network object reference (BeeDamageClientRpc RPC)", LethalMon.LogType.Error);
             return;
         }
 
         if(!networkObject.TryGetComponent( out PlayerControllerB player))
         {
-            LethalMon.Log(bees.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)", LethalMon.LogType.Error  );
+            LethalMon.Log(Bees.gameObject.name + ": Failed to get player object (BeeDamageClientRpc RPC)", LethalMon.LogType.Error  );
             return;
         }
 

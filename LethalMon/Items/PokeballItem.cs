@@ -80,9 +80,10 @@ public abstract class PokeballItem : ThrowableItem
 #if DEBUG
         base.ItemActivate(used, buttonDown);
         return;
-#endif
+#else
         if (StartOfRound.Instance.shipHasLanded || StartOfRound.Instance.testRoom != null)
             base.ItemActivate(used, buttonDown);
+#endif
     }
 
     private void OnTriggerEnter(Collider other)
@@ -96,7 +97,7 @@ public abstract class PokeballItem : ThrowableItem
 
         EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
         TamedEnemyBehaviour? behaviour = other.GetComponentInParent<TamedEnemyBehaviour>();
-        if (enemyToCapture == null || enemyToCapture.isEnemyDead || behaviour == null || behaviour.ownerPlayer != null) return;
+        if (enemyToCapture == null || enemyToCapture.isEnemyDead || behaviour == null || behaviour.IsTamed) return;
 
         if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
                 out CatchableEnemy.CatchableEnemy catchable))
@@ -128,7 +129,7 @@ public abstract class PokeballItem : ThrowableItem
                         model.SetActive(true);
                 }
 
-                Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower);
+                Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
                 if (Utils.IsHost)
                 {
                     if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
@@ -258,7 +259,7 @@ public abstract class PokeballItem : ThrowableItem
             SetCaughtEnemy(type);
         }
     }
-    #endregion
+#endregion
 
     #region CaptureAnimation
 
@@ -294,7 +295,7 @@ public abstract class PokeballItem : ThrowableItem
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
         
-        Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy);
+        Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy!);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
         if (ModelReplacementAPICompatibility.Enabled)
         {
@@ -365,7 +366,7 @@ public abstract class PokeballItem : ThrowableItem
         {
             LethalMon.Log("Capture success");
 
-            this.SetCaughtEnemyServerRpc(this.enemyType.name);
+            this.SetCaughtEnemyServerRpc(this.enemyType!.name);
 
             this.playerThrownBy = null;
             this.FallToGround();
@@ -440,7 +441,6 @@ public abstract class PokeballItem : ThrowableItem
         }
 
         tamedBehaviour.ownerPlayer = ownerPlayer;
-        tamedBehaviour.ownClientId = ownerPlayer.playerClientId;
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
         tamedBehaviour.OnCallFromBall();

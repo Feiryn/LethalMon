@@ -10,8 +10,17 @@ namespace LethalMon.Behaviours;
 public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
-    
-    internal NutcrackerEnemyAI nutcracker { get; private set; }
+    internal NutcrackerEnemyAI? _nutcracker = null;
+    internal NutcrackerEnemyAI Nutcracker
+    {
+        get
+        {
+            if (_nutcracker == null)
+                _nutcracker = (Enemy as NutcrackerEnemyAI)!;
+
+            return _nutcracker;
+        }
+    }
 
     internal override string DefendingBehaviourDescription => "Shoots at an enemy!";
     #endregion
@@ -22,49 +31,49 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         LookForPlayer = 1,
         Rampage = 2
     }
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-    {
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    [
         new Tuple<string, string, Action>(CustomBehaviour.LookForPlayer.ToString(), "Is looking for you!", OnLookForPlayer),
         new Tuple<string, string, Action>(CustomBehaviour.Rampage.ToString(), "Is on a rampage!", OnRampage)
-    };
+    ];
 
     void OnRampage() { }
 
     void OnLookForPlayer()
     {
         Vector3 targetPlayerPos = targetPlayer!.transform.position;
-        float distanceToPlayer = Vector3.Distance(nutcracker.transform.position, targetPlayerPos);
+        float distanceToPlayer = Vector3.Distance(Nutcracker.transform.position, targetPlayerPos);
         if (distanceToPlayer > 50f)
         {
             SwitchToDefaultBehaviour(0);
         }
         else if (distanceToPlayer < 5f && !Physics.Linecast(transform.position, targetPlayerPos, out _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
         {
-            nutcracker.SetDestinationToPosition(nutcracker.transform.position);
+            Nutcracker.SetDestinationToPosition(Nutcracker.transform.position);
             SwitchToCustomBehaviour((int) CustomBehaviour.Rampage);
             StartCoroutine(RampageCoroutine());
         }
         else
         {
-            nutcracker.SetTargetDegreesToPosition(targetPlayerPos);
+            Nutcracker.SetTargetDegreesToPosition(targetPlayerPos);
             SetTorsoTargetDegreesServerRPC();
-            nutcracker.SetDestinationToPosition(targetPlayerPos);
+            Nutcracker.SetDestinationToPosition(targetPlayerPos);
         }
     }
     
     internal IEnumerator RampageCoroutine()
     {
-        nutcracker.torsoTurnSpeed = float.MaxValue;
+        Nutcracker.torsoTurnSpeed = float.MaxValue;
         int initialAngle = (int) Quaternion.LookRotation(targetPlayer!.transform.position).eulerAngles.x;
         for (int degrees = 0; degrees < 360; degrees += 10)
         {
-            nutcracker.targetTorsoDegrees = (initialAngle + degrees - 90 /* Initial nutcracker rotation is 90 degrees */) % 360;
+            Nutcracker.targetTorsoDegrees = (initialAngle + degrees - 90 /* Initial nutcracker rotation is 90 degrees */) % 360;
             SetTorsoTargetDegreesServerRPC();
             yield return new WaitForSeconds(0.05f);
-            nutcracker.FireGunServerRpc();
+            Nutcracker.FireGunServerRpc();
         }
 
-        nutcracker.gun.shellsLoaded = 2;
+        Nutcracker.gun.shellsLoaded = 2;
         
         SwitchToDefaultBehaviour(0);
     }
@@ -83,18 +92,18 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         if (behaviour == TamingBehaviour.TamedDefending)
         {
             LethalMon.Log("Enter defending mode");
-            nutcracker.creatureAnimator.SetInteger("State", 1);
-            if (Utils.IsHost && targetEnemy != null)
+            Nutcracker.creatureAnimator.SetInteger("State", 1);
+            if (Utils.IsHost && HasTargetEnemy)
             {
-                nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);   
+                Nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);   
                 SetTorsoTargetDegreesServerRPC();
             }
         }
-        else if (nutcracker != null && nutcracker.creatureVoice != null)
+        else if (Nutcracker != null && Nutcracker.creatureVoice != null)
         {
             LethalMon.Log("Enter following mode");
-            nutcracker.creatureVoice.Stop();
-            nutcracker.creatureAnimator.SetInteger("State", 0);
+            Nutcracker.creatureVoice.Stop();
+            Nutcracker.creatureAnimator.SetInteger("State", 0);
         }
     }
     
@@ -104,15 +113,15 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedDefending();
         
-        if (nutcracker is { aimingGun: false, reloadingGun: false, torsoTurning: false })
+        if (Nutcracker is { aimingGun: false, reloadingGun: false, torsoTurning: false })
         {
             LethalMon.Log("Is not aiming nor reloading.");
-            if (targetEnemy != null && !targetEnemy.isEnemyDead && targetEnemy.agent.enabled && nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
+            if (HasTargetEnemy && !targetEnemy!.isEnemyDead && targetEnemy.agent.enabled && Nutcracker.CheckLineOfSightForPosition(targetEnemy.transform.position, 70f, 60, 1f))
             {
                 LethalMon.Log(targetEnemy + " is in LOS, aiming gun");
-                nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);
+                Nutcracker.SetTargetDegreesToPosition(targetEnemy!.transform.position);
                 SetTorsoTargetDegreesServerRPC();
-                nutcracker.AimGunServerRpc(targetEnemy!.transform.position);
+                Nutcracker.AimGunServerRpc(targetEnemy!.transform.position);
             }
             else
             {
@@ -127,29 +136,25 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 
     #region Base Methods
 
-    void Start()
+    internal override void Start()
     {
         base.Start();
-            
-        nutcracker = (Enemy as NutcrackerEnemyAI)!;
 
-        if (ownerPlayer != null)
-        {
-            nutcracker.creatureVoice.volume = 0.5f;
-        }
+        if (IsTamed)
+            Nutcracker.creatureVoice.volume = 0.5f;
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
-        Utils.EnableShotgunHeldByEnemyAi(nutcracker, true);
+        Utils.EnableShotgunHeldByEnemyAi(Nutcracker, true);
 
         if (Utils.IsHost)
         {
             targetPlayer = playerWhoThrewBall;
-            nutcracker.agent.speed = 10f;
-            nutcracker.timeSinceHittingPlayer = 0f; // Prevents nutcracker from leg kicking a player and become stuck
+            Nutcracker.agent.speed = 10f;
+            Nutcracker.timeSinceHittingPlayer = 0f; // Prevents nutcracker from leg kicking a player and become stuck
 
             SwitchToCustomBehaviour((int)CustomBehaviour.LookForPlayer);
         }
@@ -159,30 +164,30 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnUpdate(false, false);
 
-        nutcracker.TurnTorsoToTargetDegrees();
+        Nutcracker.TurnTorsoToTargetDegrees();
         
-        if (!nutcracker.isEnemyDead && !nutcracker.GrabGunIfNotHolding())
+        if (!Nutcracker.isEnemyDead && !Nutcracker.GrabGunIfNotHolding())
             return;
         
-        if (nutcracker.walkCheckInterval <= 0f)
+        if (Nutcracker.walkCheckInterval <= 0f)
         {
-            nutcracker.walkCheckInterval = 0.1f;
-            nutcracker.creatureAnimator.SetBool("IsWalking", (base.transform.position - nutcracker.positionLastCheck).sqrMagnitude > 0.001f);
-            nutcracker.positionLastCheck = base.transform.position;
+            Nutcracker.walkCheckInterval = 0.1f;
+            Nutcracker.creatureAnimator.SetBool("IsWalking", (base.transform.position - Nutcracker.positionLastCheck).sqrMagnitude > 0.001f);
+            Nutcracker.positionLastCheck = base.transform.position;
         }
         else
         {
-            nutcracker.walkCheckInterval -= Time.deltaTime;
+            Nutcracker.walkCheckInterval -= Time.deltaTime;
         }
         
-        nutcracker.creatureAnimator.SetBool("Aiming", nutcracker.aimingGun);
+        Nutcracker.creatureAnimator.SetBool("Aiming", Nutcracker.aimingGun);
     }
 
     internal override void OnRetrieveInBall()
     {
         base.OnRetrieveInBall();
 
-        Utils.DestroyShotgunHeldByEnemyAi(nutcracker);
+        Utils.DestroyShotgunHeldByEnemyAi(Nutcracker);
     }
 
     #endregion
@@ -191,14 +196,14 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void SetTorsoTargetDegreesServerRPC()
     {
-        SetTorsoTargetDegreesClientRPC(nutcracker.targetTorsoDegrees, nutcracker.torsoTurnSpeed);
+        SetTorsoTargetDegreesClientRPC(Nutcracker.targetTorsoDegrees, Nutcracker.torsoTurnSpeed);
     }
     
     [ClientRpc]
     public void SetTorsoTargetDegreesClientRPC(int targetDegrees, float turnSpeed)
     {
-        nutcracker.targetTorsoDegrees = targetDegrees;
-        LethalMon.Log("Target degrees received: " + nutcracker.targetTorsoDegrees + " at speed " + turnSpeed);
+        Nutcracker.targetTorsoDegrees = targetDegrees;
+        LethalMon.Log("Target degrees received: " + Nutcracker.targetTorsoDegrees + " at speed " + turnSpeed);
     }
     #endregion
 }

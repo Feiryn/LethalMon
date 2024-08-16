@@ -9,11 +9,11 @@ namespace LethalMon.Behaviours;
 
 public class CooldownNetworkBehaviour : NetworkBehaviour
 {
-    public NetworkVariable<FixedString64Bytes> Id { get; private set;  }
+    public NetworkVariable<FixedString64Bytes>? Id { get; private set; }
+
+    public NetworkVariable<FixedString512Bytes>? DisplayName { get; private set; }
     
-    public NetworkVariable<FixedString512Bytes> DisplayName { get; private set; }
-    
-    public NetworkVariable<float> CooldownTime { get; private set; }
+    public NetworkVariable<float>? CooldownTime { get; private set; }
 
     public bool Paused { get; private set; } = false;
     
@@ -46,7 +46,7 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
             CurrentTimer += Time.deltaTime;   
         }
 
-        if (_cooldownCircle != null)
+        if (_cooldownCircle != null && CooldownTime != null)
         {
             if (Paused && CurrentTimer == 0f)
             {
@@ -69,6 +69,8 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
 
     public bool IsFinished()
     {
+        if (CooldownTime == null) return false;
+
         return CurrentTimer >= CooldownTime.Value;
     }
 
@@ -100,13 +102,13 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     {
         _cooldownCircle = cooldownCircle;
         _cooldownTime = cooldownTime;
-        cooldownName.text = DisplayName.Value.ToString();
+        cooldownName.text = DisplayName != null ? DisplayName.Value.ToString() : "";
     }
 
     [ServerRpc(RequireOwnership = false)]
     public void SyncCooldownServerRpc()
     {
-        LethalMon.Log($"Send cooldown \"{DisplayName.Value}\" syncing to {CurrentTimer}");
+        LethalMon.Log($"Send cooldown \"{(DisplayName != null ? DisplayName.Value : "")}\" syncing to {CurrentTimer}");
         SyncCooldownClientRpc(CurrentTimer, NetworkManager.ServerTime.Time, Paused);
     }
 
@@ -115,6 +117,6 @@ public class CooldownNetworkBehaviour : NetworkBehaviour
     {
         CurrentTimer = currentTimer + (float) (NetworkManager.ServerTime.Time - serverTime);
         Paused = paused;
-        LethalMon.Log($"Cooldown \"{DisplayName.Value}\"'s timer has been set to {CurrentTimer} (paused: " + Paused + ")");
+        LethalMon.Log($"Cooldown \"{(DisplayName != null ? DisplayName.Value : "")}\"'s timer has been set to {CurrentTimer} (paused: " + Paused + ")");
     }
 }

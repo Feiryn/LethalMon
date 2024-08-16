@@ -13,9 +13,9 @@ class SeeThroughCustomPass : CustomPass
     [SerializeField]
     Shader stencilShader = Utils.SeeThroughShader!;
 
-    Material stencilMaterial;
+    Material? stencilMaterial = null;
 
-    ShaderTagId[] shaderTags;
+    ShaderTagId[] shaderTags = [];
 
     protected override bool executeInSceneView => true;
 
@@ -30,13 +30,13 @@ class SeeThroughCustomPass : CustomPass
     {
         stencilMaterial = CoreUtils.CreateEngineMaterial(stencilShader);
 
-        shaderTags = new ShaderTagId[4]
-        {
+        shaderTags =
+        [
             new ShaderTagId("Forward"),
             new ShaderTagId("ForwardOnly"),
             new ShaderTagId("SRPDefaultUnlit"),
             new ShaderTagId("FirstPass"),
-        };
+        ];
 
     }
 
@@ -44,6 +44,9 @@ class SeeThroughCustomPass : CustomPass
     {
         // We first render objects into the user stencil bit 0, this will allow us to detect
         // if the object is behind another object.
+        if(stencilMaterial == null)
+            stencilMaterial = CoreUtils.CreateEngineMaterial(stencilShader);
+
         stencilMaterial.SetInt("_StencilWriteMask", (int)UserStencilUsage.UserBit0);
         seeThroughMaterial.SetFloat("_MaxVisibilityDistance", maxVisibilityDistance);
 

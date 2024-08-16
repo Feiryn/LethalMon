@@ -6,6 +6,16 @@ namespace LethalMon.Throw
 {
     public abstract class ThrowableItem : GrabbableObject
     {
+        #region Properties
+        public RaycastHit itemHit;
+
+        public Ray itemThrowRay;
+
+        public PlayerControllerB? playerThrownBy;
+
+        public PlayerControllerB? lastThrower;
+        #endregion
+
         #region ThrowRpc
 
         [ServerRpc(RequireOwnership = false)]
@@ -92,19 +102,5 @@ namespace LethalMon.Throw
             }
             return itemThrowRay.GetPoint(30f);
         }
-
-        public AnimationCurve itemFallCurve;
-
-        public AnimationCurve itemVerticalFallCurve;
-
-        public AnimationCurve itemVerticalFallCurveNoBounce;
-
-        public RaycastHit itemHit;
-
-        public Ray itemThrowRay;
-
-        public PlayerControllerB playerThrownBy;
-
-        public PlayerControllerB lastThrower;
     }
 }

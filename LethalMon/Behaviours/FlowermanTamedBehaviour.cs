@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using GameNetcodeStuff;
 using LethalMon.Items;
@@ -12,30 +13,40 @@ namespace LethalMon.Behaviours;
 public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
-    internal FlowermanAI bracken { get; private set; }
+    private FlowermanAI? _bracken = null;
+    internal FlowermanAI Bracken
+    {
+        get
+        {
+            if (_bracken == null)
+                _bracken = (Enemy as FlowermanAI)!;
 
-    private EnemyAI? grabbedEnemyAi;
+            return _bracken;
+        }
+    }
+
+    private EnemyAI? _grabbedEnemyAi;
 
     // Left arm
-    private Transform? arm1L;
+    private Transform? _arm1L;
     
-    private Transform? arm2L;
+    private Transform? _arm2L;
     
-    private Transform? arm3L;
+    private Transform? _arm3L;
     
-    private Transform? hand1L;
+    private Transform? _hand1L;
     
     // Right arm
-    private Transform? arm1R;
+    private Transform? _arm1R;
     
-    private Transform? arm2R;
+    private Transform? _arm2R;
     
-    private Transform? arm3R;
+    private Transform? _arm3R;
     
-    private Transform? hand1R;
+    private Transform? _hand1R;
 
     // Grabbed monsters positions (height, distance, rotation)
-    private static Dictionary<string, Tuple<float, float, Quaternion>> grabbedMonstersPositions = new()
+    private static readonly Dictionary<string, Tuple<float, float, Quaternion>> GrabbedMonstersPositions = new()
     {
         // todo sand spider get teleported once release
         // { nameof(SandSpiderAI), new Tuple<float, float, Quaternion>(2, 1, Quaternion.Euler(-75, 0, 0)) },
@@ -52,7 +63,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     };
     
     // Grabbed monsters before grab functions
-    private static Dictionary<string, Action<EnemyAI>> beforeGrabFunctions = new()
+    private static readonly Dictionary<string, Action<EnemyAI>> BeforeGrabFunctions = new()
     {
         {
             nameof(HoarderBugAI), (enemyAI) =>
@@ -78,9 +89,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
     };
 
-    private readonly float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
-    
-    internal float DistanceTowardsOwner => ownerPlayer != null ? Vector3.Distance(ownerPlayer.transform.position, bracken.transform.position) : 0f;
+    private const float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
 
     internal override string DefendingBehaviourDescription => "Saw an enemy to drag away!";
 
@@ -93,23 +102,23 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         GoesBackToOwner
     }
     
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-    {
+    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    [
         new (CustomBehaviour.DragEnemyAway.ToString(), "Drags an enemy away...", OnDragEnemyAway),
         new (CustomBehaviour.GoesBackToOwner.ToString(), "Walks back to you...", OnWalkBackToOwner)
-    };
+    ];
 
     public void OnDragEnemyAway()
     {
-        if (grabbedEnemyAi == null)
+        if (_grabbedEnemyAi == null)
         {
             SwitchToCustomBehaviour((int) CustomBehaviour.GoesBackToOwner);
             return;
         }
         
-        if (Vector3.Distance(bracken.transform.position, bracken.destination) < 2f || DistanceTowardsOwner > MaximumDistanceTowardsOwner)
+        if (Vector3.Distance(Bracken.transform.position, Bracken.destination) < 2f || DistanceToOwner > MaximumDistanceTowardsOwner)
         {
-            LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceTowardsOwner);
+            LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceToOwner);
 
             ReleaseEnemy();
             ReleaseEnemyServerRpc();
@@ -118,8 +127,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
         else
         {
-            // As the bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
-            Utils.OpenDoorsAsEnemyAroundPosition(grabbedEnemyAi.transform.position);
+            // As the Bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
+            Utils.OpenDoorsAsEnemyAroundPosition(_grabbedEnemyAi.transform.position);
         }
 
         //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
@@ -128,62 +137,49 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     public void OnWalkBackToOwner()
     {
         if (ownerPlayer == null || ownerPlayer.isPlayerDead
-                                || Vector3.Distance(bracken.transform.position, ownerPlayer.transform.position) < 8f // Reached owner
+                                || DistanceToOwner < 8f // Reached owner
                                 || !ownerPlayer.isInsideFactory)
         {
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             return;
         }
         
-        bracken.SetDestinationToPosition(ownerPlayer.transform.position);
+        Bracken.SetDestinationToPosition(ownerPlayer.transform.position);
     }
     
     internal override void InitCustomBehaviour(int behaviour)
     {
         base.InitCustomBehaviour(behaviour);
 
-        switch ((CustomBehaviour)behaviour)
-        {
-            case CustomBehaviour.GoesBackToOwner:
-                CalmDown();
-                break;
-            default:
-                break;
-        }
+        if((CustomBehaviour)behaviour == CustomBehaviour.GoesBackToOwner)
+            CalmDown();
     }
-    
-    
     #endregion
     
     #region Cooldowns
 
-    private static readonly string GrabCooldownId = "bracken_grab";
+    private const string GrabCooldownId = "Bracken_grab";
     
-    internal override Cooldown[] Cooldowns => new[] { new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown) };
+    internal override Cooldown[] Cooldowns => [new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown)];
 
-    private CooldownNetworkBehaviour grabCooldown;
+    private readonly CooldownNetworkBehaviour grabCooldown;
 
     internal override bool CanDefend => grabCooldown.IsFinished();
     #endregion
 
     #region Base Methods
+    FlowermanTamedBehaviour() => grabCooldown = GetCooldownWithId(GrabCooldownId);
     internal override void Start()
     {
         base.Start();
-
-        bracken = (Enemy as FlowermanAI)!;
-        if (bracken == null)
-            bracken = gameObject.AddComponent<FlowermanAI>();
-
-        grabCooldown = GetCooldownWithId(GrabCooldownId);
         
-        if (ownerPlayer != null)
+        if (IsTamed)
         {
-            bracken.creatureAnimator.SetBool("sneak", value: true);
-            bracken.creatureAnimator.Play("Base Layer.CreepForward");
+            Bracken.creatureAnimator.SetBool("sneak", value: true);
+            Bracken.creatureAnimator.Play("Base Layer.CreepForward");
         }
 
-        Transform? torso3 = bracken.gameObject.transform
+        var torso3 = Bracken.gameObject.transform
             .Find("FlowermanModel")?
             .Find("AnimContainer")?
             .Find("metarig")?
@@ -193,15 +189,15 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
         if (torso3 != null)
         {
-            arm1L = torso3.Find("Arm1.L");
-            arm2L = arm1L.Find("Arm2.L");
-            arm3L = arm2L.Find("Arm3.L");
-            hand1L = arm3L.Find("Hand1.L");
+            _arm1L = torso3.Find("Arm1.L");
+            _arm2L = _arm1L.Find("Arm2.L");
+            _arm3L = _arm2L.Find("Arm3.L");
+            _hand1L = _arm3L.Find("Hand1.L");
 
-            arm1R = torso3.Find("Arm1.R");
-            arm2R = arm1R.Find("Arm2.R");
-            arm3R = arm2R.Find("Arm3.R");
-            hand1R = arm3R.Find("Hand1.R");
+            _arm1R = torso3.Find("Arm1.R");
+            _arm2R = _arm1R.Find("Arm2.R");
+            _arm3R = _arm2R.Find("Arm3.R");
+            _hand1R = _arm3R.Find("Hand1.R");
         }
     }
 
@@ -209,7 +205,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.LateUpdate();
 
-        if (grabbedEnemyAi != null)
+        if (_grabbedEnemyAi != null)
             SetArmsInHoldPosition();
     }
 
@@ -223,13 +219,13 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     internal override void OnTamedDefending()
     {
-        if (targetEnemy == null)
+        if (!HasTargetEnemy)
         {
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             return;
         }
         
-        if (targetEnemy.isEnemyDead)
+        if (targetEnemy!.isEnemyDead)
         {
             LethalMon.Log("Target is dead, stop targeting it");
             targetEnemy = null;
@@ -238,7 +234,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        if (targetEnemy.meshRenderers.Any(meshRendererTarget => bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+        if (targetEnemy.meshRenderers.Any(meshRendererTarget => Bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
         {
             LethalMon.Log("Collided with target, grab it");
 
@@ -252,7 +248,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         {
             LethalMon.Log("Moving to target");
 
-            bracken.SetDestinationToPosition(targetEnemy.transform.position);
+            Bracken.SetDestinationToPosition(targetEnemy.transform.position);
         }
         
     }
@@ -262,7 +258,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         base.OnEscapedFromBall(playerWhoThrewBall);
 
         if (Utils.IsHost)
-            bracken.AddToAngerMeter(float.MaxValue);
+            Bracken.AddToAngerMeter(float.MaxValue);
     }
 
     internal override void DoAIInterval()
@@ -274,8 +270,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnUpdate(update, false);
 
-        bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(bracken.transform.position - bracken.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
-        bracken.CalculateAnimationDirection();
+        Bracken.creatureAnimator.SetFloat("speedMultiplier", Vector3.ClampMagnitude(Bracken.transform.position - Bracken.previousPosition, 1f).sqrMagnitude / (Time.deltaTime / 4f));
+        Bracken.CalculateAnimationDirection();
     }
 
     public override void OnDestroy()
@@ -285,10 +281,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         base.OnDestroy();
     }
 
-    public override bool CanBeTeleported()
-    {
-        return grabbedEnemyAi == null;
-    }
+    public override bool CanBeTeleported() => _grabbedEnemyAi == null;
 
     #endregion
 
@@ -311,33 +304,33 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void StandUp()
     {
-        bracken.creatureAngerVoice.Play();
-        bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
-        bracken.creatureAnimator.SetBool("anger", true);
-        bracken.creatureAnimator.SetBool("sneak", false);
+        Bracken.creatureAngerVoice.Play();
+        Bracken.creatureAngerVoice.pitch = Random.Range(0.9f, 1.3f);
+        Bracken.creatureAnimator.SetBool("anger", true);
+        Bracken.creatureAnimator.SetBool("sneak", false);
     }
 
     public void CalmDown()
     {
-        if (bracken != null)
+        if (Bracken != null)
         {
-            bracken.creatureAngerVoice.Stop();
-            bracken.creatureAnimator.SetBool("sneak", true);
-            bracken.creatureAnimator.SetBool("anger", false);
+            Bracken.creatureAngerVoice.Stop();
+            Bracken.creatureAnimator.SetBool("sneak", true);
+            Bracken.creatureAnimator.SetBool("anger", false);
         }
     }
 
     public void GrabEnemy(EnemyAI enemyAI)
     {
-        if (grabbedEnemyAi != null)
+        if (_grabbedEnemyAi != null)
         {
             this.ReleaseEnemy();
             ReleaseEnemyServerRpc();
         }
 
-        bracken.creatureAngerVoice.Stop();
+        Bracken.creatureAngerVoice.Stop();
 
-        if (beforeGrabFunctions.TryGetValue(enemyAI.GetType().Name, out var beforeGrabFunction))
+        if (BeforeGrabFunctions.TryGetValue(enemyAI.GetType().Name, out var beforeGrabFunction))
         {
             beforeGrabFunction.Invoke(enemyAI);
         }
@@ -345,8 +338,8 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         PlaceEnemyAiInBrackenHands(enemyAI);
         targetEnemy = null;
 
-        var farthestPosition = bracken.ChooseFarthestNodeFromPosition(enemyAI.transform.position).position;
-        bracken.SetDestinationToPosition(farthestPosition);
+        var farthestPosition = Bracken.ChooseFarthestNodeFromPosition(enemyAI.transform.position).position;
+        Bracken.SetDestinationToPosition(farthestPosition);
         grabCooldown.Reset();
         grabCooldown.Pause();
         LethalMon.Log("Moving to " + farthestPosition);
@@ -359,50 +352,50 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         enemyAI.enabled = false;
         enemyAI.agent.enabled = false;
         var enemyAiTransform = enemyAI.transform;
-        var flowermanTransform = bracken.transform;
+        var flowermanTransform = Bracken.transform;
         enemyAiTransform.transform.SetParent(flowermanTransform);
 
-        if (grabbedMonstersPositions.TryGetValue(enemyAI.GetType().Name, out var monsterPositions))
+        if (GrabbedMonstersPositions.TryGetValue(enemyAI.GetType().Name, out var monsterPositions))
         {
             enemyAiTransform.localPosition = Vector3.up * monsterPositions.Item1 + Vector3.forward * monsterPositions.Item2;
             enemyAiTransform.localRotation = monsterPositions.Item3;
         }
-        
-        grabbedEnemyAi = enemyAI;
+
+        _grabbedEnemyAi = enemyAI;
     }
 
     public void ReleaseEnemy()
     {
         grabCooldown.Resume();
         
-        if (grabbedEnemyAi == null) return;
+        if (_grabbedEnemyAi == null) return;
 
-        Transform enemyAiTransform = grabbedEnemyAi.transform;
+        Transform enemyAiTransform = _grabbedEnemyAi.transform;
         enemyAiTransform.SetParent(null);
-        var selfTransform = bracken.transform;
+        var selfTransform = Bracken.transform;
         enemyAiTransform.localPosition = selfTransform.localPosition;
         enemyAiTransform.position = selfTransform.position;
         enemyAiTransform.rotation = selfTransform.rotation;
         enemyAiTransform.localRotation = selfTransform.localRotation;
-        grabbedEnemyAi.enabled = true;
-        grabbedEnemyAi.agent.enabled = true;
-        TeleportEnemy(grabbedEnemyAi, selfTransform.position);
-        grabbedEnemyAi = null;
+        _grabbedEnemyAi.enabled = true;
+        _grabbedEnemyAi.agent.enabled = true;
+        TeleportEnemy(_grabbedEnemyAi, selfTransform.position);
+        _grabbedEnemyAi = null;
             
         LethalMon.Log("Enemy release");
     }
 
     private void SetArmsInHoldPosition()
     {
-        if (arm1L != null) arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
-        if (arm2L != null) arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
-        if (arm3L != null) arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
-        if (hand1L != null) hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
+        if (_arm1L != null) _arm1L.localRotation = Quaternion.Euler(-115.4f, -103.6f, -162.8f);
+        if (_arm2L != null) _arm2L.localRotation = Quaternion.Euler(-15.3f, 0.4f, 37.87f);
+        if (_arm3L != null) _arm3L.localRotation = Quaternion.Euler(-88.09f, 93.4f, 8.3f);
+        if (_hand1L != null) _hand1L.localRotation = Quaternion.Euler(-22.3f, 0f, 0f);
 
-        if (arm1R != null) arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
-        if (arm2R != null) arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
-        if (arm3R != null) arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
-        if (hand1R != null) hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
+        if (_arm1R != null) _arm1R.localRotation = Quaternion.Euler(-81.5f, 88.9f, -553.6f);
+        if (_arm2R != null) _arm2R.localRotation = Quaternion.Euler(-50.7f, -92.46f, 6f);
+        if (_arm3R != null) _arm3R.localRotation = Quaternion.Euler(-50.6f, 5.84f, 0f);
+        if (_hand1R != null) _hand1R.localRotation = Quaternion.Euler(-69.2f, 0f, 0f);
     }
     #endregion
     

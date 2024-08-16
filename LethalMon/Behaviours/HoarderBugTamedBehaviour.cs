@@ -10,15 +10,25 @@ namespace LethalMon.Behaviours;
 public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
-    internal HoarderBugAI hoarderBug { get; private set; }
+    private HoarderBugAI? _HoarderBug = null;
+    internal HoarderBugAI HoarderBug
+    {
+        get
+        {
+            if (_HoarderBug == null)
+                _HoarderBug = (Enemy as HoarderBugAI)!;
 
-    public float currentTimer = 0f;
+            return _HoarderBug;
+        }
+    }
 
-    public const float searchTimer = 1f; // in seconds
+    private float _currentTimer = 0f;
+
+    internal const float SearchTimer = 1f; // in seconds
 
     internal override bool CanDefend => false;
 
-    internal static AudioClip? flySfx = null;
+    internal static AudioClip? FlySFX = null;
 
     #endregion
 
@@ -36,7 +46,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     public void OnGettingItem()
     {
-        if(hoarderBug.heldItem != null)
+        if(HoarderBug.heldItem != null)
         {
             SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
             return;
@@ -48,10 +58,10 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        if (hoarderBug.targetItem != null)
+        if (HoarderBug.targetItem != null)
         {
             LethalMon.Log("HoarderBugAI found an object and move towards it");
-            hoarderBug.SetGoTowardsTargetObject(hoarderBug.targetItem.gameObject);
+            HoarderBug.SetGoTowardsTargetObject(HoarderBug.targetItem.gameObject);
         }
         else
         {
@@ -61,21 +71,21 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     public void OnBringBackItem()
     {
-        if (hoarderBug.heldItem == null || ownerPlayer == null)
+        if (HoarderBug.heldItem == null || ownerPlayer == null)
         {
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             return;
         }
 
-        if (Vector3.Distance(hoarderBug.transform.position, ownerPlayer.transform.position) < 6f)
+        if (DistanceToOwner < 6f)
         {
             LethalMon.Log("HoarderBugAI drops held item to the owner");
-            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+            DropHeldItemAndCallDropRPC();
         }
         else
         {
             LethalMon.Log("HoarderBugAI move held item to the owner");
-            hoarderBug.SetDestinationToPosition(ownerPlayer.transform.position);
+            HoarderBug.SetDestinationToPosition(ownerPlayer.transform.position);
         }
     }
     #endregion
@@ -84,27 +94,24 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     private static readonly string BringItemCooldownId = "hoarderbug_bringitem";
     
-    internal override Cooldown[] Cooldowns => new[] { new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown) };
+    internal override Cooldown[] Cooldowns => [new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown)];
 
-    private CooldownNetworkBehaviour bringItemCooldown;
+    private readonly CooldownNetworkBehaviour bringItemCooldown;
 
     #endregion
 
     #region Base Methods
+    HoarderBugTamedBehaviour()
+    {
+        bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
+    }
+
     internal override void Start()
     {
         base.Start();
-
-        hoarderBug = (Enemy as HoarderBugAI)!;
-        if (hoarderBug == null)
-            hoarderBug = gameObject.AddComponent<HoarderBugAI>();
-
-        bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
         
-        if (ownerPlayer != null)
-        {
-            hoarderBug.creatureAnimator.Play("Base Layer.Walking");
-        }
+        if (IsTamed)
+            HoarderBug.creatureAnimator.Play("Base Layer.Walking");
         
     }
 
@@ -112,35 +119,30 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (ownerPlayer == null || !bringItemCooldown.IsFinished()) return;
+        if (!IsTamed || !bringItemCooldown.IsFinished()) return;
         
-        currentTimer += Time.deltaTime;
-        if (currentTimer > searchTimer)
+        _currentTimer += Time.deltaTime;
+        if (_currentTimer > SearchTimer)
         {
             //LethalMon.Log("HoarderBugAI searches for items");
-            currentTimer = 0f;
-            var colliders = Physics.OverlapSphere(hoarderBug.transform.position, 15f);
+            _currentTimer = 0f;
+            var colliders = Physics.OverlapSphere(HoarderBug.transform.position, 15f);
 
             foreach (Collider collider in colliders)
             {
                 GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
-                if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer.transform.position) < 8f) continue;
+                if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer!.transform.position) < 8f) continue;
 
                 // Check LOS
-                if (!Physics.Linecast(hoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                if (!Physics.Linecast(HoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                 {
                     LethalMon.Log("HoarderBugAI found item: " + grabbable.name);
-                    hoarderBug.targetItem = grabbable;
+                    HoarderBug.targetItem = grabbable;
                     SwitchToCustomBehaviour((int)CustomBehaviour.GettingItem);
                     return;
                 }
             }
         }
-    }
-
-    internal override void OnTamedDefending()
-    {
-        base.OnTamedDefending();
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -149,30 +151,23 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
         if (Utils.IsHost)
         {
-            hoarderBug.angryTimer = 10f;
-            hoarderBug.angryAtPlayer = playerWhoThrewBall;
+            HoarderBug.angryTimer = 10f;
+            HoarderBug.angryAtPlayer = playerWhoThrewBall;
         }
-    }
-
-    internal override void DoAIInterval()
-    {
-        base.DoAIInterval();
     }
 
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, doAIInterval);
 
-        hoarderBug.CalculateAnimationDirection();
+        HoarderBug.CalculateAnimationDirection();
     }
 
     public override PokeballItem? RetrieveInBall(Vector3 position)
     {
         // Drop held item if any
-        if (hoarderBug.heldItem != null)
-        {
-            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
-        }
+        if (HoarderBug.heldItem?.itemGrabbableObject != null)
+            DropHeldItemAndCallDropRPC();
         
         return base.RetrieveInBall(position);
     }
@@ -181,63 +176,70 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     #region Methods
     public static void LoadAudio(AssetBundle assetBundle)
     {
-        flySfx = assetBundle.LoadAsset<AudioClip>("Assets/Audio/HoardingBug/Fly.ogg");
+        FlySFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/HoardingBug/Fly.ogg");
     }
 
     private bool GrabTargetItemIfClose()
     {
-        if (hoarderBug.targetItem != null && hoarderBug.heldItem == null && Vector3.Distance(hoarderBug.transform.position, hoarderBug.targetItem.transform.position) < 0.75f)
-        {
-            NetworkObject component = hoarderBug.targetItem.GetComponent<NetworkObject>();
-            GrabItem(component);
-            hoarderBug.sendingGrabOrDropRPC = true;
-            GrabItemServerRpc(component);
-            return true;
-        }
-        return false;
+        if (HoarderBug.targetItem == null || HoarderBug.heldItem != null || Vector3.Distance(HoarderBug.transform.position, HoarderBug.targetItem.transform.position) > 0.75f)
+            return false;
+
+        if (!HoarderBug.targetItem.TryGetComponent(out NetworkObject networkObject))
+            return false;
+
+        GrabItem(networkObject);
+        HoarderBug.sendingGrabOrDropRPC = true;
+        GrabItemServerRpc(networkObject);
+        return true;
     }
     
     private void GrabItem(NetworkObject item)
     {
-        if (hoarderBug.sendingGrabOrDropRPC)
+        if (HoarderBug.sendingGrabOrDropRPC)
         {
-            hoarderBug.sendingGrabOrDropRPC = false;
+            HoarderBug.sendingGrabOrDropRPC = false;
             return;
         }
-        if (hoarderBug.heldItem != null)
+
+        if (HoarderBug.heldItem != null)
         {
-            LethalMon.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + hoarderBug.heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
-            DropItemAndCallDropRPC(hoarderBug.heldItem.itemGrabbableObject.GetComponent<NetworkObject>());
+            LethalMon.Log(base.gameObject.name + ": Trying to grab another item (" + item.gameObject.name + ") while hands are already full with item (" + HoarderBug.heldItem.itemGrabbableObject.gameObject.name + "). Dropping the currently held one.");
+            DropHeldItemAndCallDropRPC();
         }
-        hoarderBug.targetItem = null;
-        GrabbableObject component = item.gameObject.GetComponent<GrabbableObject>();
-        hoarderBug.heldItem = new HoarderBugItem(component, HoarderBugItemStatus.Owned, new Vector3());
-        component.parentObject = hoarderBug.grabTarget;
-        component.hasHitGround = false;
-        component.GrabItemFromEnemy(Enemy);
-        component.EnablePhysics(enable: false);
+
+        HoarderBug.targetItem = null;
+        if (item.gameObject.TryGetComponent(out GrabbableObject grabbableObject))
+        {
+            HoarderBug.heldItem = new HoarderBugItem(grabbableObject, HoarderBugItemStatus.Owned, new Vector3());
+            grabbableObject.parentObject = HoarderBug.grabTarget;
+            grabbableObject.hasHitGround = false;
+            grabbableObject.GrabItemFromEnemy(Enemy);
+            grabbableObject.EnablePhysics(enable: false);
+        }
 
         // todo: maybe original one is re-useable till here
         
-        hoarderBug.creatureAnimator.SetBool("Chase", true);
-        hoarderBug.creatureSFX.clip = flySfx;
-        hoarderBug.creatureSFX.Play();
-        RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
+        HoarderBug.creatureAnimator.SetBool("Chase", true);
+        HoarderBug.creatureSFX.clip = FlySFX;
+        HoarderBug.creatureSFX.Play();
+        RoundManager.PlayRandomClip(HoarderBug.creatureVoice, HoarderBug.chitterSFX);
     }
     
-    private void DropItem(NetworkObject dropItemNetworkObject, Vector3 targetFloorPosition)
+    private void DropHeldItem(Vector3 targetFloorPosition)
     {
-        if (hoarderBug.sendingGrabOrDropRPC)
+        if (HoarderBug.sendingGrabOrDropRPC)
         {
-            hoarderBug.sendingGrabOrDropRPC = false;
+            HoarderBug.sendingGrabOrDropRPC = false;
             return;
         }
-        if (hoarderBug.heldItem == null)
+
+        if (HoarderBug.heldItem?.itemGrabbableObject == null)
         {
             LethalMon.Log("Hoarder bug: my held item is null when attempting to drop it!!", LethalMon.LogType.Error);
             return;
         }
-        GrabbableObject itemGrabbableObject = hoarderBug.heldItem.itemGrabbableObject;
+
+        var itemGrabbableObject = HoarderBug.heldItem.itemGrabbableObject;
         itemGrabbableObject.parentObject = null;
         itemGrabbableObject.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
         itemGrabbableObject.EnablePhysics(enable: true);
@@ -246,44 +248,38 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
         itemGrabbableObject.floorYRot = -1;
         itemGrabbableObject.DiscardItemFromEnemy();
-        hoarderBug.heldItem = null;
+        HoarderBug.heldItem = null;
 
         // todo: maybe original one is re-useable till here
 
-        hoarderBug.SetDestinationToPosition(hoarderBug.transform.position);
-        hoarderBug.creatureAnimator.SetBool("Chase", false);
-        hoarderBug.creatureSFX.Stop();
-        RoundManager.PlayRandomClip(hoarderBug.creatureVoice, hoarderBug.chitterSFX);
+        HoarderBug.SetDestinationToPosition(HoarderBug.transform.position);
+        HoarderBug.creatureAnimator.SetBool("Chase", false);
+        HoarderBug.creatureSFX.Stop();
+        RoundManager.PlayRandomClip(HoarderBug.creatureVoice, HoarderBug.chitterSFX);
     }
     
-    private void DropItemAndCallDropRPC(NetworkObject dropItemNetworkObject)
+    private void DropHeldItemAndCallDropRPC()
     {
-        Vector3 targetFloorPosition = RoundManager.Instance.RandomlyOffsetPosition(hoarderBug.heldItem.itemGrabbableObject.GetItemFloorPosition(), 1.2f, 0.4f);
-        DropItem(dropItemNetworkObject, targetFloorPosition);
-        hoarderBug.sendingGrabOrDropRPC = true;
-        DropItemServerRpc(dropItemNetworkObject, targetFloorPosition);
+        Vector3 targetFloorPosition = RoundManager.Instance.RandomlyOffsetPosition(HoarderBug.heldItem.itemGrabbableObject.GetItemFloorPosition(), 1.2f, 0.4f);
+        DropHeldItem(targetFloorPosition);
+        HoarderBug.sendingGrabOrDropRPC = true;
+        DropHeldItemServerRpc( targetFloorPosition);
     }
     #endregion
 
     #region RPCs
     [ServerRpc(RequireOwnership = false)]
-	public void DropItemServerRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
+	public void DropHeldItemServerRpc(Vector3 targetFloorPosition)
     {
         bringItemCooldown.Resume();
-		DropItemClientRpc(objectRef, targetFloorPosition);
+		DropHeldItemClientRpc(targetFloorPosition);
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 	}
 
 	[ClientRpc]
-	public void DropItemClientRpc(NetworkObjectReference objectRef, Vector3 targetFloorPosition)
+	public void DropHeldItemClientRpc(Vector3 targetFloorPosition)
 	{
-		if (!objectRef.TryGet(out var networkObject))
-        {
-            LethalMon.Log(base.gameObject.name + ": Failed to get network object from network object reference (Drop item RPC)", LethalMon.LogType.Error);
-            return;
-		}
-
-        DropItem(networkObject, targetFloorPosition);
+        DropHeldItem(targetFloorPosition);
     }
     
     [ServerRpc(RequireOwnership = false)]

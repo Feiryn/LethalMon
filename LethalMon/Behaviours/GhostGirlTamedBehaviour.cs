@@ -9,7 +9,7 @@ namespace LethalMon.Behaviours
     internal class GhostGirlTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        internal DressGirlAI? _ghostGirl = null;
+        private DressGirlAI? _ghostGirl = null;
         internal DressGirlAI GhostGirl
         {
             get
@@ -21,12 +21,12 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal bool isWalking = false;
-        internal Vector3 previousPosition = Vector3.zero;
+        private bool _isWalking = false;
+        private Vector3 _previousPosition = Vector3.zero;
 
-        internal bool ownerInsideFactory = false;
+        private bool _ownerInsideFactory = false;
 
-        internal Coroutine? ScareAndHuntCoroutine = null;
+        private Coroutine? _scareAndHuntCoroutine = null;
 
         internal override string DefendingBehaviourDescription => "Saw an enemy to hunt!";
 
@@ -34,15 +34,16 @@ namespace LethalMon.Behaviours
 
         #region Cooldowns
 
-        private static readonly string TeleportCooldownId = "dressgirl_tp";
+        private const string TeleportCooldownId = "dressgirl_tp";
     
         internal override Cooldown[] Cooldowns => new[] { new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown) };
 
-        private CooldownNetworkBehaviour teleportCooldown;
+        private readonly CooldownNetworkBehaviour teleportCooldown;
 
         internal override bool CanDefend => teleportCooldown.IsFinished();
-
         #endregion
+
+        GhostGirlTamedBehaviour() => teleportCooldown = GetCooldownWithId(TeleportCooldownId);
         
         #region Custom behaviours
         internal enum CustomBehaviour
@@ -63,7 +64,7 @@ namespace LethalMon.Behaviours
             switch((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.RunningBackToOwner:
-                    ownerInsideFactory = ownerPlayer!.isInsideFactory;
+                    _ownerInsideFactory = ownerPlayer!.isInsideFactory;
                     break;
 
                 case CustomBehaviour.ScareThrowerAndHunt:
@@ -71,7 +72,7 @@ namespace LethalMon.Behaviours
                     if (Utils.IsHost && targetPlayer != null)
                     {
                         EnableEnemyMeshForTargetClientRpc(targetPlayer.playerClientId, true);
-                        ScareAndHuntCoroutine = GhostGirl.StartCoroutine(ScareThrowerAndHunt());
+                        _scareAndHuntCoroutine = GhostGirl.StartCoroutine(ScareThrowerAndHunt());
                     }
                     break;
 
@@ -87,8 +88,8 @@ namespace LethalMon.Behaviours
             AnimateWalking();
 
             if (ownerPlayer == null || ownerPlayer.isPlayerDead
-                || Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position) < 8f // Reached owner
-                || ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+                || DistanceToOwner < 8f // Reached owner
+                || _ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
             {
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
@@ -107,8 +108,8 @@ namespace LethalMon.Behaviours
             if (targetPlayer == null || targetPlayer.isPlayerDead)
             {
                 LethalMon.Log("Stopping ScareThrowerAndHunt", LethalMon.LogType.Warning);
-                if (ScareAndHuntCoroutine != null)
-                    GhostGirl.StopCoroutine(ScareAndHuntCoroutine);
+                if (_scareAndHuntCoroutine != null)
+                    GhostGirl.StopCoroutine(_scareAndHuntCoroutine);
 
                 GhostGirl.hauntingPlayer = null;
                 targetPlayer = null;
@@ -230,26 +231,20 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            if (ownerPlayer != null && CurrentCustomBehaviour == (int)CustomBehaviour.RunningBackToOwner)
+            if (IsTamed && CurrentCustomBehaviour == (int)CustomBehaviour.RunningBackToOwner)
             {
-                ownerPlayer.TeleportPlayer(GhostGirl.transform.position);
+                ownerPlayer!.TeleportPlayer(GhostGirl.transform.position);
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
         }
 #endif
         #endregion
 
-        #region Base Methods
-
-        internal override void Start()
-        {
-            base.Start();
-            
-            teleportCooldown = GetCooldownWithId(TeleportCooldownId);
-        }
-        
+        #region Base Methods        
         internal override void LateUpdate()
         {
+            base.LateUpdate();
+
             AnimateWalking();
         }
 
@@ -257,15 +252,11 @@ namespace LethalMon.Behaviours
         {
             base.InitTamingBehaviour(behaviour);
 
-            switch(behaviour)
+            if(behaviour == TamingBehaviour.TamedDefending)
             {
-                case TamingBehaviour.TamedDefending:
-                    LethalMon.Log("GhostGirl: Play breathingSFX");
-                    GhostGirl.creatureVoice.clip = GhostGirl.breathingSFX;
-                    GhostGirl.creatureVoice.Play();
-                    break;
-
-                default: break;
+                LethalMon.Log("GhostGirl: Play breathingSFX");
+                GhostGirl.creatureVoice.clip = GhostGirl.breathingSFX;
+                GhostGirl.creatureVoice.Play();
             }
         }
 
@@ -273,14 +264,13 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedFollowing();
 
-            if (ownerPlayer == null) return;
+            if (!IsTamed) return;
 
-            var distanceTowardsOwner = Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position);
-            GhostGirl.agent.speed = (ownerPlayer!.isSprinting || distanceTowardsOwner > 5f) ? 6f : 3f;
+            GhostGirl.agent.speed = (ownerPlayer!.isSprinting || DistanceToOwner > 5f) ? 6f : 3f;
 
             if (!GhostGirl.enemyMeshEnabled)
             {
-                EnableEnemyMeshForTargetServerRpc(ownClientId, true);
+                EnableEnemyMeshForTargetServerRpc(OwnerID, true);
                 GhostGirl.enemyMeshEnabled = true;
             }
 
@@ -294,10 +284,9 @@ namespace LethalMon.Behaviours
         {
             base.OnTamedDefending();
 
-            if (ownerPlayer == null) return;
+            if (!IsTamed) return;
 
-            var distanceTowardsOwner = Vector3.Distance(GhostGirl.transform.position, ownerPlayer.transform.position);
-            if (targetEnemy == null || targetEnemy.isEnemyDead || distanceTowardsOwner > 30f)
+            if (targetEnemy == null || targetEnemy.isEnemyDead || DistanceToOwner > 30f)
             {
                 targetEnemy = null;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
@@ -336,14 +325,14 @@ namespace LethalMon.Behaviours
         #region Methods
         internal void AnimateWalking()
         {
-            var currentlyWalking = Vector3.Distance(previousPosition, GhostGirl.transform.position) > Mathf.Epsilon;
-            if (currentlyWalking != isWalking)
+            var currentlyWalking = Vector3.Distance(_previousPosition, GhostGirl.transform.position) > Mathf.Epsilon;
+            if (currentlyWalking != _isWalking)
             {
-                isWalking = currentlyWalking;
-                GhostGirl.creatureAnimator.SetBool("Walk", value: isWalking);
+                _isWalking = currentlyWalking;
+                GhostGirl.creatureAnimator.SetBool("Walk", value: _isWalking);
             }
 
-            previousPosition = GhostGirl.transform.position;
+            _previousPosition = GhostGirl.transform.position;
         }
 
         internal IEnumerator FlickerLightsAndTurnDownBreaker()
@@ -420,7 +409,7 @@ namespace LethalMon.Behaviours
             RoundManager.Instance.StartCoroutine(FlickerLightsAndTurnDownBreaker());
         }
 
-        private IEnumerator TeleportAndDamage(EnemyAI enemyAI, Vector3 newPosition, Action onComplete = null)
+        private IEnumerator TeleportAndDamage(EnemyAI enemyAI, Vector3 newPosition, Action? onComplete = null)
         {
             teleportCooldown.Reset();
                 

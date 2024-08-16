@@ -61,22 +61,21 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Cooldowns
-        private static readonly string TongueCooldownId = "fox_tongue";
+        private const string TongueCooldownId = "fox_tongue";
     
-        internal override Cooldown[] Cooldowns => new[] { new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown) };
+        internal override Cooldown[] Cooldowns => [new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown)];
 
-        private CooldownNetworkBehaviour tongueCooldown;
+        private readonly CooldownNetworkBehaviour tongueCooldown;
         #endregion
-        
-        #region Base Methods
 
+        KidnapperFoxTamedBehaviour() => tongueCooldown = GetCooldownWithId(TongueCooldownId);
+
+        #region Base Methods
         internal override void Start()
         {
             base.Start();
 
-            tongueCooldown = GetCooldownWithId(TongueCooldownId);
-            
-            if (ownerPlayer != null)
+            if (IsTamed)
                 Fox.transform.localScale *= 0.75f;
         }
 
@@ -361,7 +360,7 @@ namespace LethalMon.Behaviours
                 yield return null;
             }
 
-            if (targetEnemy != null && !targetEnemy.isEnemyDead)
+            if (HasTargetEnemy && !targetEnemy.isEnemyDead)
             {
                 if (targetEnemy.agent != null)
                     targetEnemy.agent.enabled = true;

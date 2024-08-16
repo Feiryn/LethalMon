@@ -244,8 +244,7 @@ public class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SwitchToItemSlot))]
     [HarmonyPostfix]
-    private static void SwitchToItemSlotPostFix(PlayerControllerB __instance, int slot,
-        GrabbableObject fillSlotWithItem = null)
+    private static void SwitchToItemSlotPostFix(PlayerControllerB __instance, int slot/*, GrabbableObject fillSlotWithItem = null*/)
     {
         if (SentBallScanTip || !StartOfRound.Instance.shipHasLanded || __instance != Utils.CurrentPlayer) return;
         

@@ -63,15 +63,15 @@ namespace LethalMon
         public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
         public InputAction ActionKey1 => Asset["actionKey1"];
 
-        private static ModConfig instance = null;
+        private static ModConfig? _instance = null;
         public static ModConfig Instance
         {
             get
             {
-                if (instance == null)
-                    instance = new ModConfig();
+                if (_instance == null)
+                    _instance = new ModConfig();
                 
-                return instance;
+                return _instance;
             }
         }
         #endregion
@@ -233,7 +233,7 @@ namespace LethalMon
                 NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(RECEIVE_MESSAGE, clientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
             }
 
-            public static void HostConfigReceived(ulong clientId, FastBufferReader reader)
+            public static void HostConfigReceived(ulong clientId, /* ref */ FastBufferReader reader) // todo: check if ref can be added to avoid warning
             {
                 reader.ReadValueSafe(out string json);
                 Debug.Log("Received host config: " + json);

@@ -10,19 +10,28 @@ namespace LethalMon.Behaviours
     internal class SporeLizardTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
+        internal PufferAI? _sporeLizard = null;
+        internal PufferAI SporeLizard
+        {
+            get
+            {
+                if (_sporeLizard == null)
+                    _sporeLizard = (Enemy as PufferAI)!;
+
+                return _sporeLizard;
+            }
+        }
+
         internal override bool Controllable => true;
-        internal readonly float RidingTriggerHoldTime = 1f;
+        internal const float RidingTriggerHoldTime = 1f;
 
-        internal PufferAI sporeLizard { get; private set; }
+        private InteractTrigger? _ridingTrigger = null;
 
-        internal InteractTrigger? ridingTrigger = null;
-
-        internal bool nightVisionPreviouslyEnabled = false;
+        private bool _nightVisionPreviouslyEnabled = false;
 
         internal bool IsRiding => CurrentCustomBehaviour == (int)CustomBehaviour.Riding;
-        internal bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
 
-        internal EnemyController? controller = null;
+        private EnemyController? _controller = null;
         #endregion
 
         #region Custom behaviours
@@ -30,14 +39,14 @@ namespace LethalMon.Behaviours
         {
             Riding = 1,
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-        {
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
             new Tuple<string, string, Action>(CustomBehaviour.Riding.ToString(), "Is being rode...", WhileRiding),
-        };
+        ];
 
         void WhileRiding()
         {
-            sporeLizard.CalculateAnimationDirection();
+            SporeLizard.CalculateAnimationDirection();
         }
         #endregion
 
@@ -49,7 +58,7 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
             {
-                nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
+                _nightVisionPreviouslyEnabled = Utils.CurrentPlayer.nightVision.enabled;
                 ownerPlayer!.nightVision.enabled = ownerPlayer.isInsideFactory; // todo: retrieve in ball when going outside, so that it gets disabled again
             }
         }
@@ -61,47 +70,39 @@ namespace LethalMon.Behaviours
 
             if (IsOwnerPlayer)
             {
-                ownerPlayer!.nightVision.enabled = nightVisionPreviouslyEnabled;
+                ownerPlayer!.nightVision.enabled = _nightVisionPreviouslyEnabled;
             }
 
-            sporeLizard.agentLocalVelocity = Vector3.zero;
-            sporeLizard.CalculateAnimationDirection(0f);
+            SporeLizard.agentLocalVelocity = Vector3.zero;
+            SporeLizard.CalculateAnimationDirection(0f);
         }
 
         internal void OnMove(Vector3 direction)
         {
-            sporeLizard.CalculateAnimationDirection();
+            SporeLizard.CalculateAnimationDirection();
         }
 
         internal void OnJump()
         {
             LethalMon.Log("Spore lizard is jumping");
-            controller!.Jumping();
+            _controller!.Jumping();
         }
         #endregion
 
         #region Base Methods
-        void Awake()
+        internal override void Awake()
         {
-            sporeLizard = (Enemy as PufferAI)!;
+            base.Awake();
 
-            if (TryGetComponent(out controller) && controller != null)
+            if (TryGetComponent(out _controller) && _controller != null)
             {
-                controller.OnStartControlling = OnStartRiding;
-                controller.OnStopControlling = OnStopRiding;
-                controller.OnMove = OnMove;
-                controller.OnJump = OnJump;
-
-                controller.EnemyCanJump = true;
-                controller.EnemyStrength = 3f;
-
-                // Debug
-                /*ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
-                isOutsideOfBall = true;
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-                controller!.enemy = GetComponent<EnemyAI>();
-                controller!.AddTrigger("Ride");
-                controller!.SetControlTriggerVisible(true);*/
+                _controller.OnStartControlling = OnStartRiding;
+                _controller.OnStopControlling = OnStopRiding;
+                _controller.OnMove = OnMove;
+                _controller.OnJump = OnJump;
+                
+                _controller.EnemyCanJump = true;
+                _controller.EnemyStrength = 3f;
             }
         }
 
@@ -115,24 +116,24 @@ namespace LethalMon.Behaviours
         {
             base.OnCallFromBall();
 
-            if(ridingTrigger == null && ownerPlayer == Utils.CurrentPlayer)
-                controller!.AddTrigger("Ride");
+            if(_ridingTrigger == null && IsOwnerPlayer)
+                _controller!.AddTrigger("Ride");
 
-            controller!.SetControlTriggerVisible();
+            _controller!.SetControlTriggerVisible();
         }
 
         internal override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
             
-            controller!.SetControlTriggerVisible(false);
+            _controller!.SetControlTriggerVisible(false);
         }
 
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
-            sporeLizard.CalculateAnimationDirection();
+            SporeLizard.CalculateAnimationDirection();
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -140,19 +141,19 @@ namespace LethalMon.Behaviours
             base.OnEscapedFromBall(playerWhoThrewBall);
 
             if (Utils.IsHost)
-                sporeLizard.StartCoroutine(PuffAndWait(sporeLizard));
+                SporeLizard.StartCoroutine(PuffAndWait(SporeLizard));
         }
 
         public override void OnDestroy()
         {
             if (IsOwnerPlayer && ownerPlayer?.nightVision != null)
-                ownerPlayer.nightVision.enabled = nightVisionPreviouslyEnabled;
+                ownerPlayer.nightVision.enabled = _nightVisionPreviouslyEnabled;
 
-            sporeLizard.agentLocalVelocity = Vector3.zero;
-            sporeLizard.CalculateAnimationDirection(0f);
+            SporeLizard.agentLocalVelocity = Vector3.zero;
+            SporeLizard.CalculateAnimationDirection(0f);
             
-            controller!.StopControlling(true);
-            Destroy(controller!);
+            _controller!.StopControlling(true);
+            Destroy(_controller!);
             
             base.OnDestroy();
         }

@@ -10,7 +10,7 @@ public class BushWolfEnemyPatch
     public static void OnStartPostfix(BushWolfEnemy __instance)
     {
         KidnapperFoxTamedBehaviour? behaviour = __instance.GetComponent<KidnapperFoxTamedBehaviour>();
-        if (behaviour != null && behaviour.ownerPlayer != null)
+        if (behaviour != null && behaviour.IsTamed)
         {
             __instance.inSpecialAnimation = false;
             __instance.EnableEnemyMesh(enable: true);

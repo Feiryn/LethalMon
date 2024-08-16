@@ -9,24 +9,25 @@ namespace LethalMon.Behaviours
     internal class EnemyController : NetworkBehaviour
     {
         #region Properties
-        internal EnemyAI? enemy;
+        private EnemyAI? _enemy = null;
 
-        internal PlayerControllerB? playerControlledBy = null;
+        private PlayerControllerB? playerControlledBy = null;
 
         // Stamina
-        private float controllingPlayerStamina = 0f;
-        private Color staminaDefaultColor;
-        private float enemyStamina = 1f;
+        private float _controllingPlayerStamina = 0f;
+        private Color _staminaDefaultColor;
+        internal float EnemyStamina { get; private set; } = 1f;
 
-        private bool inputsBinded = false;
+        private bool _inputsBinded = false;
 
-        internal bool isSprinting = false;
-        internal bool isMoving = false;
-        private Vector3 lastDirection = Vector3.zero;
-        private float currentSpeed = 0f;
+        internal bool IsSprinting { get; private set; } = false;
+        internal bool IsMoving { get; private set; } = false;
+
+        private Vector3 _lastDirection = Vector3.zero;
+        internal float CurrentSpeed { get; private set; } = 0f;
 
         internal bool IsPlayerControlled => playerControlledBy != null;
-        internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || inputsBinded;
+        internal bool IsControlledByUs => playerControlledBy == Utils.CurrentPlayer || _inputsBinded;
 
         // Changeable variables
         internal float EnemySpeedInside = 4f;
@@ -39,14 +40,14 @@ namespace LethalMon.Behaviours
         internal float EnemyStaminaUseMultiplier = 1f;
         internal Vector3 EnemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
 
-        internal InputAction moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
+        private InputAction _moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
 
         // Trigger
         internal virtual float ControlTriggerHoldTime => 1f;
 
-        internal InteractTrigger? controlTrigger = null;
-        internal Vector3 triggerCenterDistance = Vector3.zero; // TODO: transform parenting
-        internal GameObject? triggerObject = null;
+        private InteractTrigger? _controlTrigger = null;
+        private Vector3 _triggerCenterDistance = Vector3.zero; // TODO: transform parenting
+        private GameObject? _triggerObject = null;
         #endregion
 
         #region Controlling methods
@@ -54,8 +55,8 @@ namespace LethalMon.Behaviours
         internal Action? OnStopControlling = null;
         internal Func<Vector2, Vector3> OnCalculateMovementVector;
         internal Action<Vector3> OnMove;
-        internal Action? OnStartMoving;
-        internal Action? OnStopMoving;
+        //internal Action? OnStartMoving;
+        //internal Action? OnStopMoving;
         internal Action OnJump;
         internal Action OnCrouch;
         #endregion
@@ -70,67 +71,67 @@ namespace LethalMon.Behaviours
 
         void Awake()
         {
-            if (!gameObject.TryGetComponent(out enemy))
+            if (!gameObject.TryGetComponent(out _enemy))
                 LethalMon.Log("EnemyController: Unable to get enemy object.", LethalMon.LogType.Error);
         }
 
         #region Methods
         public void AddTrigger(string hoverTip = "Control")
         {
-            if (enemy?.transform == null || controlTrigger != null) return;
+            if (_enemy?.transform == null || _controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
 
-            if(!Utils.TryGetRealEnemyBounds(enemy, out Bounds bounds))
+            if(!Utils.TryGetRealEnemyBounds(_enemy, out Bounds bounds))
             {
                 LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
                 return;
             }
 
-            triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            triggerObject.transform.position = bounds.center;
-            triggerCenterDistance = enemy!.transform.position - bounds.center;
-            triggerObject.transform.localScale = bounds.size;
-            Physics.IgnoreCollision(triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
+            _triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            _triggerObject.transform.position = bounds.center;
+            _triggerCenterDistance = _enemy!.transform.position - bounds.center;
+            _triggerObject.transform.localScale = bounds.size;
+            Physics.IgnoreCollision(_triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
             //triggerObject.transform.SetParent(enemy.gameObject.transform, false); // damn parenting not working...
 
-            triggerObject.tag = "InteractTrigger";
-            triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
+            _triggerObject.tag = "InteractTrigger";
+            _triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
 
-            controlTrigger = triggerObject.AddComponent<InteractTrigger>();
-            controlTrigger.interactable = true;
-            controlTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
-            controlTrigger.hoverTip = hoverTip;
-            controlTrigger.oneHandedItemAllowed = true;
-            controlTrigger.twoHandedItemAllowed = true;
-            controlTrigger.holdInteraction = true;
-            controlTrigger.touchTrigger = false;
-            controlTrigger.timeToHold = ControlTriggerHoldTime;
-            controlTrigger.timeToHoldSpeedMultiplier = 1f;
+            _controlTrigger = _triggerObject.AddComponent<InteractTrigger>();
+            _controlTrigger.interactable = true;
+            _controlTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
+            _controlTrigger.hoverTip = hoverTip;
+            _controlTrigger.oneHandedItemAllowed = true;
+            _controlTrigger.twoHandedItemAllowed = true;
+            _controlTrigger.holdInteraction = true;
+            _controlTrigger.touchTrigger = false;
+            _controlTrigger.timeToHold = ControlTriggerHoldTime;
+            _controlTrigger.timeToHoldSpeedMultiplier = 1f;
 
-            controlTrigger.holdingInteractEvent = new InteractEventFloat();
-            controlTrigger.onInteract = new InteractEvent();
-            controlTrigger.onInteractEarly = new InteractEvent();
-            controlTrigger.onStopInteract = new InteractEvent();
-            controlTrigger.onCancelAnimation = new InteractEvent();
+            _controlTrigger.holdingInteractEvent = new InteractEventFloat();
+            _controlTrigger.onInteract = new InteractEvent();
+            _controlTrigger.onInteractEarly = new InteractEvent();
+            _controlTrigger.onStopInteract = new InteractEvent();
+            _controlTrigger.onCancelAnimation = new InteractEvent();
 
-            controlTrigger.onInteract.AddListener((player) => StartControllingServerRpc(player.NetworkObject));
+            _controlTrigger.onInteract.AddListener((player) => StartControllingServerRpc(player.NetworkObject));
 
-            controlTrigger.enabled = true;
+            _controlTrigger.enabled = true;
         }
 
         public void SetControlTriggerVisible(bool visible = true)
         {
-            if (controlTrigger == null) return;
+            if (_controlTrigger == null) return;
 
-            controlTrigger.holdInteraction = visible;
-            controlTrigger.isPlayingSpecialAnimation = !visible;
+            _controlTrigger.holdInteraction = visible;
+            _controlTrigger.isPlayingSpecialAnimation = !visible;
         }
 
         [ServerRpc(RequireOwnership = false)]
         public void StartControllingServerRpc(NetworkObjectReference playerNetworkReference)
         {
             LethalMon.Log("StartControllingServerRpc");
-            StartControllingClientRpc(playerNetworkReference, enemy!.transform.position);
+            StartControllingClientRpc(playerNetworkReference, _enemy!.transform.position);
         }
 
         [ClientRpc]
@@ -144,36 +145,36 @@ namespace LethalMon.Behaviours
             }
             playerControlledBy = player;
 
-            enemy!.moveTowardsDestination = false;
+            _enemy!.moveTowardsDestination = false;
             if (EnemyCanFly)
-                enemy!.agent.enabled = false;
+                _enemy!.agent.enabled = false;
 
             player.disableMoveInput = true;
 
-            enemy!.transform.localPosition += EnemyOffsetWhileControlling;
-            player.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
-            player.transform.rotation = enemy!.transform.rotation;
+            _enemy!.transform.localPosition += EnemyOffsetWhileControlling;
+            player.transform.position = _enemy!.transform.position - EnemyOffsetWhileControlling;
+            player.transform.rotation = _enemy!.transform.rotation;
 
             if (IsControlledByUs)
             {
                 // Reposition on navMesh
                 if (!EnemyCanFly)
                 {
-                    enemy.agent.Warp(enemyPos);
-                    enemy.agent.enabled = false;
-                    enemy.agent.enabled = true;
+                    _enemy.agent.Warp(enemyPos);
+                    _enemy.agent.enabled = false;
+                    _enemy.agent.enabled = true;
                 }
 
-                controllingPlayerStamina = player.sprintMeter;
-                player.sprintMeter = enemyStamina;
-                staminaDefaultColor = player.sprintMeterUI.color;
+                _controllingPlayerStamina = player.sprintMeter;
+                player.sprintMeter = EnemyStamina;
+                _staminaDefaultColor = player.sprintMeterUI.color;
                 player.sprintMeterUI.color = Color.cyan;
 
                 SetControlTriggerVisible(false);
                 BindInputs();
             }
 
-            if (enemy!.TryGetComponent(out Collider collider))
+            if (_enemy!.TryGetComponent(out Collider collider))
                 Physics.IgnoreCollision(collider, player.playerCollider);
 
             OnStartControlling?.Invoke();
@@ -199,22 +200,22 @@ namespace LethalMon.Behaviours
             {
                 playerControlledBy.disableMoveInput = false;
 
-                if (enemy!.TryGetComponent(out Collider collider))
+                if (_enemy!.TryGetComponent(out Collider collider))
                     Physics.IgnoreCollision(collider, playerControlledBy.playerCollider, false);
             }
 
-            enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
+            _enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
 
             if (EnemyCanFly)
-                enemy!.agent.enabled = true;
+                _enemy!.agent.enabled = true;
 
             if (IsControlledByUs)
             {
                 SetControlTriggerVisible(true);
                 UnbindInputs();
-                playerControlledBy!.sprintMeter = controllingPlayerStamina;
+                playerControlledBy!.sprintMeter = _controllingPlayerStamina;
                 playerControlledBy!.sprintMeterUI.fillAmount = playerControlledBy.sprintMeter;
-                playerControlledBy!.sprintMeterUI.color = staminaDefaultColor;
+                playerControlledBy!.sprintMeterUI.color = _staminaDefaultColor;
             }
 
             if (!beingDestroyed)
@@ -227,9 +228,9 @@ namespace LethalMon.Behaviours
         
         internal void BindInputs()
         {
-            if (inputsBinded || !IsControlledByUs) return;
+            if (_inputsBinded || !IsControlledByUs) return;
 
-            LethalMon.Log("Binding inputs to control enemy " + enemy!.enemyType.name);
+            LethalMon.Log("Binding inputs to control enemy " + _enemy!.enemyType.name);
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").started += SprintStart;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled += SprintStop;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started += Crouch;
@@ -237,14 +238,14 @@ namespace LethalMon.Behaviours
             if (EnemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started += Jump;
 
-            inputsBinded = true;
+            _inputsBinded = true;
         }
 
         internal void UnbindInputs()
         {
-            if (!inputsBinded || !IsControlledByUs) return;
+            if (!_inputsBinded || !IsControlledByUs) return;
 
-            LethalMon.Log("Unbinding inputs -> " + enemy!.enemyType.name);
+            LethalMon.Log("Unbinding inputs -> " + _enemy!.enemyType.name);
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").started -= SprintStart;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled -= SprintStop;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started -= Crouch;
@@ -252,7 +253,7 @@ namespace LethalMon.Behaviours
             if (EnemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started -= Jump;
 
-            inputsBinded = false;
+            _inputsBinded = false;
         }
 
         void LateUpdate()
@@ -262,66 +263,66 @@ namespace LethalMon.Behaviours
 
         void Update()
         {
-            if (controlTrigger != null)
-                controlTrigger.gameObject.transform.position = enemy!.transform.position + triggerCenterDistance;
+            if (_controlTrigger != null)
+                _controlTrigger.gameObject.transform.position = _enemy!.transform.position + _triggerCenterDistance;
 
-            if (playerControlledBy != null && enemy != null)
+            if (playerControlledBy != null && _enemy != null)
             {
-                if (inputsBinded)
+                if (_inputsBinded)
                 {
                     // Controlling player
-                    playerControlledBy!.transform.position = enemy!.transform.position - EnemyOffsetWhileControlling;
+                    playerControlledBy!.transform.position = _enemy!.transform.position - EnemyOffsetWhileControlling;
                     playerControlledBy!.ResetFallGravity();
 
-                    if (moveAction.IsPressed())
+                    if (_moveAction.IsPressed())
                     {
                         // Actively moving
-                        if (!isMoving)
+                        if (!IsMoving)
                         {
-                            OnStartMoving?.Invoke();
-                            isMoving = true;
+                            //OnStartMoving?.Invoke();
+                            IsMoving = true;
                         }
-                        Moving(OnCalculateMovementVector(moveAction.ReadValue<Vector2>()));
+                        Moving(OnCalculateMovementVector(_moveAction.ReadValue<Vector2>()));
                     }
                     else
                     {
                         // Not moving anymore
-                        if (isMoving)
+                        if (IsMoving)
                         {
-                            OnStopMoving?.Invoke();
-                            isMoving = false;
+                            //OnStopMoving?.Invoke();
+                            IsMoving = false;
                         }
 
-                        if (currentSpeed > 0.1f)
-                            Moving(lastDirection);
+                        if (CurrentSpeed > 0.1f)
+                            Moving(_lastDirection);
                     }
                 }
                 else
                 {
                     // Other clients
-                    enemy!.transform.position = playerControlledBy!.transform.position + EnemyOffsetWhileControlling;
+                    _enemy!.transform.position = playerControlledBy!.transform.position + EnemyOffsetWhileControlling;
                 }
 
-                enemy!.transform.rotation = playerControlledBy!.transform.rotation;
+                _enemy!.transform.rotation = playerControlledBy!.transform.rotation;
             }
 
-            if (inputsBinded && (playerControlledBy == null || playerControlledBy.isPlayerDead || enemy == null || enemy.isEnemyDead))
+            if (_inputsBinded && (playerControlledBy == null || playerControlledBy.isPlayerDead || _enemy == null || _enemy.isEnemyDead))
                 StopControllingServerRpc();
         }
 
         private void UpdateStamina()
         {
-            if (IsControlledByUs && inputsBinded)
+            if (IsControlledByUs && _inputsBinded)
             {
                 // Controlled
-                if (isMoving)
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (isSprinting ? 4f : 1f) * EnemyStaminaUseMultiplier / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
+                if (IsMoving)
+                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (IsSprinting ? 4f : 1f) * EnemyStaminaUseMultiplier / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
                 else if (EnemyCanFly && !playerControlledBy!.IsPlayerNearGround())
-                    enemyStamina = Mathf.Clamp(enemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * EnemyStaminaUseMultiplier / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
+                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * EnemyStaminaUseMultiplier / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
                 else
-                    enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f) * EnemyStaminaUseMultiplier, 0f, 1f); // Gain stamina if grounded and not moving
+                    EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f) * EnemyStaminaUseMultiplier, 0f, 1f); // Gain stamina if grounded and not moving
 
-                controllingPlayerStamina = Mathf.Clamp(controllingPlayerStamina + Time.deltaTime / (playerControlledBy.sprintTime + 2f), 0f, 1f);
+                _controllingPlayerStamina = Mathf.Clamp(_controllingPlayerStamina + Time.deltaTime / (playerControlledBy.sprintTime + 2f), 0f, 1f);
 
                 if (playerControlledBy.sprintMeter < 0.2f)
                 {
@@ -329,13 +330,13 @@ namespace LethalMon.Behaviours
                     return;
                 }
 
-                playerControlledBy.sprintMeter = enemyStamina;
-                playerControlledBy.sprintMeterUI.fillAmount = enemyStamina;
+                playerControlledBy.sprintMeter = EnemyStamina;
+                playerControlledBy.sprintMeterUI.fillAmount = EnemyStamina;
             }
             else
             {
                 // Not controlled
-                enemyStamina = Mathf.Clamp(enemyStamina + Time.deltaTime / 5f / EnemyDuration, 0f, 1f);
+                EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / 5f / EnemyDuration, 0f, 1f);
             }
 
             //LethalMon.Log($"Stamina player {(int)(100f*controllingPlayerStamina)}%, enemy{(int)(100f * enemyStamina)}%");
@@ -343,8 +344,8 @@ namespace LethalMon.Behaviours
 
         // Simplify abstract method parameter
         internal void Jump(InputAction.CallbackContext callbackContext) => OnJump();
-        internal void SprintStart(InputAction.CallbackContext callbackContext) => isSprinting = true;
-        internal void SprintStop(InputAction.CallbackContext callbackContext) => isSprinting = false;
+        internal void SprintStart(InputAction.CallbackContext callbackContext) => IsSprinting = true;
+        internal void SprintStop(InputAction.CallbackContext callbackContext) => IsSprinting = false;
         
         internal void Crouch(InputAction.CallbackContext callbackContext) => OnCrouch();
 
@@ -365,20 +366,20 @@ namespace LethalMon.Behaviours
 
         internal void Moving(Vector3 direction)
         {
-            lastDirection = direction;
+            _lastDirection = direction;
 
-            if (isMoving)
+            if (IsMoving)
             {
                 float maxSpeed = playerControlledBy!.isInsideFactory && StartOfRound.Instance.testRoom == null ? EnemySpeedInside : EnemySpeedOutside;
-                if (isSprinting)
+                if (IsSprinting)
                     maxSpeed *= 2.25f;
 
-                currentSpeed = Mathf.Max(Mathf.Lerp(currentSpeed, maxSpeed, 2f * Time.deltaTime), 0f);
+                CurrentSpeed = Mathf.Max(Mathf.Lerp(CurrentSpeed, maxSpeed, 2f * Time.deltaTime), 0f);
             }
             else
-                currentSpeed = Mathf.Max( Mathf.Lerp(currentSpeed, 0f, 5f * Time.deltaTime), 0f);
+                CurrentSpeed = Mathf.Max( Mathf.Lerp(CurrentSpeed, 0f, 5f * Time.deltaTime), 0f);
 
-            direction *= currentSpeed;
+            direction *= CurrentSpeed;
 
             if (EnemyCanFly)
             {
@@ -394,14 +395,14 @@ namespace LethalMon.Behaviours
                     if (willCollideDownwards) return;
                 }
                 
-                enemy!.transform.position += direction;
+                _enemy!.transform.position += direction;
             }
             else
             {
-                var navMeshPos = RoundManager.Instance.GetNavMeshPosition(enemy!.transform.position + direction, RoundManager.Instance.navHit, -1f);
+                var navMeshPos = RoundManager.Instance.GetNavMeshPosition(_enemy!.transform.position + direction, RoundManager.Instance.navHit, -1f);
                 OnMove(direction);
-                enemy!.agent.Move(navMeshPos - enemy!.transform.position);
-                enemy!.agent.destination = navMeshPos;
+                _enemy!.agent.Move(navMeshPos - _enemy!.transform.position);
+                _enemy!.agent.destination = navMeshPos;
             }
         }
 
@@ -417,8 +418,8 @@ namespace LethalMon.Behaviours
 
         public override void OnDestroy()
         {
-            Destroy(triggerObject);
-            Destroy(controlTrigger);
+            Destroy(_triggerObject);
+            Destroy(_controlTrigger);
             
             base.OnDestroy();
         }

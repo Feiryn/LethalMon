@@ -13,27 +13,27 @@ namespace LethalMon.Patches;
 
 public class HUDManagerPatch
 {
-    private static HUDElement monsterHudElement;
+    private static HUDElement? monsterHudElement;
 
-    private static Image monsterIcon;
+    private static Image? monsterIcon;
 
-    private static TextMeshProUGUI monsterName;
+    private static TextMeshProUGUI? monsterName;
     
-    private static TextMeshProUGUI pressKeyTip;
+    private static TextMeshProUGUI? pressKeyTip;
     
-    private static TextMeshProUGUI monsterAction;
+    private static TextMeshProUGUI? monsterAction;
     
-    private static Image cooldownCircle1;
+    private static Image? cooldownCircle1;
     
-    private static TextMeshProUGUI cooldownTime1;
+    private static TextMeshProUGUI? cooldownTime1;
     
-    private static TextMeshProUGUI cooldownName1;
+    private static TextMeshProUGUI? cooldownName1;
     
-    private static Image cooldownCircle2;
+    private static Image? cooldownCircle2;
     
-    private static TextMeshProUGUI cooldownTime2;
+    private static TextMeshProUGUI? cooldownTime2;
     
-    private static TextMeshProUGUI cooldownName2;
+    private static TextMeshProUGUI? cooldownName2;
 
     // todo ping HUD
     
@@ -48,53 +48,71 @@ public class HUDManagerPatch
     public static void ChangeToTamedBehaviour(TamedEnemyBehaviour behaviour)
     {
         string enemyTypeName = behaviour.Enemy.enemyType.name;
-        monsterIcon.sprite = LethalMon.monstersSprites.TryGetValue(enemyTypeName.ToLower(), out var sprite) ? sprite : LethalMon.monstersSprites["unknown"];
-        monsterName.text = Data.CatchableMonsters[enemyTypeName].DisplayName;
+
+        if (monsterIcon != null) 
+            monsterIcon.sprite = LethalMon.monstersSprites.TryGetValue(enemyTypeName.ToLower(), out var sprite) ? sprite : LethalMon.monstersSprites["unknown"];
+
+        if (monsterName != null)
+            monsterName.text = Data.CatchableMonsters[enemyTypeName].DisplayName;
         
         // Bind cooldowns
         CooldownNetworkBehaviour[] cooldowns = behaviour.GetComponents<CooldownNetworkBehaviour>();
-        if (cooldowns.Length >= 1)
+        if (cooldownCircle1 != null && cooldownTime1 != null && cooldownName1 != null)
         {
-            cooldownCircle1.gameObject.SetActive(true);
-            cooldownTime1.gameObject.SetActive(true);
-            cooldownName1.gameObject.SetActive(true);
-            cooldowns[0].BindToHUD(cooldownCircle1, cooldownTime1, cooldownName1);
+            if (cooldowns.Length >= 1)
+            {
+                cooldownCircle1.gameObject.SetActive(true);
+                cooldownTime1.gameObject.SetActive(true);
+                cooldownName1.gameObject.SetActive(true);
+                cooldowns[0].BindToHUD(cooldownCircle1, cooldownTime1, cooldownName1);
+            }
+            else
+            {
+                cooldownCircle1.gameObject.SetActive(false);
+                cooldownTime1.gameObject.SetActive(false);
+                cooldownName1.gameObject.SetActive(false);
+            }
         }
-        else
+
+        if (cooldownCircle2 != null && cooldownTime2 != null && cooldownName2 != null)
         {
-            cooldownCircle1.gameObject.SetActive(false);
-            cooldownTime1.gameObject.SetActive(false);
-            cooldownName1.gameObject.SetActive(false);
-        }
-        if (cooldowns.Length >= 2)
-        {
-            cooldownCircle2.gameObject.SetActive(true);
-            cooldownTime2.gameObject.SetActive(true);
-            cooldownName2.gameObject.SetActive(true);
-            cooldowns[1].BindToHUD(cooldownCircle2, cooldownTime2, cooldownName2);
-        }
-        else
-        {
-            cooldownCircle2.gameObject.SetActive(false);
-            cooldownTime2.gameObject.SetActive(false);
-            cooldownName2.gameObject.SetActive(false);
+            if (cooldowns.Length >= 2)
+            {
+                cooldownCircle2.gameObject.SetActive(true);
+                cooldownTime2.gameObject.SetActive(true);
+                cooldownName2.gameObject.SetActive(true);
+                cooldowns[1].BindToHUD(cooldownCircle2, cooldownTime2, cooldownName2);
+            }
+            else
+            {
+                cooldownCircle2.gameObject.SetActive(false);
+                cooldownTime2.gameObject.SetActive(false);
+                cooldownName2.gameObject.SetActive(false);
+            }
         }
     }
 
     public static void EnableHUD(bool enable)
     {
-        monsterHudElement.canvasGroup.gameObject.SetActive(enable);
+        monsterHudElement?.canvasGroup.gameObject.SetActive(enable);
     }
 
     public static void UpdateTamedMonsterAction(string action)
     {
-        monsterAction.text = action;
+        if(monsterAction != null)
+            monsterAction.text = action;
     }
     
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HUDManager), nameof(HUDManager.Awake))]
     static void AwakePostfix(HUDManager __instance)
     {
+        if(LethalMon.hudPrefab == null)
+        {
+            LethalMon.Log("Unable to instantiate HUD, prefab not loaded", LethalMon.LogType.Error);
+            return;
+        }
+
         FieldInfo? hudElementsFieldInfo =
             typeof(HUDManager).GetField("HUDElements", BindingFlags.NonPublic | BindingFlags.Instance);
 

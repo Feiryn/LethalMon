@@ -13,7 +13,7 @@ namespace LethalMon.Behaviours
         #region Properties
         private CrawlerAI? _crawler = null; // Replace with enemy class
         
-        private CrawlerAI Crawler
+        internal CrawlerAI Crawler
         {
             get
             {

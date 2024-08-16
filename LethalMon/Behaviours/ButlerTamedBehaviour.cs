@@ -22,8 +22,8 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal readonly float CleanUpTime = 5f;
-        internal float timeCleaning = 0f;
+        const float CleanUpTime = 5f;
+        float _timeCleaning = 0f;
 
         internal override bool CanDefend => false;
         internal override TargetType Targets => TargetType.Dead;
@@ -36,11 +36,11 @@ namespace LethalMon.Behaviours
             RunTowardsDeadEnemy = 1,
             CleanUpEnemy
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler => new()
-        {
-            { new (CustomBehaviour.RunTowardsDeadEnemy.ToString(), "Runs towards a dead enemy...", OnRunTowardsDeadEnemy) },
-            { new (CustomBehaviour.CleanUpEnemy.ToString(), "Is cleaning up an enemy...", OnCleanUpEnemy) }
-        };
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
+            new (CustomBehaviour.RunTowardsDeadEnemy.ToString(), "Runs towards a dead enemy...", OnRunTowardsDeadEnemy),
+            new (CustomBehaviour.CleanUpEnemy.ToString(), "Is cleaning up an enemy...", OnCleanUpEnemy)
+        ];
 
         internal override void InitCustomBehaviour(int behaviour)
         {
@@ -58,14 +58,13 @@ namespace LethalMon.Behaviours
                     Butler.SetDestinationToPosition(targetEnemy!.transform.position);
                     break;
                 case CustomBehaviour.CleanUpEnemy:
-                    timeCleaning = Butler.creatureAnimator.GetInteger("HeldItem") == 1 ? 0f : -2f; // More if not sweeping previously
+                    _timeCleaning = Butler.creatureAnimator.GetInteger("HeldItem") == 1 ? 0f : -2f; // More if not sweeping previously
                     Butler.creatureAnimator.SetInteger("HeldItem", 1);
                     Butler.agent.speed = 0f;
-                    if (IsOwner)
-                    {
-                        Butler.SetButlerRunningServerRpc(false);
-                        Butler.SetSweepingAnimServerRpc(true);
-                    }
+
+                    Butler.creatureAnimator.SetBool("Running", false);
+                    Butler.creatureAnimator.SetBool("Sweeping", true);
+                    Butler.sweepingAudio.Play();
                     break;
 
                 default:
@@ -75,13 +74,13 @@ namespace LethalMon.Behaviours
 
         internal void OnRunTowardsDeadEnemy()
         {
-            if (targetEnemy == null)
+            if (!HasTargetEnemy)
             {
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 return;
             }
 
-            TurnTowardsPosition(targetEnemy.transform.position);
+            TurnTowardsPosition(targetEnemy!.transform.position);
 
             if (Vector3.Distance(Butler.transform.position, targetEnemy.transform.position) < 1.5f)
                 SwitchToCustomBehaviour((int)CustomBehaviour.CleanUpEnemy);
@@ -89,17 +88,17 @@ namespace LethalMon.Behaviours
 
         internal void OnCleanUpEnemy()
         {
-            if (targetEnemy == null)
+            if (!HasTargetEnemy)
             {
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 return;
             }
 
-            timeCleaning += Time.deltaTime;
-            if (timeCleaning > CleanUpTime)
+            _timeCleaning += Time.deltaTime;
+            if (_timeCleaning > CleanUpTime)
             {
-                timeCleaning = 0f;
-                EnemyCleanedUpServerRpc(targetEnemy.NetworkObject);
+                _timeCleaning = 0f;
+                EnemyCleanedUpServerRpc(targetEnemy!.NetworkObject);
                 Butler.SetSweepingAnimServerRpc(false);
             }
         }
@@ -109,9 +108,9 @@ namespace LethalMon.Behaviours
         {
             SpawnableItemWithRarity? spawnableItemWithRarity = null;
             GameObject? item = null;
-            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
+            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && HasTargetEnemy)
             {
-                item = Utils.TrySpawnRandomItemAtPosition(targetEnemy.transform.position, out spawnableItemWithRarity);
+                item = Utils.TrySpawnRandomItemAtPosition(targetEnemy!.transform.position, out spawnableItemWithRarity);
                 if (item == null)
                     LethalMon.Log("Unable to spawn an item after cleaning up the enemy.", LethalMon.LogType.Error);
                 else
@@ -133,9 +132,9 @@ namespace LethalMon.Behaviours
             Butler.creatureAnimator.SetInteger("HeldItem", 0);
 
             Vector3 enemyPos, enemySize = Vector3.one;
-            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && targetEnemy != null)
+            if (enemyRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out targetEnemy) && HasTargetEnemy)
             {
-                enemyPos = targetEnemy.transform.position;
+                enemyPos = targetEnemy!.transform.position;
 
                 if (Utils.TryGetRealEnemyBounds(targetEnemy, out var bounds))
                     enemySize = bounds.size;
@@ -146,10 +145,9 @@ namespace LethalMon.Behaviours
                 enemyPos = Enemy.transform.position;
             }
 
-            Item? giftBox = Utils.GiftBoxItem;
-            if (giftBox != null && giftBox.spawnPrefab != null)
+            var giftBox = Utils.GiftBoxItem;
+            if (giftBox?.spawnPrefab != null && giftBox.spawnPrefab.TryGetComponent(out GiftBoxItem giftBoxItem))
             {
-                GiftBoxItem giftBoxItem = giftBox.spawnPrefab.GetComponent<GiftBoxItem>();
                 var presentAudio = Instantiate(giftBoxItem.openGiftAudio);
                 var presentParticles = Instantiate(giftBoxItem.PoofParticle);
 
@@ -188,7 +186,7 @@ namespace LethalMon.Behaviours
         
         private IEnumerator waitForGiftPresentToSpawnOnClient(NetworkObjectReference netItemRef, int scrapValue)
         {
-            NetworkObject netObject = null;
+            NetworkObject? netObject = null;
             float startTime = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - startTime < 8f && !netItemRef.TryGet(out netObject))
             {
@@ -224,9 +222,10 @@ namespace LethalMon.Behaviours
                     break;
 
                 case TamingBehaviour.TamedDefending:
-                    if (targetEnemy == null) return;
+                    if (!HasTargetEnemy) return;
 
-                    Butler.agent.speed = 9f;
+                    if (Butler.agent != null)
+                        Butler.agent.speed = 9f;
 
                     Butler.creatureAnimator.SetBool("Running", true);
                     break;
@@ -247,20 +246,14 @@ namespace LethalMon.Behaviours
             SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsDeadEnemy);
         }
 
-        internal override void OnTamedDefending()
-        {
-            // OWNER ONLY
-            base.OnTamedDefending();
-        }
-
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
 
+            Butler.targetPlayer = playerWhoThrewBall;
             if (IsOwner)
             {
-                Butler.targetPlayer = playerWhoThrewBall;
                 Butler.berserkModeTimer = 8f;
                 Butler.SwitchOwnershipAndSetToStateServerRpc(2, playerWhoThrewBall.actualClientId, 0f);
             }
@@ -277,7 +270,7 @@ namespace LethalMon.Behaviours
         {
             base.Start();
 
-            if (ownerPlayer != null)
+            if (IsTamed)
             {
                 Butler.agent.speed = 6f;
                 Butler.ambience1.volume = 0f;

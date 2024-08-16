@@ -5,6 +5,7 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Items;
 using LethalMon.Patches;
+using Steamworks;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -61,13 +62,19 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     public PlayerControllerB? ownerPlayer = null;
+    public ulong OwnerID => ownerPlayer != null ? ownerPlayer.playerClientId : ulong.MaxValue;
+    public bool IsTamed => ownerPlayer != null;
     public bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
+    public float DistanceToOwner => ownerPlayer != null ? Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) : 0f;
+
 
     public EnemyAI? targetEnemy = null;
+    public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
+    public float DistanceToTargetEnemy => HasTargetEnemy ? Vector3.Distance(Enemy.transform.position, targetEnemy!.transform.position) : 0f;
+
 
     public PlayerControllerB? targetPlayer = null;
-
-    public ulong ownClientId = ulong.MaxValue;
+    public float DistanceToTargetPlayer => targetPlayer != null ? Vector3.Distance(Enemy.transform.position, targetPlayer.transform.position) : 0f;
 
     public BallType ballType;
 
@@ -486,7 +493,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
         AddCustomBehaviours();
 
-        if (ownerPlayer != null)
+        if (IsTamed)
         {
             Enemy.Start();
             if (Enemy.creatureAnimator != null)
@@ -505,7 +512,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             }
         }
 
-        if (ownClientId == Utils.CurrentPlayer.playerClientId)
+        if (IsOwnerPlayer)
         {
             HUDManagerPatch.EnableHUD(true);
             HUDManagerPatch.ChangeToTamedBehaviour(this);
@@ -522,14 +529,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         base.OnDestroy();
 
         foreach (var cooldown in GetComponents<CooldownNetworkBehaviour>())
-        {
             cooldown.OnDestroy();
-        }
-        
-        if (ownerPlayer != null && ownerPlayer == Utils.CurrentPlayer)
-        {
+
+        if (IsOwnerPlayer)
             HUDManagerPatch.EnableHUD(false);
-        }
     }
 
     internal virtual void TurnTowardsPosition(Vector3 position)
@@ -561,7 +564,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
         DateTime now = SystemClock.now;
-        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
+        pokeballItem.cooldowns = GetComponents<CooldownNetworkBehaviour>().ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
         pokeballItem.fallTime = 0f;
         pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
         pokeballItem.SetScrapValue(ballValue);
@@ -674,7 +677,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
             var tamedBehaviour = enemyHit?.GetComponentInParent<TamedEnemyBehaviour>();
-            if (enemyInRange?.transform == null || tamedBehaviour == null || tamedBehaviour.ownerPlayer != null) continue;
+            if (enemyInRange?.transform == null || tamedBehaviour == null || tamedBehaviour.IsTamed) continue;
 
             if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
@@ -688,7 +691,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             }
         }
 
-        return target;
         return target;
     }
 
@@ -751,13 +753,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         DateTime now = SystemClock.now;
         foreach (KeyValuePair<string, Tuple<float, DateTime>> cooldownTimer in cooldownsTimers)
         {
-            GetComponents<CooldownNetworkBehaviour>().FirstOrDefault(cooldown => cooldown.Id.Value.Value == cooldownTimer.Key)?.InitTimer(cooldownTimer.Value.Item1 + (float) (now - cooldownTimer.Value.Item2).TotalSeconds);
+            GetComponents<CooldownNetworkBehaviour>().Where(cooldown => cooldown.Id != null).FirstOrDefault(cooldown => cooldown.Id!.Value.Value == cooldownTimer.Key)?.InitTimer(cooldownTimer.Value.Item1 + (float) (now - cooldownTimer.Value.Item2).TotalSeconds);
         }
     }
 
     public CooldownNetworkBehaviour GetCooldownWithId(string id)
     {
-        return GetComponents<CooldownNetworkBehaviour>().First(cooldown => cooldown.Id.Value.Value == id);
+        return GetComponents<CooldownNetworkBehaviour>().Where(cooldown => cooldown.Id != null).First(cooldown => cooldown.Id!.Value.Value == id);
     }
     
     public bool IsOwnedByAPlayer()
@@ -809,4 +811,20 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         return true;
     }
     #endregion
+
+#if DEBUG
+    #region DEBUG
+    private void SetTamedByHost_DEBUG()
+    {
+        ownerPlayer = Utils.AllPlayers.Where((p) => p.playerClientId == 0ul).First();
+        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+
+        if(Controllable && TryGetComponent(out EnemyController controller))
+        {
+            controller.AddTrigger();
+            controller.SetControlTriggerVisible(true);
+        }
+    }
+    #endregion
+#endif
 }

@@ -11,7 +11,7 @@ namespace LethalMon.Behaviours
     internal class ExampleTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        internal TestEnemy? _testEnemy = null; // Replace with enemy class
+        private TestEnemy? _testEnemy = null; // Replace with enemy class
         internal TestEnemy TestEnemy
         {
             get
@@ -29,13 +29,16 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Cooldowns
-        private static readonly string CooldownId = "monstername_cooldownname";
+        private const string CooldownId = "monstername_cooldownname";
     
         internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
 
-        private CooldownNetworkBehaviour? cooldown;
+        private readonly CooldownNetworkBehaviour cooldown;
         #endregion
-        
+
+        // Call cooldown.Reset() somewhere to start the cooldown
+        ExampleTamedBehaviour() => cooldown = GetCooldownWithId(CooldownId);
+
         #region Custom behaviours
         internal enum CustomBehaviour
         {
@@ -90,8 +93,6 @@ namespace LethalMon.Behaviours
         internal override void Start()
         {
             base.Start();
-
-            cooldown = GetCooldownWithId(CooldownId);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
