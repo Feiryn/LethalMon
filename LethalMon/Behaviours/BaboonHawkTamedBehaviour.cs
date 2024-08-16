@@ -42,8 +42,8 @@ namespace LethalMon.Behaviours
         private const string HittingEnemyCooldownId = "baboonhawk_hittingenemy";
 
         internal override Cooldown[] Cooldowns => [
-            new Cooldown(EchoLotCooldownId, "Echo lot", 10f),
-            new Cooldown(HittingEnemyCooldownId, "Hitting enemy", 4f)
+            new Cooldown(EchoLotCooldownId, "Echo lot", 15f),
+            new Cooldown(HittingEnemyCooldownId, "Hitting enemy", 5f)
             ];
 
         private CooldownNetworkBehaviour? echoLotCooldown;
@@ -234,6 +234,8 @@ namespace LethalMon.Behaviours
             if (!IsCollidingWithTargetEnemy)
             {
                 BaboonHawk.SetDestinationToPosition(targetEnemy.transform.position);
+                if (IsOwner)
+                    BaboonHawk.agent.speed = hittingEnemyCooldown != null ? Mathf.Clamp(hittingEnemyCooldown.CurrentTimer * 2f, 1f, 5f) : 4f; // Slow down after hit
                 return;
             }
 
