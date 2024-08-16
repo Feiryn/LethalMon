@@ -235,7 +235,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        if (targetEnemy.meshRenderers.Any(meshRendererTarget => Bracken.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+        if (IsCollidingWithTargetEnemy)
         {
             LethalMon.Log("Collided with target, grab it");
 
