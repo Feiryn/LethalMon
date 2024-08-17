@@ -198,6 +198,7 @@ public class Utils
         BushWolf,
         Butler,
         ButlerBees,
+        CaveDweller,
         Centipede,
         ClaySurgeon,
         Crawler,

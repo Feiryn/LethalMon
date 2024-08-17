@@ -5,10 +5,7 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 using LethalMon.Items;
-using UnityEngine.Rendering.HighDefinition;
 using LethalMon.CustomPasses;
-
-using static LethalMon.CustomPasses.CustomPassManager.CustomPassType;
 
 namespace LethalMon.Patches
 {
@@ -45,86 +42,53 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f2Key.wasPressedThisFrame)
             {
-                CustomPassManager.Instance.EnableCustomPass(SeeThroughEnemies, !CustomPassManager.Instance.IsCustomPassEnabled(SeeThroughEnemies));
+                TeleportOutsideDungeon();
             }
 
             else if (Keyboard.current.f3Key.wasPressedThisFrame)
             {
-                CustomPassManager.Instance.EnableCustomPass(SeeThroughItems, !CustomPassManager.Instance.IsCustomPassEnabled(SeeThroughItems));
             }
 
             else if (Keyboard.current.f4Key.wasPressedThisFrame)
             {
-                TeleportOutsideDungeon();
             }
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                LethalMon.Log("-------------------");
-                Collider[] colliders = Physics.OverlapSphere(Utils.CurrentPlayer.transform.position, 3f);
-                // Log all the colliders and sub components
-                foreach (var collider in colliders)
-                {
-                    LethalMon.Log(collider.name);
-                    foreach (var component in collider.GetComponents<Component>())
-                    {
-                        LethalMon.Log("  " + component.GetType().Name + " (los: " + !Physics.Linecast(Utils.CurrentPlayer.transform.position, component.transform.position, StartOfRound.Instance.collidersAndRoomMaskAndDefault) + ")");
-                    }
-                }
+                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.CaveDweller);
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                var enemy = SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.Crawler.ToString());
-                GameNetworkManager.Instance.StartCoroutine(KillEnemyLater(enemy!));
+                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler, 0.5f);
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, Utils.Enemy.RedLocustBees.ToString());
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                foreach (var bigDoor in FindObjectsOfType<TerminalAccessibleObject>())
-                {
-                    if (bigDoor.isBigDoor && bigDoor.isDoorOpen)
-                    {
-                        bigDoor.SetDoorOpenServerRpc(false);
-                    }
-                }
-                
-                foreach (var smallDoor in FindObjectsOfType<DoorLock>())
-                {
-                    if (!smallDoor.isLocked)
-                    {
-                        smallDoor.LockDoor();
-                    }
-                }
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
             {
-                if (Pokeball.SpawnPrefab != null)
-                    SpawnItemInFront(Pokeball.SpawnPrefab);
+                SpawnItemInFront(Pokeball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f10Key.wasPressedThisFrame)
             {
-                if (Greatball.SpawnPrefab != null)
-                    SpawnItemInFront(Greatball.SpawnPrefab);
+                SpawnItemInFront(Greatball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f11Key.wasPressedThisFrame)
             {
-                if (Ultraball.SpawnPrefab != null)
-                    SpawnItemInFront(Ultraball.SpawnPrefab);
+                SpawnItemInFront(Ultraball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f12Key.wasPressedThisFrame)
             {
-                if (Masterball.SpawnPrefab != null)
-                    SpawnItemInFront(Masterball.SpawnPrefab);
+                SpawnItemInFront(Masterball.SpawnPrefab);
             }
 
             else
@@ -132,6 +96,27 @@ namespace LethalMon.Patches
 
             GameNetworkManager.Instance?.StartCoroutine(WaitAfterKeyPress());
         }
+
+        #region Visuals
+        public static GameObject CreateCube(ref Color color, Vector3 pos)
+        {
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.transform.position = pos;
+            cube.transform.localScale = Vector3.one * 0.5f;
+
+            if (cube.TryGetComponent(out BoxCollider boxCollider))
+                boxCollider.enabled = false;
+
+            if (cube.TryGetComponent(out MeshRenderer meshRenderer))
+            {
+                meshRenderer.material = color.a < 1f ? Utils.Glass : new Material(Shader.Find("HDRP/Lit"));
+                meshRenderer.material.color = color;
+                meshRenderer.enabled = true;
+            }
+
+            return cube;
+        }
+        #endregion
 
         #region Item
         public static void SpawnItemInFront(Item item)
@@ -141,7 +126,7 @@ namespace LethalMon.Patches
             SpawnItemInFront(item.spawnPrefab);
         }
 
-        public static void SpawnItemInFront(GameObject networkPrefab)
+        public static void SpawnItemInFront(GameObject? networkPrefab)
         {
             if (!Utils.IsHost)
             {
@@ -155,8 +140,8 @@ namespace LethalMon.Patches
                 return;
             }
 
-            var item = Object.Instantiate(networkPrefab);
-            Object.DontDestroyOnLoad(item);
+            var item = Instantiate(networkPrefab);
+            DontDestroyOnLoad(item);
             item.GetComponent<NetworkObject>()?.Spawn();
             item.transform.position = Utils.CurrentPlayer.transform.position + Utils.CurrentPlayer.transform.forward * 1.5f;
             if (item.TryGetComponent(out GrabbableObject grabbableObject))
@@ -166,14 +151,18 @@ namespace LethalMon.Patches
 
         #region Enemy
 
-        public static IEnumerator KillEnemyLater(EnemyAI enemyAI)
+        public static IEnumerator KillEnemyLater(EnemyAI enemyAI, float delay)
         {
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(delay);
             enemyAI.KillEnemyServerRpc(false);
         }
 
-        public static EnemyAI? SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, string enemyName)
+        public static void LogAllEnemyTypes() => Utils.EnemyTypes.ForEach((type) => LethalMon.Log(type.name));
+
+        public static EnemyAI? SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy enemy, float? killTimer = null) => SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, enemy, killTimer);
+        public static EnemyAI? SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, Utils.Enemy enemy, float? killTimer = null)
         {
+            var enemyName = enemy.ToString();
             foreach (EnemyType enemyType in Utils.EnemyTypes)
             {
                 if (enemyName != enemyType.name) continue;
@@ -187,11 +176,30 @@ namespace LethalMon.Patches
                 enemyAI.enabled = StartOfRound.Instance.testRoom == null;
                 enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
 
+                if(killTimer != null)
+                    KillEnemyLater(enemyAI, killTimer.Value);
+
                 return enemyAI;
             }
 
             LethalMon.Logger.LogInfo("No enemy found..");
             return null;
+        }
+        #endregion
+
+        #region Player
+        public static void LogCollidersInRange(float range)
+        {
+            Collider[] colliders = Physics.OverlapSphere(Utils.CurrentPlayer.transform.position, range);
+            // Log all the colliders and sub components
+            foreach (var collider in colliders)
+            {
+                LethalMon.Log(collider.name);
+                foreach (var component in collider.GetComponents<Component>())
+                {
+                    LethalMon.Log("  " + component.GetType().Name + " (los: " + !Physics.Linecast(Utils.CurrentPlayer.transform.position, component.transform.position, StartOfRound.Instance.collidersAndRoomMaskAndDefault) + ")");
+                }
+            }
         }
         #endregion
 
@@ -224,6 +232,34 @@ namespace LethalMon.Patches
             }
         }
         #endregion
-#endif
+
+        #region Interiors
+        public static void LockAllDoors()
+        {
+            foreach (var bigDoor in FindObjectsOfType<TerminalAccessibleObject>())
+            {
+                if (bigDoor.isBigDoor && bigDoor.isDoorOpen)
+                {
+                    bigDoor.SetDoorOpenServerRpc(false);
+                }
+            }
+
+            foreach (var smallDoor in FindObjectsOfType<DoorLock>())
+            {
+                if (!smallDoor.isLocked)
+                {
+                    smallDoor.LockDoor();
+                }
+            }
         }
+        #endregion
+
+        #region Other
+        public static void ToggleCustomPass(CustomPassManager.CustomPassType customPassType)
+        {
+            CustomPassManager.Instance.EnableCustomPass(customPassType, !CustomPassManager.Instance.IsCustomPassEnabled(customPassType));
+        }
+        #endregion
+#endif
+    }
 }

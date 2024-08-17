@@ -5,7 +5,6 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Items;
 using LethalMon.Patches;
-using Steamworks;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
