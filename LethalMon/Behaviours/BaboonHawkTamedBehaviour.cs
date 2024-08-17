@@ -235,7 +235,7 @@ namespace LethalMon.Behaviours
             {
                 BaboonHawk.SetDestinationToPosition(targetEnemy.transform.position);
                 if (IsOwner)
-                    BaboonHawk.agent.speed = hittingEnemyCooldown != null ? Mathf.Clamp(hittingEnemyCooldown.CurrentTimer * 2f, 1f, 5f) : 4f; // Slow down after hit
+                    BaboonHawk.agent.speed = hittingEnemyCooldown != null ? Mathf.Clamp(hittingEnemyCooldown.CurrentTimer * 2f, 1f, 10f) : 4f; // Slow down after hit
                 return;
             }
 
