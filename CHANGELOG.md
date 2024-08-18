@@ -1,6 +1,12 @@
+# 0.4.9
+
+- Fixed a softlock on ship ladders if a player has a monster out
+- Bees now stun on sight and  have a cooldown
+
 # 0.4.8
 
 - v61 compatibility
+- You can now find filled balls in the dungeon
 - Nutcracker stops shooting at invisible enemies and its line of sight is now more accurate (thanks to [@NiroDev](https://github.com/NiroDev))
 - Tooltip are now properly hidden when a monster is called back (thanks to [@NiroDev](https://github.com/NiroDev))
 - Fixed a bug that could make the player go underground with the tulip snake (thanks to [@NiroDev](https://github.com/NiroDev))
