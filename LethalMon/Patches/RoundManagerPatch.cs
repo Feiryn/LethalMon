@@ -1,5 +1,7 @@
+using System.Linq;
 using HarmonyLib;
 using LethalMon.Items;
+using Unity.Netcode;
 
 namespace LethalMon.Patches;
 
@@ -34,6 +36,36 @@ public class RoundManagerPatch
         if (ModConfig.Instance.values.KeepBallsIfAllPlayersDead != "no")
         {
             ChangeIsScrapForBalls(true, ModConfig.Instance.values.KeepBallsIfAllPlayersDead == "fullOnly");
+        }
+    }
+
+    [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.waitForScrapToSpawnToSync))]
+    [HarmonyPostfix]
+    private static void WaitForScrapToSpawnToSyncPostfix(RoundManager __instance, NetworkObjectReference[] spawnedScrap, int[] scrapValues)
+    {
+        if (!Utils.IsHost) return;
+        
+        foreach (NetworkObjectReference scrap in spawnedScrap)
+        {
+            if (scrap.TryGet(out NetworkObject networkObject))
+            {
+                PokeballItem pokeballItem = networkObject.gameObject.GetComponent<PokeballItem>();
+                if (pokeballItem != null &&  UnityEngine.Random.Range(0f, 1f) <= ModConfig.Instance.values.FilledBallsPercentage)
+                {
+                    int totalDifficulty = Data.CatchableMonsters.Sum(cm => 10 - cm.Value.CatchDifficulty);
+                    int randomValue = UnityEngine.Random.Range(0, totalDifficulty);
+                    foreach (var catchableMonster in Data.CatchableMonsters)
+                    {
+                        randomValue -= 10 - catchableMonster.Value.CatchDifficulty;
+                        if (randomValue <= 0)
+                        {
+                            pokeballItem.SetCaughtEnemyServerRpc(catchableMonster.Key);
+                            LethalMon.Log("A random " + pokeballItem.itemProperties.itemName + " has been spawned with a " + catchableMonster.Key + " in it");
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
