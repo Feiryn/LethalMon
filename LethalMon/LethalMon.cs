@@ -106,6 +106,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(FlowermanAIPatch));
         Harmony.PatchAll(typeof(BushWolfEnemyPatch));
         Harmony.PatchAll(typeof(MaskedPlayerEnemyPatch));
+        Harmony.PatchAll(typeof(CaveDwellerAIPatch));
 
         // Enemy behaviours
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));

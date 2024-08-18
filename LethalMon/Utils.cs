@@ -473,4 +473,51 @@ public class Utils
         }
     }
     #endregion
+
+    #region Animations
+    internal static IEnumerator RecordAnimation(Animator animator, float duration)
+    {
+        animator.StartRecording(0);
+        yield return new WaitForSeconds(duration);
+        animator.StopRecording();
+
+        LethalMon.Log("Recorded animation of duration: " + animator.recorderStopTime);
+    }
+
+    internal static IEnumerator StartPlaybackOfAnimator(Animator animator, bool reverse = false)
+    {
+        if (Mathf.Approximately(animator.recorderStartTime, -1f) || Mathf.Approximately(animator.recorderStopTime, -1f))
+        {
+            LethalMon.Log("StartPlaybackOfAnimator: No record.", LethalMon.LogType.Warning);
+            yield break; // No record
+        }
+
+        LethalMon.Log("Playing record with duration: " + animator.recorderStopTime);
+
+        animator.StartPlayback();
+
+        if (reverse)
+        {
+            animator.playbackTime = animator.recorderStopTime;
+
+            yield return new WaitWhile(() =>
+            {
+                animator.playbackTime -= Time.deltaTime;
+                return animator.playbackTime > 0f;
+            });
+        }
+        else
+        {
+            yield return new WaitWhile(() =>
+            {
+                animator.playbackTime += Time.deltaTime;
+                return animator.playbackTime < animator.recorderStopTime;
+            });
+        }
+
+        LethalMon.Log("Record played");
+
+        animator.StopPlayback();
+    }
+    #endregion
 }
