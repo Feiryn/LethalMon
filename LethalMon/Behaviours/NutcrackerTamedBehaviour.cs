@@ -99,7 +99,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
                 SetTorsoTargetDegreesServerRPC();
             }
         }
-        else if (Nutcracker != null && Nutcracker.creatureVoice != null)
+        else if (Nutcracker != null && Nutcracker.creatureVoice != null && Nutcracker.creatureAnimator != null)
         {
             LethalMon.Log("Enter following mode");
             Nutcracker.creatureVoice.Stop();
