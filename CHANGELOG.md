@@ -1,3 +1,11 @@
+# 0.4.8
+
+- v61 compatibility
+- Nutcracker stops shooting at invisible enemies and its line of sight is now more accurate (thanks to [@NiroDev](https://github.com/NiroDev))
+- Tooltip are now properly hidden when a monster is called back (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed a bug that could make the player go underground with the tulip snake (thanks to [@NiroDev](https://github.com/NiroDev))
+- Big code refactoring and cleanup (thanks to [@NiroDev](https://github.com/NiroDev))
+
 # 0.4.7
 
 - Fixed a bug that made the host freeze if they died with a monster out
