@@ -26,6 +26,17 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     internal override float TargetingRange => 3f;
     #endregion
 
+    #region Cooldowns
+
+    private const string StunCooldownId = "Bees_stun";
+
+    internal override Cooldown[] Cooldowns => [new Cooldown(StunCooldownId, "Stun enemy", ModConfig.Instance.values.BeesStunCooldown)];
+
+    private CooldownNetworkBehaviour? stunCooldown;
+
+    internal override bool CanDefend => stunCooldown != null && stunCooldown.IsFinished();
+    #endregion
+
     #region Base Methods
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
@@ -54,7 +65,8 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        TargetNearestEnemy();
+        if (stunCooldown != null && stunCooldown.IsFinished())
+            TargetNearestEnemy();
     }
 
     internal override void OnTamedDefending()
@@ -75,6 +87,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             {
                 LethalMon.Log("Target player collided");
 
+                stunCooldown?.Reset();
                 BeeDamageServerRPC(targetPlayer.GetComponent<NetworkObject>());
 
                 ChangeAngryMode(false);

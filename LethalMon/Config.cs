@@ -55,6 +55,8 @@ namespace LethalMon
             public float EyelessDogHowlCooldown { get; set; }
 
             public float MaskedLendCooldown { get; set; }
+
+            public float BeesStunCooldown { get; set; }
         }
 
         public ConfigValues values = new();
@@ -104,6 +106,7 @@ namespace LethalMon
             values.FoxTongueHitCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "FoxTongueHitCooldown", 5f, "Tongue hit cooldown time in seconds for the fox").Value;
             values.EyelessDogHowlCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "EyelessDogHowlCooldown", 5f, "Howl cooldown time in seconds for the eyeless dog").Value;
             values.MaskedLendCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "MaskedLendCooldown", 7f, "Mask lending cooldown time in seconds for the masked").Value;
+            values.BeesStunCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BeesStunCooldown", 10f, "Stunning cooldown time in seconds for the bees").Value;
 
             // Save the config for game changes
             originalValues = values;
