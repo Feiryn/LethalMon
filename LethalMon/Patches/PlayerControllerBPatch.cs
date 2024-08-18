@@ -181,7 +181,7 @@ public class PlayerControllerBPatch
             }
             tamedBehaviour.Enemy.transform.position = position;
 
-            if(isControlled && !controller.EnemyCanFly)
+            if(!isControlled || !controller.EnemyCanFly)
                 tamedBehaviour.Enemy.agent.enabled = true;
             tamedBehaviour.Enemy.serverPosition = position;
             tamedBehaviour.Enemy.SetEnemyOutside(!__instance.isInsideFactory);
