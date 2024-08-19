@@ -313,7 +313,7 @@ public abstract class PokeballItem : ThrowableItem
         this.enemyAI = enemyAI;
         this.enemyType = enemyAI.enemyType;
         
-        float captureProbability = catchable.GetCaptureProbability(this.captureStrength);
+        float captureProbability = catchable.GetCaptureProbability(this.captureStrength, this.enemyAI);
         float shakeProbability = Mathf.Pow(captureProbability, 1f / 3f); // Cube root
         LethalMon.Log("Total capture probability: " + captureProbability + ". Each shake has probability of " + shakeProbability);
         this.captureRounds = 1;

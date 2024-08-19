@@ -36,6 +36,8 @@ namespace LethalMon
             
             public float FilledBallsPercentage { get; set; }
             
+            public float EnemyHPCaptureProbabilityMultiplier { get; set; }
+
             public string KeepBallsIfAllPlayersDead { get; set; }
             
             public int CaptureRateModifier { get; set; }
@@ -93,6 +95,7 @@ namespace LethalMon
             values.Tier4BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier4BallSpawnWeight", 2, "The spawn weight of the tier 4 ball (master ball). Higher = more common").Value;
             values.KeepBallsIfAllPlayersDead = LethalMon.Instance.Config.Bind("Items", "KeepBallsIfAllPlayersDead", "no", "Make the balls don't despawn even if all the players are dead. Values are: no, fullOnly, all").Value;
             values.FilledBallsPercentage = LethalMon.Instance.Config.Bind("Items", "FilledBallsPercentage", 0.5f, "Percentage of filled balls in the dungeon").Value;
+            values.EnemyHPCaptureProbabilityMultiplier = LethalMon.Instance.Config.Bind("Items", "EnemyHPCaptureProbabilityMultiplier", 1f, "Lower enemy HP increases the capture probability. Set this to 0 to disable this feature").Value;
             
             // Monsters
             values.DisabledMonsters = LethalMon.Instance.Config.Bind("Monsters", "DisabledMonsters", "", "Disabled monsters types. Separate with a comma and don't put spaces. Example: Monster1,Monster2. Available monsters: " + string.Join(", ", Enum.GetNames(typeof(Utils.Enemy)))).Value.Split(",");
