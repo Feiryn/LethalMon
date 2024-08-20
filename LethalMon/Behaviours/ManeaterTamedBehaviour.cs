@@ -10,6 +10,7 @@ using System.Linq;
 using static LethalMon.Utils;
 using Vector3 = UnityEngine.Vector3;
 using Dissonance;
+using static UnityEngine.GraphicsBuffer;
 
 namespace LethalMon.Behaviours
 {
@@ -54,7 +55,18 @@ namespace LethalMon.Behaviours
         private float scaredTimer = 0f;
         private GameObject? objectScaredOf = null;
 
+        // Chasing & Attacking
+        private GameObject? Target => targetPlayer != null ? targetPlayer.gameObject : targetEnemy?.gameObject;
+        private bool hasLineOfSightToTarget = false;
+        private float _startedScreamingAt = 0f;
+
         // Constants
+        private const float MaximumTargetingRange = 30f;
+        private const float AttackDistance = 4f;
+        private const float ChaseSpeed = 8f;
+        private const float LeapSpeed = 12f;
+        private const float ScreamDuration = 2f;
+
         private const float UpdateStatusInterval = 1f;
 
         private const float LonelinessPoint = 0.4f; // Point after which the baby feels lonely
@@ -63,30 +75,32 @@ namespace LethalMon.Behaviours
         private const float StressedPoint = 0.5f; // ManeaterMemory.likeMeter point below which the baby feels stressed towards it
         private const float VeryStressedPoint = 0.25f; // ManeaterMemory.likeMeter point below which the baby feels under huge pressure, shortly before attacking
 
-        private const float IdleTimeBeforeAttacking = 0.5f;
+        internal bool CanTransform => becomeAggressiveCooldown == null || becomeAggressiveCooldown.IsFinished();
 
-        internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
+        internal override string DefendingBehaviourDescription => "Defending owner!";
 
-        internal override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
+        internal override bool CanDefend => false;
         #endregion
 
         #region Cooldowns
-        private const string AttackingCooldownID = "maneater_attacking";
+        private const string BecomeAggressiveCooldownID = "maneater_aggressive";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(AttackingCooldownID, "Attacking", 10f)];
+        internal override Cooldown[] Cooldowns => [new Cooldown(BecomeAggressiveCooldownID, "Become aggressive", 10f)];
 
-        private CooldownNetworkBehaviour? attackingCooldown;
+        private CooldownNetworkBehaviour? becomeAggressiveCooldown;
         #endregion
 
         #region Custom behaviours
         internal enum CustomBehaviour
         {
             Transforming = 1,
+            Chasing,
             Attacking,
         }
         internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.Transforming.ToString(), "Transforming", OnTransformBehaviour),
+            new (CustomBehaviour.Chasing.ToString(), "Chasing", OnChasingBehaviour),
             new (CustomBehaviour.Attacking.ToString(), "Attacking", OnAttackingBehaviour)
         ];
 
@@ -105,14 +119,79 @@ namespace LethalMon.Behaviours
                         else
                             BecomeChildServerRpc();
 
-                        Invoke(nameof(Transformed), 2.2f + IdleTimeBeforeAttacking);
+                        Invoke(nameof(Transformed), 2.2f);
                     }
                     break;
+                case CustomBehaviour.Chasing:
+                    if (IsOwner)
+                        Maneater.agent.speed = ChaseSpeed;
+                    break;
                 case CustomBehaviour.Attacking:
+                    if (IsOwner)
+                    {
+                        Maneater.leapSpeed = LeapSpeed;
+                        Maneater.DoLeapServerRpc();
+                    }
                     // ...
                     break;
                 default:
                     break;
+            }
+        }
+
+        internal void EndChasing() => SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
+
+        internal void OnChasingBehaviour()
+        {
+            if (!IsOwner) return;
+
+            if (Maneater.screaming)
+            {
+                if (Time.realtimeSinceStartup - _startedScreamingAt < ScreamDuration)
+                    return;
+                else
+                    StopScreaming();
+            }
+
+            if (targetEnemy != null)
+            {
+                var distance = DistanceToTargetEnemy;
+                if (targetEnemy.isEnemyDead || distance > MaximumTargetingRange + 2f)
+                {
+                    if(targetEnemy.isEnemyDead)
+                        _maneaterMemory.Remove(targetEnemy.gameObject);
+                    targetEnemy = null;
+                    return;
+                }
+
+                AttackWhenPossible(distance);
+            }
+            else if (targetPlayer != null)
+            {
+                var distance = DistanceToTargetPlayer;
+                if (targetPlayer.isPlayerDead || distance > MaximumTargetingRange + 2f)
+                {
+                    if(targetPlayer.isPlayerDead)
+                        _maneaterMemory.Remove(targetPlayer.gameObject);
+                    targetPlayer = null;
+                    return;
+                }
+
+                AttackWhenPossible(distance);
+            }
+            else if (!DetermineNextTarget())
+            {
+                EndChasing();
+                return;
+            }
+        }
+
+        internal void AttackWhenPossible(float distanceToTarget)
+        {
+            if (distanceToTarget < AttackDistance)
+            {
+                if (Maneater.CheckLineOfSightForPosition(Target!.transform.position))
+                    SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
             }
         }
 
@@ -123,18 +202,13 @@ namespace LethalMon.Behaviours
             if (IsAdult)
                 SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
             else
+            {
+                becomeAggressiveCooldown?.Reset();
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
         }
         internal void OnAttackingBehaviour()
         {
-
-        }
-
-        internal void OnTestBehavior()
-        {
-            /* USE THIS SOMEWHERE TO ACTIVATE THE CUSTOM BEHAVIOR
-                *   SwitchToCustomBehaviour((int)CustomBehaviour.TestBehavior);
-            */
         }
         #endregion
 
@@ -148,12 +222,6 @@ namespace LethalMon.Behaviours
         internal override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
-
-            /*foreach (var para in Maneater.babyCreatureAnimator.parameters)
-                LethalMon.Log(para.name, LethalMon.LogType.Warning);
-            LethalMon.Log("--------------");
-            foreach (var para in Maneater.creatureAnimator.parameters)
-                LethalMon.Log(para.name, LethalMon.LogType.Warning);*/
 
             if (IsChild)
                 BecomeAdultServerRpc();
@@ -169,7 +237,7 @@ namespace LethalMon.Behaviours
             base.Start();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
-            attackingCooldown = GetCooldownWithId(AttackingCooldownID);
+            becomeAggressiveCooldown = GetCooldownWithId(BecomeAggressiveCooldownID);
 
             if (IsTamed)
                 SetOwnerVoiceState();
@@ -299,15 +367,15 @@ namespace LethalMon.Behaviours
 
         internal void DetectNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot = 0, int noiseID = 0)
         {
-            LethalMon.Log("NoiseID: " + noiseID);
+            //LethalMon.Log("NoiseID: " + noiseID);
             if (!IsDetectingNoise(noisePosition, noiseLoudness, timesPlayedInOneSpot, noiseID)) return;
 
             var noiseSource = FindNoiseSourceAtPosition(noisePosition);
             if (noiseSource == null) return;
 
-            LethalMon.Log("Noise came from " + noiseSource.name + ". ID: " + noiseID);
+            //LethalMon.Log("Noise came from " + noiseSource.name + ". ID: " + noiseID);
 
-            DetectNoise(noiseSource, noiseLoudness);
+            DetectNoise(noiseSource, noiseLoudness * 10f);
         }
         internal void DetectNoise(GameObject noiseSource, float noiseLoudness)
         {
@@ -319,16 +387,17 @@ namespace LethalMon.Behaviours
 
         internal GameObject? FindNoiseSourceAtPosition(Vector3 position)
         {
-            var overlappingSources = Physics.OverlapSphere(position, 3f, LayerMasks.ToInt([LayerMasks.Mask.Enemies, LayerMasks.Mask.Player]), QueryTriggerInteraction.Collide).Where(ns => ns?.gameObject != null);
+            var overlappingSources = Physics.OverlapSphere(position, 3f, 1 << (int)LayerMasks.Mask.Enemies, QueryTriggerInteraction.Collide).Where(ns => ns?.gameObject != null);
             if (!overlappingSources.Any()) return null;
 
-            var noiseSourcesInRange = overlappingSources.Select(source => source.gameObject).ToArray();
+            var noiseSourcesInRange = overlappingSources.Select(source => source.GetComponentInParent<EnemyAI>()).ToArray();
 
             LethalMon.Log("Noise potentially from " + noiseSourcesInRange.Length + " sources.");
             if (noiseSourcesInRange.Length > 1)
                 Array.Sort(noiseSourcesInRange, (x, y) => Vector3.Distance(x.transform.position, position).CompareTo(Vector3.Distance(y.transform.position, position)));
 
-            return noiseSourcesInRange.Where(ns => ns?.gameObject != null).First();
+            var noiseSources = noiseSourcesInRange.Where(ns => ns?.gameObject != null && ns != Maneater);
+            return noiseSources.Any() ? noiseSources.First().gameObject : null;
         }
 
         internal void AdjustNoiseLoudness(ref float noiseLoudness, Vector3 noisePosition)
@@ -374,6 +443,21 @@ namespace LethalMon.Behaviours
 
                 var min = _maneaterMemory.Min(mem => mem.Value);
                 return _maneaterMemory.Where(mem => mem.Value == min).First();
+            }
+        }
+
+        internal void SortOutDeadMemories()
+        {
+            for(int i = _maneaterMemory.Count - 1; i >= 0; i--)
+            {
+                var key = _maneaterMemory.ElementAt(i).Key;
+                if (key.TryGetComponent(out PlayerControllerB player))
+                {
+                    if(player.isPlayerDead)
+                        _maneaterMemory.Remove(key);
+                }
+                else if (key.TryGetComponent(out EnemyAI enemyAI) && enemyAI.isEnemyDead)
+                    _maneaterMemory.Remove(key);
             }
         }
 
@@ -458,7 +542,7 @@ namespace LethalMon.Behaviours
 
                 var likeMeter = memory.Value.Value;
 
-                if (likeMeter <= 0f)
+                if (likeMeter <= 0.05f)
                     return Status.StartAttacking;
 
                 if (likeMeter < VeryStressedPoint)
@@ -523,10 +607,18 @@ namespace LethalMon.Behaviours
         #region Baby
         internal void BabyUpdate()
         {
+            if (_maneaterMemory.Count > 0)
+            {
+                string log = "";
+                foreach (var memory in _maneaterMemory)
+                    log += MemoryName(memory.Key) + "[" + memory.Value + "]     ";
+                LethalMon.Log(log);
+            }
+
             UpdateLonelinessAndLikeMeter();
 
             UpdateStatus();
-            if(_currentStatus == Status.StartAttacking)
+            if(_currentStatus == Status.StartAttacking && CanTransform)
             {
                 SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
                 return;
@@ -535,9 +627,13 @@ namespace LethalMon.Behaviours
 
         internal void BabyAIInterval()
         {
-            LethalMon.Log("Loneliness: " + Maneater.lonelinessMeter);
-            foreach (var key in _maneaterMemory.Keys)
-                IncreaseLikeMeterBy(Time.deltaTime * (Maneater.playerHolding == ownerPlayer ? 2.5f : 1.5f), key);
+            //LethalMon.Log("Loneliness: " + Maneater.lonelinessMeter);
+            for (int i = _maneaterMemory.Count - 1; i >= 0; i--)
+            {
+                var memory = _maneaterMemory.ElementAt(i).Key;
+                if (!Maneater.CheckLineOfSightForPosition(memory.transform.position))
+                    IncreaseLikeMeterBy(Time.deltaTime / 5f * (Maneater.playerHolding == ownerPlayer ? 2.5f : 1.5f), memory); // Calming down if not in LoS
+            }
         }
 
         internal void UpdateLonelinessAndLikeMeter()
@@ -575,8 +671,8 @@ namespace LethalMon.Behaviours
 
                 //LethalMon.Log("Local player is speaking. Volume: " + loudness);
                 Maneater.lonelinessMeter -= Time.deltaTime * loudness;
-                for (int i = _maneaterMemory.Count - 1; i >= 0; --i)
-                    DecreaseLikeMeterBy(Time.deltaTime / 5f * loudness, _maneaterMemory.ElementAt(i).Key);
+                /*for (int i = _maneaterMemory.Count - 1; i >= 0; --i)
+                    IncreaseLikeMeterBy(Time.deltaTime / 5f * loudness, _maneaterMemory.ElementAt(i).Key);*/
             }
 
             Maneater.lonelinessMeter = Mathf.Clamp(Maneater.lonelinessMeter, 0f, 1f);
@@ -617,11 +713,16 @@ namespace LethalMon.Behaviours
 
         }
 
-        internal GameObject? FindNextTarget(out bool inLineOfSight)
+        internal bool DetermineNextTarget()
         {
-            inLineOfSight = false;
+            SortOutDeadMemories();
+
             var m = _maneaterMemory.Where(mem => mem.Value < StressedPoint);
-            if (!m.Any()) return null;
+            if (!m.Any())
+            {
+                if (Maneater.lonelinessMeter >= 1f)
+                    SetTarget(ownerPlayer!);
+            }
 
             var stressedMemories = m.ToArray();
 
@@ -630,9 +731,21 @@ namespace LethalMon.Behaviours
             var memoriesInLoS = stressedMemories.Where(m => Maneater.CheckLineOfSightForPosition(m.Key.transform.position, 180f));
             if (memoriesInLoS.Any())
             {
+                if(1f - Maneater.lonelinessMeter < memoriesInLoS.First().Value)
+                {
+                    SetTarget(ownerPlayer!);
+                    return true;
+                }
                 // Target in line of sight. Take the one with the lowest likeMeter
-                inLineOfSight = true;
-                return memoriesInLoS.First().Key;
+                hasLineOfSightToTarget = true;
+                SetTarget(memoriesInLoS.First().Key);
+                return true;
+            }
+
+            if (1f - Maneater.lonelinessMeter < stressedMemories.First().Value)
+            {
+                SetTarget(ownerPlayer!);
+                return true;
             }
 
             GameObject? target = null;
@@ -654,8 +767,28 @@ namespace LethalMon.Behaviours
                 }
             }
 
-            return target;
+            if (target != null)
+                SetTarget(target);
+
+            return target != null;
         }
+
+        internal void SetTarget(GameObject target)
+        {
+            if (target.TryGetComponent(out PlayerControllerB player))
+                SetTarget(player);
+            else if (target.TryGetComponent(out EnemyAI enemyAI))
+                SetTarget(enemyAI);
+        }
+
+        internal void SetTarget(PlayerControllerB player)
+        {
+            targetPlayer = player;
+            Maneater.SetMovingTowardsTargetPlayer(targetPlayer);
+            Maneater.addPlayerVelocityToDestination = 0f;
+        }
+
+        internal void SetTarget(EnemyAI enemy) => targetEnemy = enemy;
         #endregion
 
         public IEnumerator EndSpecialAnimationAfterLanding() // taken from DropBabyAnimation
@@ -742,6 +875,14 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(0.05f);
             yield return StartCoroutine(Utils.RecordAnimation(Maneater.creatureAnimator, 1.7f));
             _transformAnimationRecorded = true;
+        }
+        #endregion
+
+        #region Animations
+        internal void StopScreaming()
+        {
+            Maneater.screaming = false;
+            Maneater.creatureAnimator.SetBool("Screaming", value: false);
         }
         #endregion
     }
