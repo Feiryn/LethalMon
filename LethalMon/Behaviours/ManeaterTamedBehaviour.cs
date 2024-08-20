@@ -616,6 +616,46 @@ namespace LethalMon.Behaviours
         {
 
         }
+
+        internal GameObject? FindNextTarget(out bool inLineOfSight)
+        {
+            inLineOfSight = false;
+            var m = _maneaterMemory.Where(mem => mem.Value < StressedPoint);
+            if (!m.Any()) return null;
+
+            var stressedMemories = m.ToArray();
+
+            Array.Sort(stressedMemories, (x, y) => x.Value.CompareTo(y.Value)); // Sort by likeMeter
+
+            var memoriesInLoS = stressedMemories.Where(m => Maneater.CheckLineOfSightForPosition(m.Key.transform.position, 180f));
+            if (memoriesInLoS.Any())
+            {
+                // Target in line of sight. Take the one with the lowest likeMeter
+                inLineOfSight = true;
+                return memoriesInLoS.First().Key;
+            }
+
+            GameObject? target = null;
+            float targetingLikelyness = 0f;
+            foreach (var memory in stressedMemories)
+            {
+                LethalMon.Log("LikeMeter of potential target: " + memory.Value);
+                float hateMeter = 1f - memory.Value;
+                var distance = Vector3.Distance(memory.Key.transform.position, Maneater.transform.position);
+                var likelyness = hateMeter - distance / 30f;
+                if(likelyness > 0f) // if hateMeter is e.g. 0.7f, then the distance has to be below 21f, for 0.9f it's 27f
+                {
+                    // can be targeted
+                    if(likelyness > targetingLikelyness)
+                    {
+                        targetingLikelyness = likelyness;
+                        target = memory.Key;
+                    }
+                }
+            }
+
+            return target;
+        }
         #endregion
 
         public IEnumerator EndSpecialAnimationAfterLanding() // taken from DropBabyAnimation
