@@ -118,6 +118,8 @@ namespace LethalMon.CustomPasses
 
         public void EnableCustomPass(CustomPassType type, bool enable = true)
         {
+            if (!enable && !HasCustomPass(type)) return;
+
             InitCustomPass(type); // ensure it exists
             _customPasses[type].enabled = enable;
         }

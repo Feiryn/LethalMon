@@ -346,6 +346,17 @@ namespace LethalMon.Behaviours
             _parentMimic?._spawnedGhostMimics.Remove(Masked);
 
             StopAllCoroutines();
+
+            if (_isTransferingMask || _isWearingMask)
+            {
+                if (Mask != null)
+                {
+                    if (_originalMaskParent != null)
+                        Mask.transform.SetParent(_originalMaskParent, false);
+                }
+                SetRedVision(false);
+                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, false);
+            }
             for (int i = _spawnedGhostMimics.Count - 1; i >= 0; i--)
             {
                 var ghostMimic = _spawnedGhostMimics[i];

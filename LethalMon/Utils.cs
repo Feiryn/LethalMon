@@ -27,7 +27,7 @@ public class Utils
     
     public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
-        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.ownerPlayer == player);
+        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.IsTamed && tamedBehaviour.ownerPlayer == player);
     }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)
