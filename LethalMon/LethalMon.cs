@@ -6,6 +6,7 @@ using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using LethalMon.Behaviours;
+using LethalMon.Compatibility;
 using LethalMon.Items;
 using LethalMon.Patches;
 using UnityEngine;
@@ -14,6 +15,7 @@ namespace LethalMon;
 
 [BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("atomic.terminalapi", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("Mirage", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class LethalMon : BaseUnityPlugin
 {
@@ -46,14 +48,21 @@ public class LethalMon : BaseUnityPlugin
         var types = Assembly.GetExecutingAssembly().GetTypes();
         foreach (var type in types)
         {
-            var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            foreach (var method in methods)
+            try
             {
-                var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
-                if (attributes.Length > 0)
+                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                foreach (var method in methods)
                 {
-                    method.Invoke(null, null);
+                    var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                    if (attributes.Length > 0)
+                    {
+                        method.Invoke(null, null);
+                    }
                 }
+            }
+            catch (FileNotFoundException)
+            {
+                // Ignore
             }
         }
     }
@@ -110,6 +119,8 @@ public class LethalMon : BaseUnityPlugin
         // Enemy behaviours
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
         Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
+        if (MirageCompatibility.Enabled)
+            Harmony.PatchAll(typeof(MirageCompatibility));
     }
 
     private static void Unpatch()

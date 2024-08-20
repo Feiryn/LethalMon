@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
+using LethalMon.Behaviours;
+using Mirage.Unity;
 using UnityEngine;
 
 namespace LethalMon.Compatibility
@@ -55,6 +58,19 @@ namespace LethalMon.Compatibility
             if (masks.Count == 0) return false;
 
             return masks.First().activeSelf;
+        }
+
+        [HarmonyPatch(typeof(MimicPlayer.MimicPlayer), nameof(MimicPlayer.MimicPlayer.MimicPlayer))]
+        [HarmonyPrefix]
+        private static bool MimicPlayerPreFix(MimicPlayer.MimicPlayer __instance/*, int playerId*/)
+        {
+            TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponentInParent<TamedEnemyBehaviour>();
+            LethalMon.Log("TamedEnemyBehaviour: " + tamedEnemyBehaviour + ", Owner: " + tamedEnemyBehaviour?.ownerPlayer);
+            
+            if (tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null) return true;
+            
+            LethalMon.Log("Preventing tamed monster from mimicking player");
+            return false;
         }
     }
 }

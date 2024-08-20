@@ -1,4 +1,3 @@
-using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using Object = UnityEngine.Object;
