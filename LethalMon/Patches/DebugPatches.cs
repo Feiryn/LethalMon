@@ -35,6 +35,9 @@ namespace LethalMon.Patches
 
         public static void CheckFunctionKeys()
         {
+            if (!Keyboard.current.leftShiftKey.isPressed)
+                return;
+            
             if (Keyboard.current.f1Key.wasPressedThisFrame)
             {
                 ToggleTestRoom();
