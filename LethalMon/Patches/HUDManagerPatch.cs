@@ -94,7 +94,8 @@ public class HUDManagerPatch
 
     public static void EnableHUD(bool enable)
     {
-        monsterHudElement?.canvasGroup?.gameObject?.SetActive(enable);
+        if(monsterHudElement != null && monsterHudElement.canvasGroup != null)
+            monsterHudElement.canvasGroup.gameObject?.SetActive(enable);
     }
 
     public static void UpdateTamedMonsterAction(string action)
