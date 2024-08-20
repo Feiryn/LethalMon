@@ -112,4 +112,35 @@ public class EnemyAIPatch
         TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
         return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
     }
+
+    // Avoid changing ownership while tamed
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.ChangeOwnershipOfEnemy))]
+    [HarmonyPrefix]
+    public static bool ChangeOwnershipOfEnemyPrefix(CaveDwellerAI __instance)
+    {
+        if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed)
+            return false;
+
+        return true;
+    }
+
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.ChangeEnemyOwnerServerRpc))]
+    [HarmonyPrefix]
+    public static bool ChangeEnemyOwnerServerRpcPrefix(CaveDwellerAI __instance)
+    {
+        if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed)
+            return false;
+
+        return true;
+    }
+
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.ChangeEnemyOwnerClientRpc))]
+    [HarmonyPrefix]
+    public static bool ChangeEnemyOwnerClientRpcPrefix(CaveDwellerAI __instance)
+    {
+        if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed)
+            return false;
+
+        return true;
+    }
 }
