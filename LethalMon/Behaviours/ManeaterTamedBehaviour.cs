@@ -31,7 +31,7 @@ namespace LethalMon.Behaviours
 
         // Constants
         private const float MaximumTargetingRange = 30f;
-        private const int AttackDistance = 4;
+        private const int AttackDistance = 6;
         private const float ChaseSpeed = 10f;
         private const float LeapSpeed = 25f;
 
@@ -159,7 +159,7 @@ namespace LethalMon.Behaviours
                     if (IsOwner)
                     {
                         LethalMon.Log("START ATTACKING", LethalMon.LogType.Warning);
-                        Maneater.leapSpeed = LeapSpeed;
+                        Maneater.agent.speed = LeapSpeed;
 
                         StartLeaping();
                     }
@@ -278,7 +278,10 @@ namespace LethalMon.Behaviours
         internal void KillTargetPlayer()
         {
             if (targetPlayer == ownerPlayer)
+            {
+                Maneater.lonelinessMeter = 0f;
                 _canBeRetreived = false; // Retreive at end if hunt
+            }
 
             Maneater.KillPlayerAnimationServerRpc((int)targetPlayer!.playerClientId); // Kill regardless of behaviour state
 
@@ -368,13 +371,14 @@ namespace LethalMon.Behaviours
         {
             base.OnUpdate(update, doAIInterval);
 
-            CalculateAnimationDirection();
+            if(!Maneater.leaping)
+                CalculateAnimationDirection();
 
             Maneater.SetClickingAudioVolume();
 
             if (IsTransforming) return;
 
-            if(IsOwner)
+            if(IsOwner && !IsTransforming && !IsAdult)
                 CheckPlayerVoices();
 
             if (IsChild)
@@ -459,7 +463,7 @@ namespace LethalMon.Behaviours
             if (noiseID == 6 || noiseID == 7 || noiseID == 546 || timesPlayedInOneSpot > 15) return false;
 
             return IsOwner && !Maneater.isEnemyDead &&
-                   !IsAdult && (CustomBehaviour)CurrentCustomBehaviour.GetValueOrDefault(0) != CustomBehaviour.Transforming &&      // No voice checking in adult phase (for now!)
+                   !IsAdult && !IsTransforming &&      // No voice checking in adult phase (for now!)
                    noiseLoudness > 0.1f && Vector3.Distance(noisePosition, Maneater.transform.position + Vector3.up * 0.4f) > 0.8f; // Too quiet or own voice
         }
 
@@ -817,18 +821,24 @@ namespace LethalMon.Behaviours
         }
         internal void AdultAIInterval()
         {
-
         }
 
         internal bool DetermineNextTarget()
         {
             SortOutDeadMemories();
 
+            var hasLineOfSightToOwner = HasLineOfSightToOwner;
+
             var m = _maneaterMemory.Where(mem => mem.Value < StressedPoint);
             if (!m.Any())
             {
-                if (Maneater.lonelinessMeter >= 1f)
+                if (Maneater.lonelinessMeter >= 0.9f)
+                {
+                    hasLineOfSightToTarget = hasLineOfSightToOwner;
                     SetTarget(ownerPlayer!);
+                    return true;
+                }
+                return false;
             }
 
             var stressedMemories = m.ToArray();
@@ -838,8 +848,9 @@ namespace LethalMon.Behaviours
             var memoriesInLoS = stressedMemories.Where(m => Maneater.CheckLineOfSightForPosition(m.Key.transform.position, 180f));
             if (memoriesInLoS.Any())
             {
-                if(1f - Maneater.lonelinessMeter < memoriesInLoS.First().Value)
+                if(hasLineOfSightToOwner && 1f - Maneater.lonelinessMeter < memoriesInLoS.First().Value)
                 {
+                    hasLineOfSightToTarget = hasLineOfSightToOwner;
                     SetTarget(ownerPlayer!);
                     return true;
                 }
@@ -854,6 +865,7 @@ namespace LethalMon.Behaviours
 
             if (1f - Maneater.lonelinessMeter < stressedMemories.First().Value)
             {
+                hasLineOfSightToTarget = hasLineOfSightToOwner;
                 SetTarget(ownerPlayer!);
                 return true;
             }
@@ -1021,6 +1033,7 @@ namespace LethalMon.Behaviours
         internal void StartLeaping()
         {
             Maneater.creatureAnimator.SetBool("Leaping", value: true);
+            Maneater.creatureAnimator.SetBool("FinishedLeaping", value: false);
             float pitch = UnityEngine.Random.Range(0.95f, 1.05f);
             Maneater.screamAudio.pitch = pitch;
             Maneater.screamAudio.Play();
@@ -1032,7 +1045,6 @@ namespace LethalMon.Behaviours
 
         internal void StopLeaping()
         {
-            //Maneater.screamAudio.Stop();
             Maneater.headRig.weight = 1f;
             Maneater.creatureAnimator.SetBool("Leaping", value: false);
             Maneater.creatureAnimator.SetBool("Screaming", value: false);

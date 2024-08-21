@@ -68,6 +68,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
     public float DistanceToOwner => ownerPlayer != null ? Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) : 0f;
 
+    public bool HasLineOfSightToOwner => ownerPlayer != null ? Enemy.CheckLineOfSightForPosition(ownerPlayer.transform.position, 180f) : false;
+
 
     public EnemyAI? targetEnemy = null;
     public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
