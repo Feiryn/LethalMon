@@ -46,7 +46,7 @@ namespace LethalMon.Behaviours
         // Voice detection
         private const float VoiceGeneralImpact = 0.2f;              // General value on how much voices other than the owners one should affect the likeMeter towards the noise source
         private const float VoicePlayerImpact = 1f;                 // Noise loudness multiplier for players
-        private const float VoiceEnemyImpact = 1f;                  // Noise loudness multiplier for enemies
+        private const float VoiceEnemyImpact = 10f;                  // Noise loudness multiplier for enemies
 
         private const float VoicePlayerRange = 10f;                 // Range in which the maneater gets stressed by player voices
 
@@ -196,6 +196,7 @@ namespace LethalMon.Behaviours
                     return;
                 }
 
+                Maneater.SetDestinationToPosition(targetEnemy.transform.position);
                 AttackWhenPossible();
             }
             else if (targetPlayer != null)
@@ -252,7 +253,12 @@ namespace LethalMon.Behaviours
             if (!IsOwner || targetEnemy == null) return; // targetPlayer is handled in CaveDwellerAIPatch.OnColliderWithPlayer
 
             if (targetEnemy.meshRenderers.Any(meshRendererTarget => Maneater.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+            {
                 KillTarget();
+                return;
+            }
+
+            Maneater.SetDestinationToPosition(targetEnemy.transform.position);
         }
 
         internal void KillTarget()
@@ -333,12 +339,17 @@ namespace LethalMon.Behaviours
             switch(behaviour)
             {
                 case TamingBehaviour.TamedFollowing:
-                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
                     Maneater.lonelinessMeter = 0f;
-                    UpdateHUDStatus();
 
                     Maneater.clickingAudio1.volume = 0f;
                     Maneater.clickingAudio2.volume = 0f;
+
+                    if(IsOwner)
+                    {
+                        EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
+                        UpdateHUDStatus();
+                        Maneater.agent.speed = 6f;
+                    }
                     break;
 
                 case TamingBehaviour.TamedDefending:
@@ -658,7 +669,7 @@ namespace LethalMon.Behaviours
         {
             if(IsScared)
             {
-                scaredTimer += Time.deltaTime * Maneater.AIIntervalTime * (Maneater.holdingBaby ? 2f : 1f);
+                scaredTimer += Time.deltaTime * (Maneater.holdingBaby ? 2f : 1f);
                 return;
             }
 
@@ -717,22 +728,29 @@ namespace LethalMon.Behaviours
 
             if (!IsOwner) return;
 
-            if (_maneaterMemory.Count > 0)
+            /*if (_maneaterMemory.Count > 0)
             {
                 string log = "";
                 foreach (var memory in _maneaterMemory)
                     log += MemoryName(memory.Key) + " [" + memory.Value + "]     ";
                 LethalMon.Log(log);
-            }
+            }*/
 
-            UpdateLonelinessAndLikeMeter();
+            var llm = LeastLikedMemory;
+            if(llm != null)
+                LethalMon.Log("Least liked target: " + llm.Value.Key.name + " with " +  llm.Value.Value);
 
             UpdateStatus();
-            if (_currentStatus == Status.StartAttacking && CanTransform)
+            if (_currentStatus == Status.StartAttacking /*&& CanTransform*/)
             {
+                if (_killing) LethalMon.Log("KILLING IT");
+                if (IsScared) LethalMon.Log("SCARED BY IT");
+                if (IsTransforming) LethalMon.Log("TRANSFORMING");
                 SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
                 return;
             }
+
+            UpdateLonelinessAndLikeMeter();
         }
 
         internal void BabyAIInterval()
@@ -810,7 +828,8 @@ namespace LethalMon.Behaviours
 
         internal void BabyNotScaredAnymore()
         {
-
+            Maneater.SetCryingLocalClient(false);
+            Maneater.SetBabyCryingServerRpc(false);
         }
         #endregion
 
