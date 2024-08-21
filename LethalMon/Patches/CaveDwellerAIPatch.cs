@@ -57,7 +57,7 @@ public class CaveDwellerAIPatch
     {
         if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed && tamedBehaviour.Target != null)
         {
-            if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player.gameObject == tamedBehaviour.Target)
+            if (tamedBehaviour.IsAttacking && other.gameObject.TryGetComponent(out PlayerControllerB player) && player.gameObject == tamedBehaviour.Target)
                 tamedBehaviour.KillTarget();
         }
     }

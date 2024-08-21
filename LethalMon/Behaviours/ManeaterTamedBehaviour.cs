@@ -43,13 +43,20 @@ namespace LethalMon.Behaviours
         private const float StressedPoint = 0.5f;       // ManeaterMemory.likeMeter point below which the baby feels stressed towards it
         private const float VeryStressedPoint = 0.25f;  // ManeaterMemory.likeMeter point below which the baby feels under huge pressure, shortly before attacking
 
-        // Voice & Loneliness impact multiplier
+        // Voice detection
         private const float VoiceGeneralImpact = 0.2f;              // General value on how much voices other than the owners one should affect the likeMeter towards the noise source
+        private const float VoicePlayerImpact = 1f;                 // Noise loudness multiplier for players
+        private const float VoiceEnemyImpact = 1f;                  // Noise loudness multiplier for enemies
+
+        private const float VoicePlayerRange = 10f;                 // Range in which the maneater gets stressed by player voices
+
         private const float VoiceNotInLineOfSightImpact = 0.6f;     // Noise loudness multiplier when not in line of sight
         private const float VoiceWhileScaredImpact = 1.2f;          // Noise loudness multiplier while Maneater is scared
         private const float VoiceGettingScaredImpact = 2f;          // Noise loudness multiplier when Maneater gets scared of a sudden, loud voice
 
+        // Loneliness meter
         private const float LonelinessGeneralImpact = 0.03f;        // Increase of lonelinessMeter over time (if not held)
+
         private const float LonelinessDistanceToOwnerImpact = 1f;   // Negative impact: the further the owner is away;
         private const float LonelinessHeldImpact = 0.05f;           // Positive impact: while being held
         private const float LonelinessOwnerTalkingImpact = 10f;     // Positive impact: when owner is talking
@@ -61,7 +68,6 @@ namespace LethalMon.Behaviours
         private bool IsChild => Maneater.babyContainer.activeSelf;
         private bool IsAdult => Maneater.adultContainer.activeSelf;
         private bool _transformAnimationRecorded = false;
-        private bool IsTransforming => CurrentCustomBehaviour == (int)CustomBehaviour.Transforming;
 
         private float _ownerSpeakingAmplitude = 0f;
         private VoicePlayerState? _ownerVoiceState;
@@ -92,7 +98,7 @@ namespace LethalMon.Behaviours
         private bool hasLineOfSightToTarget = false;
         private bool _killing = false;
 
-        internal bool CanTransform => becomeAggressiveCooldown == null || becomeAggressiveCooldown.IsFinished();
+        internal bool CanTransform => becomeAggressiveCooldown == null || becomeAggressiveCooldown.IsFinished() && !_killing && !IsScared && !IsTransforming;
 
         internal override string DefendingBehaviourDescription => "Defending owner!";
 
@@ -120,6 +126,9 @@ namespace LethalMon.Behaviours
             new (CustomBehaviour.Chasing.ToString(), "Chasing", OnChasingBehaviour),
             new (CustomBehaviour.Attacking.ToString(), "Attacking", OnAttackingBehaviour)
         ];
+        internal bool IsTransforming => CurrentCustomBehaviour == (int)CustomBehaviour.Transforming;
+        internal bool IsChasing => CurrentCustomBehaviour == (int)CustomBehaviour.Chasing;
+        internal bool IsAttacking => CurrentCustomBehaviour == (int)CustomBehaviour.Attacking;
 
         internal override void InitCustomBehaviour(int behaviour)
         {
@@ -135,8 +144,6 @@ namespace LethalMon.Behaviours
                             BecomeAdultServerRpc();
                         else
                             BecomeChildServerRpc();
-
-                        Invoke(nameof(Transformed), 2.2f);
                     }
                     break;
                 case CustomBehaviour.Chasing:
@@ -162,9 +169,17 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void StartChasing() => SwitchToCustomBehaviour((int)CustomBehaviour.Chasing);
+        internal void StartChasing()
+        {
+            LethalMon.Log("StartChasing");
+            SwitchToCustomBehaviour((int)CustomBehaviour.Chasing);
+        }
 
-        internal void EndChasing() => SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
+        internal void EndChasing()
+        {
+            LethalMon.Log("EndChasing");
+            SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
+        }
 
         internal void OnChasingBehaviour()
         {
@@ -209,12 +224,16 @@ namespace LethalMon.Behaviours
                 SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
         }
 
-        internal void OnTransformBehaviour() { }
-
-        internal void Transformed()
+        internal void OnTransformBehaviour()
         {
+            if (!IsOwner || Maneater.inSpecialAnimation) return;
+
+            LethalMon.Log("Transformed to " + (IsAdult ? "adult" : "child"));
             if (IsAdult)
+            {
+                LethalMon.Log("OnTransformBehaviour");
                 SwitchToCustomBehaviour((int)CustomBehaviour.Chasing);
+            }
             else
             {
                 becomeAggressiveCooldown?.Reset();
@@ -351,7 +370,7 @@ namespace LethalMon.Behaviours
 
             CalculateAnimationDirection();
 
-            Maneater.clickingMandibles = IsChild;
+            Maneater.clickingMandibles = IsAdult;
             Maneater.SetClickingAudioVolume();
 
             if (IsTransforming) return;
@@ -426,16 +445,19 @@ namespace LethalMon.Behaviours
                 if (player == null || player.isPlayerDead || !player.isPlayerControlled) continue;
 
                 if (player?.voicePlayerState == null || player.isPlayerDead || !player.isPlayerControlled || !player.voicePlayerState.IsSpeaking) continue;
-                DetectNoise(player.gameObject, Time.deltaTime * player.voicePlayerState.Volume);
 
-                //float distance = Vector3.Distance(noisePosition, Maneater.transform.position);
-                //noiseLoudness *= Mathf.Max(10f - distance, 1f) / 10f; // Weaker the further it is away
+                float distanceToPlayer = Vector3.Distance(player.transform.position, Maneater.transform.position);
+                if (distanceToPlayer > VoicePlayerRange) continue;
+
+                var noiseLoudness = Time.deltaTime * ((VoicePlayerRange - distanceToPlayer) / VoicePlayerRange) * VoicePlayerImpact; // Weaker the further the player is away
+
+                DetectNoise(player.gameObject, noiseLoudness);
             }
         }
 
         internal bool IsDetectingNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot = 0, int noiseID = 0)
         {
-            if (noiseID == 6 || noiseID == 7) return false;
+            if (noiseID == 6 || noiseID == 7 || noiseID == 546 || timesPlayedInOneSpot > 15) return false;
 
             return IsOwner && !Maneater.isEnemyDead &&
                    !IsAdult && (CustomBehaviour)CurrentCustomBehaviour.GetValueOrDefault(0) != CustomBehaviour.Transforming &&      // No voice checking in adult phase (for now!)
@@ -449,6 +471,8 @@ namespace LethalMon.Behaviours
 
             var noiseSource = FindNoiseSourceAtPosition(noisePosition);
             if (noiseSource == null) return;
+
+            noiseLoudness *= VoiceEnemyImpact;
 
             DetectNoise(noiseSource, noiseLoudness);
         }
@@ -480,7 +504,7 @@ namespace LethalMon.Behaviours
         internal void AdjustNoiseLoudness(ref float noiseLoudness, Vector3 noisePosition)
         {
             if (Physics.Linecast(Maneater.transform.position, noisePosition, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
-                noiseLoudness *= VoiceNotInLineOfSightImpact; // Something in between Menateater and noise
+                noiseLoudness *= VoiceNotInLineOfSightImpact; // Something in between Maneater and noise
 
             if (IsScared)
                 noiseLoudness *= VoiceWhileScaredImpact; // Maneater is scared. Noise feels louder
