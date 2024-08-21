@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using GameNetcodeStuff;
+using HarmonyLib;
 using LethalMon.Behaviours;
 using UnityEngine;
 
@@ -48,5 +49,16 @@ public class CaveDwellerAIPatch
     {
         if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed)
             __instance.currentOwnershipOnThisClient = (int)tamedBehaviour.ownerPlayer!.playerClientId;
+    }
+
+    [HarmonyPatch(typeof(CaveDwellerAI), nameof(CaveDwellerAI.OnCollideWithPlayer))]
+    [HarmonyPostfix]
+    public static void OnCollideWithPlayerPostfix(CaveDwellerAI __instance, Collider other)
+    {
+        if (__instance.TryGetComponent(out ManeaterTamedBehaviour tamedBehaviour) && tamedBehaviour.IsTamed && tamedBehaviour.Target != null)
+        {
+            if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player.gameObject == tamedBehaviour.Target)
+                tamedBehaviour.KillTarget();
+        }
     }
 }

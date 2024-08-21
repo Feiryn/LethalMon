@@ -10,7 +10,6 @@ using System.Linq;
 using static LethalMon.Utils;
 using Vector3 = UnityEngine.Vector3;
 using Dissonance;
-using static UnityEngine.GraphicsBuffer;
 
 namespace LethalMon.Behaviours
 {
@@ -30,9 +29,39 @@ namespace LethalMon.Behaviours
             }
         }
 
+        // Constants
+        private const float MaximumTargetingRange = 30f;
+        private const int AttackDistance = 4;
+        private const float ChaseSpeed = 10f;
+        private const float LeapSpeed = 25f;
+
+        private const float UpdateStatusInterval = 1f;
+
+        private const float LonelinessPoint = 0.4f;     // Point after which the baby feels lonely
+        private const float LeftAlonePoint = 0.75f;     // Point after which the baby feels left alone, shortly before attacking
+
+        private const float StressedPoint = 0.5f;       // ManeaterMemory.likeMeter point below which the baby feels stressed towards it
+        private const float VeryStressedPoint = 0.25f;  // ManeaterMemory.likeMeter point below which the baby feels under huge pressure, shortly before attacking
+
+        // Voice & Loneliness impact multiplier
+        private const float VoiceGeneralImpact = 0.2f;              // General value on how much voices other than the owners one should affect the likeMeter towards the noise source
+        private const float VoiceNotInLineOfSightImpact = 0.6f;     // Noise loudness multiplier when not in line of sight
+        private const float VoiceWhileScaredImpact = 1.2f;          // Noise loudness multiplier while Maneater is scared
+        private const float VoiceGettingScaredImpact = 2f;          // Noise loudness multiplier when Maneater gets scared of a sudden, loud voice
+
+        private const float LonelinessGeneralImpact = 0.03f;        // Increase of lonelinessMeter over time (if not held)
+        private const float LonelinessDistanceToOwnerImpact = 1f;   // Negative impact: the further the owner is away;
+        private const float LonelinessHeldImpact = 0.05f;           // Positive impact: while being held
+        private const float LonelinessOwnerTalkingImpact = 10f;     // Positive impact: when owner is talking
+        private const float OwnerRockingWhenNotLonelyImpact = 0.1f; // Negative impact: owner is shaking (while lonelinessMeter is zero)
+        private const float NonOwnerRockingImpact = 0.3f;           // Negative impact: non-owner is shaking (regardless of lonelinessMeter)
+
+        private const float CalmDownIfNotInLineOfSight = 0.2f;      // Increase of likeMeter if not in line of sight
+
         private bool IsChild => Maneater.babyContainer.activeSelf;
         private bool IsAdult => Maneater.adultContainer.activeSelf;
         private bool _transformAnimationRecorded = false;
+        private bool IsTransforming => CurrentCustomBehaviour == (int)CustomBehaviour.Transforming;
 
         private float _ownerSpeakingAmplitude = 0f;
         private VoicePlayerState? _ownerVoiceState;
@@ -55,25 +84,13 @@ namespace LethalMon.Behaviours
         private float scaredTimer = 0f;
         private GameObject? objectScaredOf = null;
 
+        internal bool _canBeRetreived = true;
+        public override bool CanBeRetrieved() => _canBeRetreived;
+
         // Chasing & Attacking
-        private GameObject? Target => targetPlayer != null ? targetPlayer.gameObject : targetEnemy?.gameObject;
+        internal GameObject? Target => targetPlayer != null ? targetPlayer.gameObject : targetEnemy?.gameObject;
         private bool hasLineOfSightToTarget = false;
-        private float _startedScreamingAt = 0f;
-
-        // Constants
-        private const float MaximumTargetingRange = 30f;
-        private const float AttackDistance = 4f;
-        private const float ChaseSpeed = 8f;
-        private const float LeapSpeed = 12f;
-        private const float ScreamDuration = 2f;
-
-        private const float UpdateStatusInterval = 1f;
-
-        private const float LonelinessPoint = 0.4f; // Point after which the baby feels lonely
-        private const float LeftAlonePoint = 0.75f; // Point after which the baby feels left alone, shortly before attacking
-
-        private const float StressedPoint = 0.5f; // ManeaterMemory.likeMeter point below which the baby feels stressed towards it
-        private const float VeryStressedPoint = 0.25f; // ManeaterMemory.likeMeter point below which the baby feels under huge pressure, shortly before attacking
+        private bool _killing = false;
 
         internal bool CanTransform => becomeAggressiveCooldown == null || becomeAggressiveCooldown.IsFinished();
 
@@ -124,13 +141,19 @@ namespace LethalMon.Behaviours
                     break;
                 case CustomBehaviour.Chasing:
                     if (IsOwner)
+                    {
+                        LethalMon.Log("START CHASING", LethalMon.LogType.Warning);
                         Maneater.agent.speed = ChaseSpeed;
+                    }
+                    _killing = false;
                     break;
                 case CustomBehaviour.Attacking:
                     if (IsOwner)
                     {
+                        LethalMon.Log("START ATTACKING", LethalMon.LogType.Warning);
                         Maneater.leapSpeed = LeapSpeed;
-                        Maneater.DoLeapServerRpc();
+
+                        StartLeaping();
                     }
                     // ...
                     break;
@@ -139,19 +162,13 @@ namespace LethalMon.Behaviours
             }
         }
 
+        internal void StartChasing() => SwitchToCustomBehaviour((int)CustomBehaviour.Chasing);
+
         internal void EndChasing() => SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
 
         internal void OnChasingBehaviour()
         {
             if (!IsOwner) return;
-
-            if (Maneater.screaming)
-            {
-                if (Time.realtimeSinceStartup - _startedScreamingAt < ScreamDuration)
-                    return;
-                else
-                    StopScreaming();
-            }
 
             if (targetEnemy != null)
             {
@@ -164,7 +181,7 @@ namespace LethalMon.Behaviours
                     return;
                 }
 
-                AttackWhenPossible(distance);
+                AttackWhenPossible();
             }
             else if (targetPlayer != null)
             {
@@ -177,7 +194,7 @@ namespace LethalMon.Behaviours
                     return;
                 }
 
-                AttackWhenPossible(distance);
+                AttackWhenPossible();
             }
             else if (!DetermineNextTarget())
             {
@@ -186,13 +203,10 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void AttackWhenPossible(float distanceToTarget)
+        internal void AttackWhenPossible()
         {
-            if (distanceToTarget < AttackDistance)
-            {
-                if (Maneater.CheckLineOfSightForPosition(Target!.transform.position))
-                    SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
-            }
+            if (Maneater.CheckLineOfSightForPosition(Target!.transform.position, 180f, AttackDistance))
+                SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
         }
 
         internal void OnTransformBehaviour() { }
@@ -200,15 +214,57 @@ namespace LethalMon.Behaviours
         internal void Transformed()
         {
             if (IsAdult)
-                SwitchToCustomBehaviour((int)CustomBehaviour.Attacking);
+                SwitchToCustomBehaviour((int)CustomBehaviour.Chasing);
             else
             {
                 becomeAggressiveCooldown?.Reset();
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                if (ownerPlayer == null || ownerPlayer.isPlayerDead)
+                {
+                    _canBeRetreived = true;
+                    RetrieveInBall(Maneater.transform.position);
+                }
+                else
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
             }
         }
+
         internal void OnAttackingBehaviour()
         {
+            if (!IsOwner || targetEnemy == null) return; // targetPlayer is handled in CaveDwellerAIPatch.OnColliderWithPlayer
+
+            if (targetEnemy.meshRenderers.Any(meshRendererTarget => Maneater.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))))
+                KillTarget();
+        }
+
+        internal void KillTarget()
+        {
+            if(!IsOwner) return;
+
+            StartKillAnimationServerRpc();
+
+            if (targetEnemy != null)
+                KillTargetEnemy();
+            else if (targetPlayer != null)
+                KillTargetPlayer();
+        }
+
+        internal void KillTargetEnemy()
+        {
+            targetEnemy!.KillEnemyServerRpc(true);
+
+            _maneaterMemory.Remove(targetEnemy.gameObject);
+            targetEnemy = null;
+        }
+
+        internal void KillTargetPlayer()
+        {
+            if (targetPlayer == ownerPlayer)
+                _canBeRetreived = false; // Retreive at end if hunt
+
+            Maneater.KillPlayerAnimationServerRpc((int)targetPlayer!.playerClientId); // Kill regardless of behaviour state
+
+            _maneaterMemory.Remove(targetPlayer.gameObject);
+            targetPlayer = null;
         }
         #endregion
 
@@ -240,7 +296,11 @@ namespace LethalMon.Behaviours
             becomeAggressiveCooldown = GetCooldownWithId(BecomeAggressiveCooldownID);
 
             if (IsTamed)
+            {
                 SetOwnerVoiceState();
+                Maneater.timeAtLastHeardNoise = Time.realtimeSinceStartup;
+                HoarderBugAI.grabbableObjectsInMap.Remove(Maneater.propScript.gameObject); // maybe allow this fun later
+            }
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -289,11 +349,15 @@ namespace LethalMon.Behaviours
         {
             base.OnUpdate(update, doAIInterval);
 
+            CalculateAnimationDirection();
+
+            Maneater.clickingMandibles = IsChild;
             Maneater.SetClickingAudioVolume();
 
-            if (!IsOwner) return;
+            if (IsTransforming) return;
 
-            CheckPlayerVoices();
+            if(IsOwner)
+                CheckPlayerVoices();
 
             if (IsChild)
                 BabyUpdate();
@@ -301,10 +365,21 @@ namespace LethalMon.Behaviours
                 AdultUpdate();
         }
 
+        internal void CalculateAnimationDirection() // Little hack to still be able to use this
+        {
+            var currentState = Maneater.currentBehaviourStateIndex;
+            if (IsChild)
+                Maneater.currentBehaviourStateIndex = 0;
+            Maneater.CalculateAnimationDirection(1.6f);
+            Maneater.currentBehaviourStateIndex = currentState;
+        }
+
         internal override void DoAIInterval()
         {
             //base.DoAIInterval();
-            LethalMon.Log("DoAIInterval maneater");
+            //LethalMon.Log("DoAIInterval maneater");
+
+            if(!IsOwner || IsTransforming) return;
 
             if (IsChild)
                 BabyAIInterval();
@@ -351,8 +426,10 @@ namespace LethalMon.Behaviours
                 if (player == null || player.isPlayerDead || !player.isPlayerControlled) continue;
 
                 if (player?.voicePlayerState == null || player.isPlayerDead || !player.isPlayerControlled || !player.voicePlayerState.IsSpeaking) continue;
-                LethalMon.Log(player.name + "is speaking");
-                DetectNoise(player.gameObject, player.voicePlayerState.Volume);
+                DetectNoise(player.gameObject, Time.deltaTime * player.voicePlayerState.Volume);
+
+                //float distance = Vector3.Distance(noisePosition, Maneater.transform.position);
+                //noiseLoudness *= Mathf.Max(10f - distance, 1f) / 10f; // Weaker the further it is away
             }
         }
 
@@ -373,12 +450,12 @@ namespace LethalMon.Behaviours
             var noiseSource = FindNoiseSourceAtPosition(noisePosition);
             if (noiseSource == null) return;
 
-            //LethalMon.Log("Noise came from " + noiseSource.name + ". ID: " + noiseID);
-
-            DetectNoise(noiseSource, noiseLoudness * 10f);
+            DetectNoise(noiseSource, noiseLoudness);
         }
         internal void DetectNoise(GameObject noiseSource, float noiseLoudness)
         {
+            LethalMon.Log($"Noise came from {noiseSource.name} (Loudness: {noiseLoudness})");
+
             AdjustNoiseLoudness(ref noiseLoudness, noiseSource.transform.position);
             RecognizedNoiseBy(noiseSource, noiseLoudness);
 
@@ -392,7 +469,7 @@ namespace LethalMon.Behaviours
 
             var noiseSourcesInRange = overlappingSources.Select(source => source.GetComponentInParent<EnemyAI>()).ToArray();
 
-            LethalMon.Log("Noise potentially from " + noiseSourcesInRange.Length + " sources.");
+            //LethalMon.Log("Noise potentially from " + noiseSourcesInRange.Length + " sources.");
             if (noiseSourcesInRange.Length > 1)
                 Array.Sort(noiseSourcesInRange, (x, y) => Vector3.Distance(x.transform.position, position).CompareTo(Vector3.Distance(y.transform.position, position)));
 
@@ -403,13 +480,10 @@ namespace LethalMon.Behaviours
         internal void AdjustNoiseLoudness(ref float noiseLoudness, Vector3 noisePosition)
         {
             if (Physics.Linecast(Maneater.transform.position, noisePosition, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
-                noiseLoudness *= 0.6f; // Something in between Menateater and noise
+                noiseLoudness *= VoiceNotInLineOfSightImpact; // Something in between Menateater and noise
 
             if (IsScared)
-                noiseLoudness *= 1.2f; // Maneater is scared. Noise feels louder
-
-            float distance = Vector3.Distance(noisePosition, Maneater.transform.position);
-            noiseLoudness *= Mathf.Max(10f - distance, 1f) / 10f; // Weaker the further it is away
+                noiseLoudness *= VoiceWhileScaredImpact; // Maneater is scared. Noise feels louder
         }
 
         internal void RecognizedNoiseBy(GameObject noiseSource, float noiseLoudness)
@@ -419,14 +493,11 @@ namespace LethalMon.Behaviours
                 _currentStatus = Status.Scared;
                 scaredTimer = 0f;
                 objectScaredOf = noiseSource;
-                noiseLoudness *= Mathf.Min(Time.realtimeSinceStartup - Maneater.timeAtLastHeardNoise, 4f);
-                BabyGotScared();
+                noiseLoudness *= VoiceGettingScaredImpact;
+                BabyGotScaredServerRpc(noiseSource.transform.position);
             }
 
-            if (!_maneaterMemory.ContainsKey(noiseSource.gameObject))
-                _maneaterMemory.Add(noiseSource.gameObject, 1f);
-
-            _maneaterMemory[noiseSource.gameObject] -= noiseLoudness * Maneater.AIIntervalTime / 5f;
+            DecreaseLikeMeterBy(noiseLoudness * VoiceGeneralImpact, noiseSource.gameObject);
         }
         #endregion
 
@@ -506,7 +577,7 @@ namespace LethalMon.Behaviours
 
         internal string MemoryName(GameObject memory)
         {
-            if (memory == CurrentPlayer) return "you";
+            if (memory == CurrentPlayer.gameObject) return "you";
 
             if (memory.TryGetComponent(out PlayerControllerB player))
                 return player.playerUsername;
@@ -514,6 +585,7 @@ namespace LethalMon.Behaviours
             if (memory.TryGetComponent(out EnemyAI enemyAI))
                 return enemyAI.enemyType.name;
 
+            LethalMon.Log("Memory isn't a player or an enemy: " + memory.name);
             return memory.name;
         }
         #endregion
@@ -607,18 +679,29 @@ namespace LethalMon.Behaviours
         #region Baby
         internal void BabyUpdate()
         {
+            Maneater.babyCreatureAnimator.SetBool("Sitting", Maneater.sittingDown);
+            Maneater.babyCreatureAnimator.SetBool("HoldingBaby", Maneater.holdingBaby);
+            Maneater.babyCreatureAnimator.SetBool("BabyCrying", Maneater.babyCrying);
+            Maneater.babyCreatureAnimator.SetBool("Squirming", Maneater.babySquirming);
+
+            Maneater.babyLookRig.weight = Mathf.Lerp(Maneater.babyLookRig.weight, 1f, Time.deltaTime * 8f);
+            if(Maneater.babyLookTarget != null && ownerPlayer != null)
+                Maneater.babyLookTarget.position = Vector3.Lerp(Maneater.babyLookTarget.position, ownerPlayer.transform.position, Time.deltaTime * 8f);
+
+            if (!IsOwner) return;
+
             if (_maneaterMemory.Count > 0)
             {
                 string log = "";
                 foreach (var memory in _maneaterMemory)
-                    log += MemoryName(memory.Key) + "[" + memory.Value + "]     ";
+                    log += MemoryName(memory.Key) + " [" + memory.Value + "]     ";
                 LethalMon.Log(log);
             }
 
             UpdateLonelinessAndLikeMeter();
 
             UpdateStatus();
-            if(_currentStatus == Status.StartAttacking && CanTransform)
+            if (_currentStatus == Status.StartAttacking && CanTransform)
             {
                 SwitchToCustomBehaviour((int)CustomBehaviour.Transforming);
                 return;
@@ -628,17 +711,28 @@ namespace LethalMon.Behaviours
         internal void BabyAIInterval()
         {
             //LethalMon.Log("Loneliness: " + Maneater.lonelinessMeter);
-            for (int i = _maneaterMemory.Count - 1; i >= 0; i--)
+
+            if (CalmDownIfNotInLineOfSight > 0f)
             {
-                var memory = _maneaterMemory.ElementAt(i).Key;
-                if (!Maneater.CheckLineOfSightForPosition(memory.transform.position))
-                    IncreaseLikeMeterBy(Time.deltaTime / 5f * (Maneater.playerHolding == ownerPlayer ? 2.5f : 1.5f), memory); // Calming down if not in LoS
+                for (int i = _maneaterMemory.Count - 1; i >= 0; i--)
+                {
+                    var memory = _maneaterMemory.ElementAt(i).Key;
+                    if (!Maneater.CheckLineOfSightForPosition(memory.transform.position))
+                        IncreaseLikeMeterBy(Time.deltaTime * CalmDownIfNotInLineOfSight * (Maneater.playerHolding == ownerPlayer ? 2.5f : 1.5f), memory);
+                }
             }
         }
 
         internal void UpdateLonelinessAndLikeMeter()
         {
-            var feelsLonely = Maneater.lonelinessMeter > 0f;
+            var isOwnerSpeaking = _ownerVoiceState != null && _ownerVoiceState.IsSpeaking;
+            if (isOwnerSpeaking)
+            {
+                float loudness = Mathf.Clamp(_ownerVoiceState!.Amplitude * LonelinessOwnerTalkingImpact, 0f, 1f);
+                AdjustNoiseLoudness(ref loudness, CurrentPlayer.transform.position);
+                Maneater.lonelinessMeter -= Time.deltaTime * loudness;
+            }
+
             if(Maneater.holdingBaby)
             {
                 var ownerIsHoldingBaby = Maneater.playerHolding == ownerPlayer;
@@ -647,32 +741,24 @@ namespace LethalMon.Behaviours
                     // Is shaking
                     if (ownerIsHoldingBaby)
                     {
-                        if (!feelsLonely)
-                            DecreaseLikeMeterBy(Time.deltaTime / 6f * Maneater.rockingBaby, ownerPlayer!.gameObject);
+                        if (Maneater.lonelinessMeter <= 0f) // does not feel lonely -> rocking too much
+                            DecreaseLikeMeterBy(Time.deltaTime * OwnerRockingWhenNotLonelyImpact * Maneater.rockingBaby, ownerPlayer!.gameObject);
                     }
                     else
                     {
-                        DecreaseLikeMeterBy(Time.deltaTime / 2f * Maneater.rockingBaby, ownerPlayer!.gameObject);
+                        DecreaseLikeMeterBy(Time.deltaTime * NonOwnerRockingImpact * Maneater.rockingBaby, ownerPlayer!.gameObject);
                     }
                 }
 
-                Maneater.lonelinessMeter -= Time.deltaTime / 20f * (Maneater.rockingBaby + 1); // 0 = no shaking, 1 = normal, 2 = hard
+                Maneater.lonelinessMeter -= Time.deltaTime * LonelinessHeldImpact * (Maneater.rockingBaby + 1); // 0 = no shaking, 1 = normal, 2 = hard
             }
-            else
+            else if(!isOwnerSpeaking)
             {
-                Maneater.lonelinessMeter += Time.deltaTime / 30f * (1f + Mathf.Clamp(DistanceToOwner / 5f, 0f, 1f));
-            }
+                var impact = Time.deltaTime * LonelinessGeneralImpact;
+                if (LonelinessDistanceToOwnerImpact > 0f)
+                    impact *= 1f + (Mathf.Clamp(DistanceToOwner / 5f, 0f, 1f) * LonelinessDistanceToOwnerImpact);
 
-
-            if (_ownerVoiceState != null && _ownerVoiceState.IsSpeaking)
-            {
-                float loudness = Mathf.Clamp(_ownerVoiceState.Amplitude * 10f, 0f, 1f);
-                AdjustNoiseLoudness(ref loudness, CurrentPlayer.transform.position);
-
-                //LethalMon.Log("Local player is speaking. Volume: " + loudness);
-                Maneater.lonelinessMeter -= Time.deltaTime * loudness;
-                /*for (int i = _maneaterMemory.Count - 1; i >= 0; --i)
-                    IncreaseLikeMeterBy(Time.deltaTime / 5f * loudness, _maneaterMemory.ElementAt(i).Key);*/
+                Maneater.lonelinessMeter += impact;
             }
 
             Maneater.lonelinessMeter = Mathf.Clamp(Maneater.lonelinessMeter, 0f, 1f);
@@ -692,10 +778,8 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void BabyGotScared()
-        {
-
-        }
+        [ServerRpc]
+        internal void BabyGotScaredServerRpc(Vector3 scaredFromPosition) => Maneater.ScareBaby(scaredFromPosition);
 
         internal void BabyNotScaredAnymore()
         {
@@ -706,7 +790,7 @@ namespace LethalMon.Behaviours
         #region Adult
         internal void AdultUpdate()
         {
-
+            Maneater.headRig.weight = Mathf.Lerp(Maneater.headRig.weight, 1f, Time.deltaTime * 8f);
         }
         internal void AdultAIInterval()
         {
@@ -741,6 +825,9 @@ namespace LethalMon.Behaviours
                 SetTarget(memoriesInLoS.First().Key);
                 return true;
             }
+
+            if (stressedMemories.Length == 0)
+                return false;
 
             if (1f - Maneater.lonelinessMeter < stressedMemories.First().Value)
             {
@@ -790,20 +877,6 @@ namespace LethalMon.Behaviours
 
         internal void SetTarget(EnemyAI enemy) => targetEnemy = enemy;
         #endregion
-
-        public IEnumerator EndSpecialAnimationAfterLanding() // taken from DropBabyAnimation
-        {
-            float time = Time.realtimeSinceStartup;
-            yield return new WaitUntil(() => Maneater.propScript.isHeld || Maneater.propScript.reachedFloorTarget || Time.realtimeSinceStartup - time > 2f);
-
-            Maneater.inSpecialAnimation = false;
-
-            if(IsOwner)
-            {
-                Maneater.agent.enabled = false;
-                Maneater.agent.enabled = true;
-            }
-        }
 
         #region Transforming
         [ServerRpc(RequireOwnership = false)]
@@ -879,10 +952,89 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Animations
-        internal void StopScreaming()
+        public IEnumerator EndSpecialAnimationAfterLanding() // taken from DropBabyAnimation
         {
+            float time = Time.realtimeSinceStartup;
+            yield return new WaitUntil(() => Maneater.propScript.isHeld || Maneater.propScript.reachedFloorTarget || Time.realtimeSinceStartup - time > 1f);
+
+            Maneater.inSpecialAnimation = false;
+
+            if (IsOwner)
+            {
+                // Reposition on navMesh
+                Maneater.agent.Warp(Maneater.transform.position);
+                Maneater.agent.enabled = false;
+                Maneater.agent.enabled = true;
+            }
+        }
+
+        internal void StartScreaming()
+        {
+            if (!IsOwner) return;
+
+            Maneater.headRig.weight = 0f;
+            Maneater.creatureVoice.Stop();
+            Maneater.creatureVoice.PlayOneShot(Maneater.growlSFX);
+            WalkieTalkie.TransmitOneShotAudio(Maneater.creatureVoice, Maneater.growlSFX);
+            Maneater.creatureAnimator.SetBool("Screaming", value: true);
+            Maneater.creatureAnimator.SetBool("FinishedLeaping", value: false);
+            Maneater.screaming = true;
+
+            Maneater.DoScreamServerRpc();
+        }
+
+        [ServerRpc]
+        internal void StopScreamingServerRpc() => StopScreamingClientRpc();
+
+        [ClientRpc]
+        internal void StopScreamingClientRpc()
+        {
+            LethalMon.Log("Stop screaming");
             Maneater.screaming = false;
             Maneater.creatureAnimator.SetBool("Screaming", value: false);
+        }
+
+        internal void StartLeaping()
+        {
+            if (!IsOwner) return;
+
+            Maneater.creatureAnimator.SetBool("Leaping", value: true);
+            float pitch = UnityEngine.Random.Range(0.95f, 1.05f);
+            Maneater.screamAudio.pitch = pitch;
+            Maneater.screamAudio.Play();
+            Maneater.screamAudioNonDiagetic.pitch = pitch;
+            Maneater.screamAudioNonDiagetic.Play();
+
+            Maneater.DoLeapServerRpc();
+        }
+
+        internal void StopLeaping()
+        {
+            if (!IsOwner) return;
+
+            //Maneater.screamAudio.Stop();
+            Maneater.headRig.weight = 1f;
+            Maneater.creatureAnimator.SetBool("Leaping", value: false);
+            Maneater.creatureAnimator.SetBool("Screaming", value: false);
+            Maneater.creatureAnimator.SetBool("FinishedLeaping", value: true);
+
+            Maneater.FinishLeapServerRpc();
+        }
+
+        [ServerRpc]
+        public void StartKillAnimationServerRpc() => StartKillAnimationClientRpc();
+
+        [ClientRpc]
+        public void StartKillAnimationClientRpc()
+        {
+            Maneater.leaping = false;
+            Maneater.screaming = false;
+            Maneater.creatureAnimator.SetBool("killing", value: true);
+            Maneater.headRig.weight = 0f;
+            _killing = true;
+
+            Invoke(nameof(Maneater.FinishKillAnimation), 2f);
+            Invoke(nameof(StartChasing), 2f);
         }
         #endregion
     }

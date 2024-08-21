@@ -545,8 +545,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SetDestinationToPosition(position);
     }
 
+    public virtual bool CanBeRetrieved() => true;
+
     public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
+        if (!CanBeRetrieved()) return null;
+
         hasBeenRetrieved = true;
         
         GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
