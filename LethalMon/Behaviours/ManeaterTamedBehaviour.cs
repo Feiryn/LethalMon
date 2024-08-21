@@ -138,6 +138,7 @@ namespace LethalMon.Behaviours
             switch ((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.Transforming:
+                    Maneater.clickingMandibles = false;
                     if (IsOwner)
                     {
                         if (IsChild)
@@ -147,12 +148,12 @@ namespace LethalMon.Behaviours
                     }
                     break;
                 case CustomBehaviour.Chasing:
+                    Maneater.SetClickingMandiblesServerRpc();
                     if (IsOwner)
                     {
                         LethalMon.Log("START CHASING", LethalMon.LogType.Warning);
                         Maneater.agent.speed = ChaseSpeed;
                     }
-                    _killing = false;
                     break;
                 case CustomBehaviour.Attacking:
                     if (IsOwner)
@@ -162,7 +163,6 @@ namespace LethalMon.Behaviours
 
                         StartLeaping();
                     }
-                    // ...
                     break;
                 default:
                     break;
@@ -370,7 +370,6 @@ namespace LethalMon.Behaviours
 
             CalculateAnimationDirection();
 
-            Maneater.clickingMandibles = IsAdult;
             Maneater.SetClickingAudioVolume();
 
             if (IsTransforming) return;
@@ -913,11 +912,12 @@ namespace LethalMon.Behaviours
         public void BecomeChildClientRpc()
         {
             CalmDown();
+            Maneater.clickingMandibles = false;
             Maneater.agent.acceleration = 35f;
             Maneater.agent.angularSpeed = 220;
-            Maneater.syncMovementSpeed = 0.26f;
+            Maneater.syncMovementSpeed = 0.2f;
             Maneater.addPlayerVelocityToDestination = 0f;
-            Maneater.updatePositionThreshold = 0.26f;
+
             Maneater.propScript.EnablePhysics(enable: true);
             Maneater.propScript.grabbable = true;
             Maneater.propScript.grabbableToEnemies = true;
@@ -1020,8 +1020,6 @@ namespace LethalMon.Behaviours
 
         internal void StartLeaping()
         {
-            if (!IsOwner) return;
-
             Maneater.creatureAnimator.SetBool("Leaping", value: true);
             float pitch = UnityEngine.Random.Range(0.95f, 1.05f);
             Maneater.screamAudio.pitch = pitch;
@@ -1034,8 +1032,6 @@ namespace LethalMon.Behaviours
 
         internal void StopLeaping()
         {
-            if (!IsOwner) return;
-
             //Maneater.screamAudio.Stop();
             Maneater.headRig.weight = 1f;
             Maneater.creatureAnimator.SetBool("Leaping", value: false);
@@ -1046,7 +1042,11 @@ namespace LethalMon.Behaviours
         }
 
         [ServerRpc]
-        public void StartKillAnimationServerRpc() => StartKillAnimationClientRpc();
+        public void StartKillAnimationServerRpc()
+        {
+            StopLeaping();
+            StartKillAnimationClientRpc();
+        }
 
         [ClientRpc]
         public void StartKillAnimationClientRpc()
@@ -1057,8 +1057,14 @@ namespace LethalMon.Behaviours
             Maneater.headRig.weight = 0f;
             _killing = true;
 
-            Invoke(nameof(Maneater.FinishKillAnimation), 2f);
+            Invoke(nameof(FinishKillAnimation), 1.95f);
             Invoke(nameof(StartChasing), 2f);
+        }
+
+        void FinishKillAnimation()
+        {
+            _killing = false;
+            Maneater.FinishKillAnimation(true);
         }
         #endregion
     }
