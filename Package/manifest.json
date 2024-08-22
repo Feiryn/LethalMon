@@ -1,6 +1,6 @@
 {
   "name": "LethalMon",
-  "description": "[v61] Capture monsters and make them help you survive",
+  "description": "[v62] Capture monsters and make them help you survive",
   "version_number": "",
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2100",

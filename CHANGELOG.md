@@ -1,7 +1,17 @@
+# 0.4.10
+
+- The less an enemy has health, the more it is easy to catch (thanks to [@NiroDev](https://github.com/NiroDev))
+- The nutcracker's steps are now less loud
+- Fixed a bug that didn't remove the mask if a player retrieved the masked while wearing the mask (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed a bug that made the balls collide with the cruiser and sometimes make it go upside down
+- Mirage mod compatibility: prevent tamed monsters from mimicking the players voices
+- SnatchinBracken mod compatibility: Make the bracken drop dragged players when captured
+- Fixed bees behaviour
+
 # 0.4.9
 
 - Fixed a softlock on ship ladders if a player has a monster out
-- Bees now stun on sight and  have a cooldown
+- Bees now stun on sight and have a cooldown
 
 # 0.4.8
 
