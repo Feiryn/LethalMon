@@ -141,7 +141,10 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         base.Start();
 
         if (IsTamed)
+        {
             Nutcracker.creatureVoice.volume = 0.5f;
+            Nutcracker.GetComponentInChildren<PlayAudioAnimationEvent>().audioToPlay.volume = 0.25f;
+        }
     }
 
     internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
