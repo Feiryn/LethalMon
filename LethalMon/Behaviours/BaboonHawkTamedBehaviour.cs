@@ -187,6 +187,7 @@ namespace LethalMon.Behaviours
                     SetAggressive(true);
                     SetFighting(true);
                     _idleTimer = 0f;
+                    BaboonHawk.addPlayerVelocityToDestination = 0f;
                     BaboonHawk.aggressionAudio.clip = BaboonHawk.enemyType.audioClips[2];
                     BaboonHawk.aggressionAudio.Play();
                     BaboonHawk.aggressionAudio.volume = 0f;
@@ -304,9 +305,7 @@ namespace LethalMon.Behaviours
 
             BaboonHawk.creatureAnimator.SetBool("sit", false);
 
-#if DEBUG
-            yield return new WaitForSeconds(10f);
-#endif
+            // yield return new WaitForSeconds(10f); // For testing purposes
 
             if (IsOwner)
             {
