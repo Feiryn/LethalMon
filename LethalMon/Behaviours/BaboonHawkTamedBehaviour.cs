@@ -4,10 +4,10 @@ using Unity.Netcode;
 using UnityEngine;
 using System.Collections;
 using LethalMon.CustomPasses;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
-#if DEBUG
     internal class BaboonHawkTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
@@ -35,6 +35,7 @@ namespace LethalMon.Behaviours
         internal static readonly Color EchoLotColor = new(1f, 1f, 0f, 0.45f);
 
         private float _idleTimer = 0f;
+        internal bool isEscapeFromBallCoroutineRunning = false;
         #endregion
 
         #region Cooldowns
@@ -128,11 +129,11 @@ namespace LethalMon.Behaviours
         #region Base Methods
         internal override void Start()
         {
-            SetTamedByHost_DEBUG(); // DEBUG
+            //SetTamedByHost_DEBUG(); // DEBUG
 
             base.Start();
 
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing); // DEBUG
+            //SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing); // DEBUG
 
             echoLotCooldown = GetCooldownWithId(EchoLotCooldownId);
             hittingEnemyCooldown = GetCooldownWithId(HittingEnemyCooldownId);
@@ -254,7 +255,7 @@ namespace LethalMon.Behaviours
             }
 
             if (BaboonHawk.miscAnimationTimer <= 0f && hittingEnemyCooldown != null && hittingEnemyCooldown.CurrentTimer > 2f)
-                BaboonHawk.StartMiscAnimationServerRpc(Random.RandomRangeInt(0, BaboonHawk.enemyType.miscAnimations.Length - 1));
+                BaboonHawk.StartMiscAnimationServerRpc(UnityEngine.Random.RandomRangeInt(0, BaboonHawk.enemyType.miscAnimations.Length - 1));
         }
 
         internal override bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
@@ -269,26 +270,51 @@ namespace LethalMon.Behaviours
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
 
+            StartCoroutine(EscapedFromBallCoroutine());
+        }
+
+        internal IEnumerator EscapedFromBallCoroutine()
+        {
+            isEscapeFromBallCoroutineRunning = true;
+
+            if (IsOwner)
+            {
+                BaboonHawk.agent.enabled = false;
+                BaboonHawk.enabled = false;
+            }
+
+            BaboonHawk.creatureAnimator.SetBool("sit", true);
+
+            yield return new WaitForSeconds(3f);
+
+            var spawnPos = BaboonHawk.transform.position - BaboonHawk.transform.forward * 0.5f;
+            Utils.PlaySoundAtPosition(spawnPos, StartOfRound.Instance.playerJumpSFX);
+            yield return new WaitForSeconds(0.5f);
+
             if (Utils.IsHost)
             {
-                var tinyHawk = Utils.SpawnEnemyAtPosition(Utils.Enemy.BaboonHawk, BaboonHawk.transform.position) as BaboonBirdAI;
+                var tinyHawk = Utils.SpawnEnemyAtPosition(Utils.Enemy.BaboonHawk, spawnPos) as BaboonBirdAI;
                 if (tinyHawk != null)
-                {
-                    tinyHawk.transform.localScale = Vector3.one * 0.3f;
-                    tinyHawk.creatureVoice.pitch = 1.5f;
-                    tinyHawk.creatureVoice.volume = 0.5f;
-                    tinyHawk.targetPlayer = playerWhoThrewBall;
-
-                    if (BaboonHawk.scoutingGroup == null)
-                        BaboonHawk.StartScoutingGroup(tinyHawk, true);
-                    else
-                        tinyHawk.JoinScoutingGroup(BaboonHawk);
-
-                    if (tinyHawk.TryGetComponent(out BaboonHawkTamedBehaviour tinyHawkbehaviour))
-                        tinyHawkbehaviour.StartFocusOnPlayer(playerWhoThrewBall);
-                }
-                StartFocusOnPlayer(playerWhoThrewBall);
+                    SpawnedTinyHawkServerRpc(tinyHawk.NetworkObject);
             }
+
+            Utils.PlaySoundAtPosition(spawnPos, StartOfRound.Instance.playerHitGroundSoft);
+
+            yield return new WaitForSeconds(0.5f);
+
+            BaboonHawk.creatureAnimator.SetBool("sit", false);
+
+#if DEBUG
+            yield return new WaitForSeconds(10f);
+#endif
+
+            if (IsOwner)
+            {
+                BaboonHawk.enabled = true;
+                BaboonHawk.agent.enabled = true;
+            }
+
+            isEscapeFromBallCoroutineRunning = false;
         }
 
         internal override void OnCallFromBall()
@@ -309,45 +335,129 @@ namespace LethalMon.Behaviours
         internal void SetFighting(bool fighting = true) => BaboonHawk.creatureAnimator?.SetBool("fighting", fighting);
         internal bool IsAggressive => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("aggressiveDisplay");
         internal void SetAggressive(bool aggressive = true) => BaboonHawk.creatureAnimator?.SetBool("aggressiveDisplay", aggressive);
-        
-        public void StartFocusOnPlayer(PlayerControllerB focussedPlayer)
+        #endregion
+
+        #region TinyHawk
+        [ServerRpc]
+        internal void SpawnedTinyHawkServerRpc(NetworkObjectReference hawkRef) => SpawnedTinyHawkClientRpc(hawkRef);
+
+        [ClientRpc]
+        internal void SpawnedTinyHawkClientRpc(NetworkObjectReference hawkRef)
         {
-            BaboonHawk.fightTimer = 0f;
-            BaboonHawk.focusingOnThreat = true;
-            BaboonHawk.StartFocusOnThreatServerRpc(focussedPlayer.NetworkObject);
-            BaboonHawk.focusedThreat = MakePlayerAThreat(focussedPlayer);
-            BaboonHawk.focusedThreatTransform = focussedPlayer.transform;
+            if (hawkRef.TryGet(out NetworkObject networkObject) && networkObject.TryGetComponent(out EnemyAI tinyHawk))
+                tinyHawk.gameObject.AddComponent<TinyHawkBehaviour>().motherBird = BaboonHawk;
         }
 
-        public Threat MakePlayerAThreat(PlayerControllerB player)
+        internal class TinyHawkBehaviour : MonoBehaviour
         {
-            if (BaboonHawk.threats.TryGetValue(player.transform, out Threat threat))
-            { // Already a threat
-                threat.threatLevel = 0;
-                threat.interestLevel = 99;
-                threat.hasAttacked = true;
-                LethalMon.Log("Made player a higher target");
-                return threat;
+            #region Properties
+            internal BaboonBirdAI? motherBird = null;
+            private BaboonBirdAI? _tinyHawk = null;
+            private const float BaseSpeed = 2f;
+            private const float PingOnDeathRange = 20f;
+            #endregion
+
+            #region Base Methods
+            void Start()
+            {
+                if (!gameObject.TryGetComponent(out _tinyHawk))
+                {
+                    Destroy(this);
+                    return;
+                }
+
+                _tinyHawk!.transform.localScale /= 5f;
+                _tinyHawk.creatureVoice.maxDistance = 5f;
+
+                if(motherBird != null && motherBird.scoutingGroup != null)
+                    motherBird.scoutingGroup.members.Add(_tinyHawk);
             }
 
-            threat = new Threat();
-            if (player.TryGetComponent<IVisibleThreat>(out var visibleThreat))
+            void Update()
             {
-                threat.type = visibleThreat.type;
-                threat.threatScript = visibleThreat;
+                if(_tinyHawk == null || _tinyHawk.isEnemyDead)
+                {
+                    if (_tinyHawk != null && _tinyHawk.isEnemyDead)
+                        PingNearBaboonHawksOnDeath();
+
+                    Destroy(this);
+                    return;
+                }
+
+                if (_tinyHawk.agent != null)
+                    _tinyHawk.agent.speed = BaseSpeed;
+
+                if (_tinyHawk.creatureVoice != null)
+                {
+                    _tinyHawk.creatureVoice.pitch = 2f;
+                    _tinyHawk.creatureVoice.volume = 0.2f;
+                }
             }
-            threat.timeLastSeen = Time.realtimeSinceStartup;
-            threat.lastSeenPosition = player.transform.position + Vector3.up * 0.5f;
-            threat.distanceToThreat = Vector3.Distance(player.transform.position, BaboonHawk.transform.position);
-            threat.distanceMovedTowardsBaboon = 0f;
-            threat.threatLevel = 0;
-            threat.interestLevel = 99;
-            threat.hasAttacked = true;
-            if (BaboonHawk.threats.TryAdd(player.transform, threat))
-                LethalMon.Log("Added player as threat");
-            return threat;
+            #endregion
+
+            #region Methods
+            internal void PingNearBaboonHawksOnDeath()
+            {
+                if (_tinyHawk == null) return;
+
+                var enemiesInRange = Physics.OverlapSphere(_tinyHawk.transform.position, PingOnDeathRange, 1 << (int)LayerMasks.Mask.Enemies, QueryTriggerInteraction.Collide);
+                foreach (var enemyHit in enemiesInRange)
+                {
+                    if (enemyHit != null && enemyHit.TryGetComponent(out BaboonBirdAI baboonBirdAI) && !baboonBirdAI.isEnemyDead)
+                        baboonBirdAI.PingBaboonInterest(_tinyHawk.transform.position, 4);
+
+                    if (motherBird != null)
+                    {
+                        motherBird.timeSincePingingBirdInterest = 0f;
+                        motherBird.PingBaboonInterest(_tinyHawk.transform.position, 42);
+                    }
+                }
+            }
+            internal void OnCollideWithPlayer(PlayerControllerB player)
+            {
+                _tinyHawk!.HitEnemy(1, player, true); // poor tiny hawk got hurt
+
+                var directionalVector = (_tinyHawk.transform.position - player.transform.position).normalized;
+                directionalVector.y = 0f;
+                StartCoroutine(boinkAnimation(directionalVector));
+            }
+
+            internal IEnumerator boinkAnimation(Vector3 direction)
+            {
+                var startPosition = _tinyHawk!.transform.position;
+                var endPosition = _tinyHawk!.transform.position + direction * 4f;
+                if (Physics.Linecast(startPosition + Vector3.up, endPosition + Vector3.up, out RaycastHit hit, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+                {
+                    // Obstacle in the way
+                    endPosition = hit.point - direction * 0.5f - Vector3.up;
+                }
+
+                _tinyHawk.agent.enabled = false;
+                _tinyHawk.enabled = false;
+
+                float timer = 0f, duration = 0.5f;
+                while (timer < duration)
+                {
+                    timer += Time.deltaTime;
+                    if(timer < duration / 2f)
+                        endPosition.y += Time.deltaTime * 7f;
+                    else
+                        endPosition.y -= Time.deltaTime * 7f;
+
+                    TeleportEnemy(_tinyHawk, Vector3.Lerp(startPosition, endPosition, timer / duration));
+                    yield return null;
+                }
+
+                _tinyHawk.creatureAnimator.SetBool("sit", true);
+                _tinyHawk.creatureSFX.PlayOneShot(_tinyHawk.enemyType.audioClips[5], 0.2f);
+                yield return new WaitForSeconds(1f);
+                _tinyHawk.creatureAnimator.SetBool("sit", false);
+
+                _tinyHawk.enabled = true;
+                _tinyHawk.agent.enabled = true;
+            }
+            #endregion
         }
         #endregion
     }
-#endif
 }
