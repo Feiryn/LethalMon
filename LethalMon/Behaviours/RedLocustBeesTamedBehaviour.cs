@@ -9,7 +9,7 @@ namespace LethalMon.Behaviours;
 public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
-    internal RedLocustBees? _bees = null;
+    private RedLocustBees? _bees;
     internal RedLocustBees Bees
     {
         get
@@ -21,8 +21,6 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    private bool _angry = false;
-
     internal override float TargetingRange => 3f;
     #endregion
 
@@ -32,17 +30,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
     internal override Cooldown[] Cooldowns => [new Cooldown(StunCooldownId, "Stun enemy", ModConfig.Instance.values.BeesStunCooldown)];
 
-    private CooldownNetworkBehaviour? stunCooldown;
+    private CooldownNetworkBehaviour? _stunCooldown;
 
-    internal override bool CanDefend => stunCooldown != null && stunCooldown.IsFinished();
+    internal override bool CanDefend => _stunCooldown != null && _stunCooldown.IsFinished();
     #endregion
 
     #region Base Methods
     internal override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, false);
-
-        BeesZapOnTimer();
     }
 
     internal override void Start()
@@ -51,13 +47,11 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 
         if (!IsTamed) return;
         
+        _stunCooldown = GetCooldownWithId(StunCooldownId);
+        
         if(Bees.agent != null)
             Bees.agent.speed = 10.3f;
-            
-        Bees.beesIdle.volume = 0.2f;
-        Bees.beesDefensive.volume = 0.2f;
-        Bees.beesAngry.Stop();
-        Bees.beeZapAudio.Stop();
+
         Bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make them stick tighter together
     }
 
@@ -65,15 +59,14 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     {
         base.OnTamedFollowing();
 
-        if (stunCooldown != null && stunCooldown.IsFinished())
+        if (_stunCooldown != null && _stunCooldown.IsFinished())
             TargetNearestEnemy();
     }
 
     internal override void OnTamedDefending()
     {
-        if (!_angry)
-            ChangeAngryMode(true);
-
+        BeesZapOnTimer();
+        
         if (targetPlayer != null)
         {
             float distance = DistanceToTargetPlayer;
@@ -87,17 +80,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             {
                 LethalMon.Log("Target player collided");
 
-                stunCooldown?.Reset();
+                _stunCooldown?.Reset();
                 BeeDamageServerRPC(targetPlayer.GetComponent<NetworkObject>());
-
-                ChangeAngryMode(false);
+                
                 targetPlayer = null;
             }
             else
             {
                 LethalMon.Log("Follow player");
                 Bees.SetDestinationToPosition(targetPlayer.transform.position);
-                return;
             }
         }
         else if (HasTargetEnemy)
@@ -113,16 +104,15 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             {
                 LethalMon.Log("Target enemy collided");
 
-                targetEnemy.SetEnemyStunned(true, 5f);
-
-                ChangeAngryMode(false);
+                _stunCooldown?.Reset();
+                targetEnemy.SetEnemyStunned(true, 10f);
+                
                 targetEnemy = null;
             }
             else
             {
                 LethalMon.Log("Follow enemy");
                 Bees.SetDestinationToPosition(targetEnemy.transform.position);
-                return;
             }
         }
         else
@@ -141,14 +131,28 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
                 DateTime.Now.AddSeconds(10)); // todo: solve locally here instead of patch
         }
     }
+
+    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    {
+        base.InitTamingBehaviour(behaviour);
+
+        Bees.beesIdle.volume = 0.2f;
+        Bees.beesDefensive.volume = 0.2f;
+        Bees.beesAngry.Stop();
+        
+        ResetBeeZapTimer();
+        
+        if (behaviour == TamingBehaviour.TamedFollowing)
+        {
+            targetEnemy = null;
+            targetPlayer = null;
+        }
+    }
     #endregion
 
     #region Methods
     private void BeesZapOnTimer()
     {
-        if (!_angry)
-            return;
-
         if (Bees.beeZapRandom == null)
             Bees.beeZapRandom = new System.Random();
 
@@ -181,25 +185,6 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         Bees.beeZapAudio.pitch = UnityEngine.Random.Range(0.8f, 1.1f);
         Bees.beeZapAudio.PlayOneShot(Bees.enemyType.audioClips[UnityEngine.Random.Range(0, Bees.enemyType.audioClips.Length)], UnityEngine.Random.Range(0.6f, 1f));
     }
-
-    public void ChangeAngryMode(bool angry)
-    {
-        if(angry && !HasTargetEnemy && targetPlayer == null)
-        {
-            LethalMon.Logger.LogWarning("Attempting to make bees angry, but no target was defined.");
-            return;
-        }
-
-        _angry = angry;
-        if(!angry)
-        {
-            targetEnemy = null;
-            targetPlayer = null;
-        }
-
-        ResetBeeZapTimer();
-        AngryServerRpc(angry);
-    }
     
     private void ResetBeeZapTimer()
     {
@@ -209,20 +194,6 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
     #endregion
 
     #region RPCs
-
-    [ServerRpc(RequireOwnership = false)]
-    public void AngryServerRpc(bool angry)
-    {
-        AngryClientRpc(angry);
-    }
-    
-    [ClientRpc]
-    public void AngryClientRpc(bool angry)
-    {
-        _angry = angry;
-        ResetBeeZapTimer();
-    }
-
     [ServerRpc(RequireOwnership = false)]
     public void BeeDamageServerRPC(NetworkObjectReference networkObjectReference) // todo: check if targetPlayer is synced. if so, remove parameter
     {
