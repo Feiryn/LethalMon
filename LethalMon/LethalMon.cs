@@ -16,6 +16,7 @@ namespace LethalMon;
 [BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("atomic.terminalapi", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("Mirage", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("Ovchinikov.SnatchinBracken.Main", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class LethalMon : BaseUnityPlugin
 {
@@ -121,6 +122,8 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
         if (MirageCompatibility.Enabled)
             Harmony.PatchAll(typeof(MirageCompatibility));
+        if (SnatchingBrackenCompatibility.Enabled)
+            Harmony.PatchAll(typeof(SnatchingBrackenCompatibility));
     }
 
     private static void Unpatch()
