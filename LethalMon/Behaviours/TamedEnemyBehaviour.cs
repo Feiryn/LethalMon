@@ -918,7 +918,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     };
 
-    public void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
+    public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
     {
         if (!Utils.IsHost || enemyAI?.agent == null) return;
 

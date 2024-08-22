@@ -186,7 +186,7 @@ namespace LethalMon.Behaviours
         #region TongueShooting
         internal void ShootTongueAtEnemy()
         {
-            if (!HasTargetEnemy || tongueShootCoroutine != null || !tongueCooldown.IsFinished()) return;
+            if (!HasTargetEnemy || tongueShootCoroutine != null || (tongueCooldown != null && !tongueCooldown.IsFinished())) return;
 
             var killEnemy = targetEnemy!.enemyType.canDie && (enemyHitTimes >= 4 || Random.Range(0, 100) < TongueKillPercentage);
 
@@ -254,7 +254,7 @@ namespace LethalMon.Behaviours
 
             LethalMon.Log("ShootTongueAtEnemy -> Finished coroutine");
             tongueShootCoroutine = null;
-            tongueCooldown.Reset();
+            tongueCooldown?.Reset();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
         }
