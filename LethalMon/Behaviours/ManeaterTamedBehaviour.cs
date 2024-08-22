@@ -7,7 +7,6 @@ using System.Collections;
 using Unity.Netcode;
 using LethalMon.Patches;
 using System.Linq;
-using static LethalMon.Utils;
 using Vector3 = UnityEngine.Vector3;
 using Dissonance;
 
@@ -32,6 +31,7 @@ namespace LethalMon.Behaviours
         // Constants
         private const float MaximumTargetingRange = 30f;
         private const int AttackDistance = 6;
+        private const float CooldownAfterAttack = 2f;
         private const float ChaseSpeed = 10f;
         private const float LeapSpeed = 25f;
 
@@ -46,7 +46,7 @@ namespace LethalMon.Behaviours
         // Voice detection
         private const float VoiceGeneralImpact = 0.2f;              // General value on how much voices other than the owners one should affect the likeMeter towards the noise source
         private const float VoicePlayerImpact = 1f;                 // Noise loudness multiplier for players
-        private const float VoiceEnemyImpact = 10f;                  // Noise loudness multiplier for enemies
+        private const float VoiceEnemyImpact = 10f;                 // Noise loudness multiplier for enemies
 
         private const float VoicePlayerRange = 10f;                 // Range in which the maneater gets stressed by player voices
 
@@ -67,9 +67,7 @@ namespace LethalMon.Behaviours
 
         private bool IsChild => Maneater.babyContainer.activeSelf;
         private bool IsAdult => Maneater.adultContainer.activeSelf;
-        private bool _transformAnimationRecorded = false;
 
-        private float _ownerSpeakingAmplitude = 0f;
         private VoicePlayerState? _ownerVoiceState;
 
         // Status handling
@@ -95,7 +93,6 @@ namespace LethalMon.Behaviours
 
         // Chasing & Attacking
         internal GameObject? Target => targetPlayer != null ? targetPlayer.gameObject : targetEnemy?.gameObject;
-        private bool hasLineOfSightToTarget = false;
         private bool _killing = false;
 
         internal bool CanTransform => becomeAggressiveCooldown == null || becomeAggressiveCooldown.IsFinished() && !_killing && !IsScared && !IsTransforming;
@@ -103,6 +100,12 @@ namespace LethalMon.Behaviours
         internal override string DefendingBehaviourDescription => "Defending owner!";
 
         internal override bool CanDefend => false;
+
+        // Transforming
+        private Transform? _adultSpine = null;
+        private Transform? _childSpine = null;
+        private Vector3 _adultSpineDefaultScale = Vector3.zero, _childSpineDefaultScale = Vector3.zero;
+        private bool _transformAnimationRecorded = false;
         #endregion
 
         #region Cooldowns
@@ -144,7 +147,7 @@ namespace LethalMon.Behaviours
                         if (IsChild)
                             BecomeAdultServerRpc();
                         else
-                            BecomeChildServerRpc();
+                            BecomeChildServerRpc(Maneater.transform.position);
                     }
                     break;
                 case CustomBehaviour.Chasing:
@@ -310,7 +313,7 @@ namespace LethalMon.Behaviours
             if (IsChild)
                 BecomeAdultServerRpc();
             else
-                BecomeChildServerRpc();
+                BecomeChildServerRpc(Maneater.transform.position);
         }
         #endregion
 
@@ -321,14 +324,23 @@ namespace LethalMon.Behaviours
             base.Start();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
 
-            becomeAggressiveCooldown = GetCooldownWithId(BecomeAggressiveCooldownID);
-
             if (IsTamed)
             {
+                becomeAggressiveCooldown = GetCooldownWithId(BecomeAggressiveCooldownID);
+
                 SetOwnerVoiceState();
                 Maneater.timeAtLastHeardNoise = Time.realtimeSinceStartup;
                 HoarderBugAI.grabbableObjectsInMap.Remove(Maneater.propScript.gameObject); // maybe allow this fun later
+                Maneater.babyCreatureAnimator.Play("Base Layer.BabyCrawlIdle");
             }
+
+            _adultSpine = Maneater?.animationContainer?.Find("Spine");
+            if(_adultSpine != null )
+                _adultSpineDefaultScale = _adultSpine.transform.localScale;
+
+            _childSpine = Maneater?.transform.Find("BabyMeshContainer")?.Find("BabyAnimContainer")?.Find("Spine1");
+            if(_childSpine != null)
+                _childSpineDefaultScale = _childSpine.transform.localScale;
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -344,11 +356,13 @@ namespace LethalMon.Behaviours
                     Maneater.clickingAudio1.volume = 0f;
                     Maneater.clickingAudio2.volume = 0f;
 
-                    if(IsOwner)
+                    Maneater.chasingAfterLeap = false;
+                    Maneater.clickingMandibles = false;
+
+                    if (IsOwner)
                     {
                         EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
                         UpdateHUDStatus();
-                        Maneater.agent.speed = 6f;
                     }
                     break;
 
@@ -385,7 +399,7 @@ namespace LethalMon.Behaviours
             if(!Maneater.leaping)
                 CalculateAnimationDirection();
 
-            Maneater.SetClickingAudioVolume();
+            SetClickingAudioVolume();
 
             if (IsTransforming) return;
 
@@ -502,7 +516,7 @@ namespace LethalMon.Behaviours
 
         internal GameObject? FindNoiseSourceAtPosition(Vector3 position)
         {
-            var overlappingSources = Physics.OverlapSphere(position, 3f, 1 << (int)LayerMasks.Mask.Enemies, QueryTriggerInteraction.Collide).Where(ns => ns?.gameObject != null);
+            var overlappingSources = Physics.OverlapSphere(position, 3f, 1 << (int)Utils.LayerMasks.Mask.Enemies, QueryTriggerInteraction.Collide).Where(ns => ns?.gameObject != null);
             if (!overlappingSources.Any()) return null;
 
             var noiseSourcesInRange = overlappingSources.Select(source => source.GetComponentInParent<EnemyAI>()).ToArray();
@@ -615,7 +629,7 @@ namespace LethalMon.Behaviours
 
         internal string MemoryName(GameObject memory)
         {
-            if (memory == CurrentPlayer.gameObject) return "you";
+            if (memory == ownerPlayer?.gameObject) return "you";
 
             if (memory.TryGetComponent(out PlayerControllerB player))
                 return player.playerUsername;
@@ -722,9 +736,7 @@ namespace LethalMon.Behaviours
             Maneater.babyCreatureAnimator.SetBool("BabyCrying", Maneater.babyCrying);
             Maneater.babyCreatureAnimator.SetBool("Squirming", Maneater.babySquirming);
 
-            Maneater.babyLookRig.weight = Mathf.Lerp(Maneater.babyLookRig.weight, 1f, Time.deltaTime * 8f);
-            if(Maneater.babyLookTarget != null && ownerPlayer != null)
-                Maneater.babyLookTarget.position = Vector3.Lerp(Maneater.babyLookTarget.position, ownerPlayer.transform.position, Time.deltaTime * 8f);
+            LookAtTarget();
 
             if (!IsOwner) return;
 
@@ -771,10 +783,10 @@ namespace LethalMon.Behaviours
         internal void UpdateLonelinessAndLikeMeter()
         {
             var isOwnerSpeaking = _ownerVoiceState != null && _ownerVoiceState.IsSpeaking;
-            if (isOwnerSpeaking)
+            if (isOwnerSpeaking && ownerPlayer != null)
             {
                 float loudness = Mathf.Clamp(_ownerVoiceState!.Amplitude * LonelinessOwnerTalkingImpact, 0f, 1f);
-                AdjustNoiseLoudness(ref loudness, CurrentPlayer.transform.position);
+                AdjustNoiseLoudness(ref loudness, ownerPlayer.transform.position);
                 Maneater.lonelinessMeter -= Time.deltaTime * loudness;
             }
 
@@ -836,24 +848,20 @@ namespace LethalMon.Behaviours
         #region Adult
         internal void AdultUpdate()
         {
-            Maneater.headRig.weight = Mathf.Lerp(Maneater.headRig.weight, 1f, Time.deltaTime * 8f);
+            LookAtTarget();
         }
-        internal void AdultAIInterval()
-        {
-        }
+
+        internal void AdultAIInterval() { }
 
         internal bool DetermineNextTarget()
         {
             SortOutDeadMemories();
-
-            var hasLineOfSightToOwner = HasLineOfSightToOwner;
 
             var m = _maneaterMemory.Where(mem => mem.Value < StressedPoint);
             if (!m.Any())
             {
                 if (Maneater.lonelinessMeter >= 0.9f)
                 {
-                    hasLineOfSightToTarget = hasLineOfSightToOwner;
                     SetTarget(ownerPlayer!);
                     return true;
                 }
@@ -867,14 +875,12 @@ namespace LethalMon.Behaviours
             var memoriesInLoS = stressedMemories.Where(m => Maneater.CheckLineOfSightForPosition(m.Key.transform.position, 180f));
             if (memoriesInLoS.Any())
             {
-                if(hasLineOfSightToOwner && 1f - Maneater.lonelinessMeter < memoriesInLoS.First().Value)
+                if(HasLineOfSightToOwner && 1f - Maneater.lonelinessMeter < memoriesInLoS.First().Value)
                 {
-                    hasLineOfSightToTarget = hasLineOfSightToOwner;
                     SetTarget(ownerPlayer!);
                     return true;
                 }
                 // Target in line of sight. Take the one with the lowest likeMeter
-                hasLineOfSightToTarget = true;
                 SetTarget(memoriesInLoS.First().Key);
                 return true;
             }
@@ -884,7 +890,6 @@ namespace LethalMon.Behaviours
 
             if (1f - Maneater.lonelinessMeter < stressedMemories.First().Value)
             {
-                hasLineOfSightToTarget = hasLineOfSightToOwner;
                 SetTarget(ownerPlayer!);
                 return true;
             }
@@ -934,28 +939,24 @@ namespace LethalMon.Behaviours
 
         #region Transforming
         [ServerRpc(RequireOwnership = false)]
-        public void BecomeChildServerRpc()
+        public void BecomeChildServerRpc(Vector3 position)
         {
-            BecomeChildClientRpc();
+            BecomeChildClientRpc(position);
         }
 
         [ClientRpc]
-        public void BecomeChildClientRpc()
+        public void BecomeChildClientRpc(Vector3 position)
         {
             CalmDown();
-            Maneater.clickingMandibles = false;
             Maneater.agent.acceleration = 35f;
             Maneater.agent.angularSpeed = 220;
             Maneater.syncMovementSpeed = 0.2f;
             Maneater.addPlayerVelocityToDestination = 0f;
 
-            Maneater.propScript.EnablePhysics(enable: true);
-            Maneater.propScript.grabbable = true;
-            Maneater.propScript.grabbableToEnemies = true;
-            Maneater.propScript.enabled = true;
             Maneater.inSpecialAnimation = true;
             Maneater.agent.enabled = false;
             Maneater.StartCoroutine(becomeChildAnimation());
+            Maneater.transform.position = position;
         }
 
         private IEnumerator becomeChildAnimation()
@@ -969,15 +970,25 @@ namespace LethalMon.Behaviours
             LethalMon.Log("Enabling baby.");
             Maneater.babyContainer.SetActive(value: true);
             Maneater.adultContainer.SetActive(value: false);
+            Maneater.growthMeter = 0f;
+
+            if (_adultSpine != null)
+                _adultSpine.transform.localScale = _adultSpineDefaultScale;
+
             yield return new WaitForSeconds(0.05f);
 
             yield return StartCoroutine(Utils.StartPlaybackOfAnimator(Maneater.babyCreatureAnimator, true));
-            Maneater.babyCreatureAnimator.SetBool("Transform", false);
 
+            Maneater.babyCreatureAnimator.SetBool("Transform", false);
             Maneater.creatureSFX.volume = 1f;
 
-            // todo: find out why it plays the animation normally again afterwards
+            // todo: find out why it plays the animation normally again afterwards.. maneater is STACKED afterwards ._.
             Maneater.inSpecialAnimation = false;
+            Maneater.propScript.EnablePhysics(enable: true);
+            Maneater.propScript.grabbable = true;
+
+            Maneater.propScript.grabbableToEnemies = true;
+            Maneater.propScript.enabled = true;
             if (IsOwner)
                 Maneater.agent.enabled = true;
         }
@@ -991,14 +1002,14 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         public void BecomeAdultClientRpc()
         {
-            if (!_transformAnimationRecorded)
-                Maneater.StartCoroutine(RecordTransformAnimation());
+            Maneater.StartCoroutine(RecordTransformAnimation());
             Maneater.StartTransformationAnim();
             Maneater.addPlayerVelocityToDestination = 0f;
         }
 
         public IEnumerator RecordTransformAnimation()
         {
+            if (_transformAnimationRecorded) yield break;
             yield return StartCoroutine(Utils.RecordAnimation(Maneater.babyCreatureAnimator, 0.5f));
             yield return new WaitForSeconds(0.05f);
             yield return StartCoroutine(Utils.RecordAnimation(Maneater.creatureAnimator, 1.7f));
@@ -1038,11 +1049,7 @@ namespace LethalMon.Behaviours
             Maneater.DoScreamServerRpc();
         }
 
-        [ServerRpc]
-        internal void StopScreamingServerRpc() => StopScreamingClientRpc();
-
-        [ClientRpc]
-        internal void StopScreamingClientRpc()
+        internal void StopScreaming()
         {
             LethalMon.Log("Stop screaming");
             Maneater.screaming = false;
@@ -1073,14 +1080,15 @@ namespace LethalMon.Behaviours
         }
 
         [ServerRpc]
-        public void StartKillAnimationServerRpc()
-        {
-            StopLeaping();
-            StartKillAnimationClientRpc();
-        }
+        public void StartKillAnimationServerRpc() => StartKillAnimationClientRpc();
 
         [ClientRpc]
         public void StartKillAnimationClientRpc()
+        {
+            StartCoroutine(KillAnimationRoutine());
+        }
+
+        private IEnumerator KillAnimationRoutine()
         {
             Maneater.leaping = false;
             Maneater.screaming = false;
@@ -1088,14 +1096,52 @@ namespace LethalMon.Behaviours
             Maneater.headRig.weight = 0f;
             _killing = true;
 
-            Invoke(nameof(FinishKillAnimation), 1.95f);
-            Invoke(nameof(StartChasing), 2f);
-        }
+            yield return new WaitForSeconds(2f);
 
-        void FinishKillAnimation()
-        {
             _killing = false;
             Maneater.FinishKillAnimation(true);
+
+            Maneater.creatureVoice.PlayOneShot(Maneater.cooldownSFX);
+            StopScreaming();
+
+            if (IsOwner)
+            {
+                StopLeaping();
+                yield return new WaitForSeconds(CooldownAfterAttack);
+                StartChasing();
+            }
+        }
+
+        private void SetClickingAudioVolume()
+        {
+            Maneater.clickingAudio1.volume = Mathf.Lerp(Maneater.clickingAudio1.volume, Maneater.clickingMandibles ? 1f : 0f, Time.deltaTime * 5f);
+            Maneater.clickingAudio2.volume = Mathf.Lerp(Maneater.clickingAudio2.volume, Maneater.clickingMandibles && Target == ownerPlayer ? 1f : 0f, Time.deltaTime * 5f);
+
+            Utils.StartStopAudio(Maneater.clickingAudio1);
+            Utils.StartStopAudio(Maneater.clickingAudio2);
+        }
+
+        internal void LookAtTarget()
+        {
+            if(IsChild)
+            {
+                Maneater.babyLookRig.weight = Mathf.Lerp(Maneater.babyLookRig.weight, IsScared ? 0f : 1f, Time.deltaTime * 8f);
+                if (Maneater.babyLookTarget != null && ownerPlayer != null)
+                    Maneater.babyLookTarget.position = Vector3.Lerp(Maneater.babyLookTarget.position, ownerPlayer.transform.position, Time.deltaTime * 8f);
+            }
+            else
+            {
+                Maneater.headRig.weight = Mathf.Lerp(Maneater.headRig.weight, _killing ? 1f : 0f, Time.deltaTime * 8f);
+
+                var target = Target ?? ownerPlayer?.gameObject;
+                if (target == null) return;
+
+                var position = target.transform.position;
+                position.y = Maneater.transform.position.y;
+                RoundManager.Instance.tempTransform.position = Maneater.transform.position;
+                RoundManager.Instance.tempTransform.LookAt(position);
+                Maneater.transform.rotation = Quaternion.Lerp(Maneater.transform.rotation, RoundManager.Instance.tempTransform.rotation, 14f * Time.deltaTime);
+            }
         }
         #endregion
     }

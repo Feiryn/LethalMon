@@ -118,7 +118,18 @@ public class Utils
         SoundManager.Instance.tempAudio1.transform.position = position;
         SoundManager.Instance.tempAudio1.PlayOneShot(clip);
     }
-    
+
+    public static void StartStopAudio(AudioSource audioSource)
+    {
+        if (audioSource.isPlaying)
+        {
+            if (audioSource.volume <= 0f)
+                audioSource.Stop();
+        }
+        else if (audioSource.volume > 0f)
+            audioSource.Play();
+    }
+
     public static void EnableShotgunHeldByEnemyAi(EnemyAI enemyAI, bool enable)
     {
         ShotgunItem[] shotguns = GameObject.FindObjectsOfType<ShotgunItem>();
@@ -474,7 +485,23 @@ public class Utils
     }
     #endregion
 
-    #region Animations
+    #region Animator / Animations
+    internal static void LogAnimatorClipNames(Animator animator)
+    {
+        var clips = animator.runtimeAnimatorController?.animationClips;
+        if (clips == null || clips.Length == 0)
+            LethalMon.Log($"Animator {animator.name} has no clips.");
+        else
+            LethalMon.Log($"Animator clips for \"{animator.name}\": {string.Join(" | ", clips.Select(ci => ci.name).ToList())}");
+
+        /*for (int j = 0; j < animator.layerCount; j++)
+        {
+            string layerClipNames = animator.GetLayerName(j);
+            var clipInfoList = animator.GetCurrentAnimatorClipInfo(j);
+            if (clipInfoList.Length > 0)
+                LethalMon.Log($"{animator.GetLayerName(j)}: {string.Join(" | ", clipInfoList.Select(ci => ci.clip?.name).ToList())}");
+        }*/
+    }
     internal static IEnumerator RecordAnimation(Animator animator, float duration)
     {
         animator.StartRecording(0);
