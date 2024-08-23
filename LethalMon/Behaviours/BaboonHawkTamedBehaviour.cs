@@ -286,12 +286,13 @@ namespace LethalMon.Behaviours
 
             BaboonHawk.creatureAnimator.SetBool("sit", true);
 
-            yield return new WaitForSeconds(3f);
+            yield return new WaitForSeconds(2f);
+
+            RoundManager.PlayRandomClip(BaboonHawk.creatureVoice, BaboonHawk.cawScreamSFX, randomize: true, 1f, 1105);
+
+            yield return new WaitForSeconds(1f);
 
             var spawnPos = BaboonHawk.transform.position - BaboonHawk.transform.forward * 0.5f;
-            Utils.PlaySoundAtPosition(spawnPos, StartOfRound.Instance.playerJumpSFX);
-            yield return new WaitForSeconds(0.5f);
-
             if (Utils.IsHost)
             {
                 var tinyHawk = Utils.SpawnEnemyAtPosition(Utils.Enemy.BaboonHawk, spawnPos) as BaboonBirdAI;
@@ -301,7 +302,7 @@ namespace LethalMon.Behaviours
 
             Utils.PlaySoundAtPosition(spawnPos, StartOfRound.Instance.playerHitGroundSoft);
 
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.3f);
 
             BaboonHawk.creatureAnimator.SetBool("sit", false);
 
@@ -347,12 +348,13 @@ namespace LethalMon.Behaviours
                 tinyHawk.gameObject.AddComponent<TinyHawkBehaviour>().motherBird = BaboonHawk;
         }
 
+        // TODO: Maybe make it a CustomBehaviour in BaboonHawkTamedBehaviour, or somehow make this class here a Networkbehaviour...
         internal class TinyHawkBehaviour : MonoBehaviour
         {
             #region Properties
             internal BaboonBirdAI? motherBird = null;
             private BaboonBirdAI? _tinyHawk = null;
-            private const float BaseSpeed = 2f;
+            private const float BaseSpeed = 1.5f;
             private const float PingOnDeathRange = 20f;
             #endregion
 
@@ -376,7 +378,7 @@ namespace LethalMon.Behaviours
             {
                 if(_tinyHawk == null || _tinyHawk.isEnemyDead)
                 {
-                    if (_tinyHawk != null && _tinyHawk.isEnemyDead)
+                    if (_tinyHawk != null && _tinyHawk.isEnemyDead && Utils.IsHost)
                         PingNearBaboonHawksOnDeath();
 
                     Destroy(this);
@@ -390,6 +392,21 @@ namespace LethalMon.Behaviours
                 {
                     _tinyHawk.creatureVoice.pitch = 2f;
                     _tinyHawk.creatureVoice.volume = 0.2f;
+                }
+
+                if(_tinyHawk.creatureAnimator != null)
+                    _tinyHawk.creatureAnimator.speed = 0.5f;
+            }
+
+            void OnTriggerEnter(Collider other)
+            {
+                if (_tinyHawk == null || _tinyHawk.timeSinceHitting < 0.5f)
+                    return;
+
+                if (other.gameObject.TryGetComponent( out PlayerControllerB player))
+                {
+                    _tinyHawk.timeSinceHitting = 0f;
+                    OnCollideWithPlayer(player);
                 }
             }
             #endregion
@@ -408,12 +425,16 @@ namespace LethalMon.Behaviours
                     if (motherBird != null)
                     {
                         motherBird.timeSincePingingBirdInterest = 0f;
+                        if(motherBird.focusingOnThreat && motherBird.focusedThreat == null)
+                            motherBird.focusingOnThreat = false;
                         motherBird.PingBaboonInterest(_tinyHawk.transform.position, 42);
                     }
                 }
             }
+
             internal void OnCollideWithPlayer(PlayerControllerB player)
             {
+                LethalMon.Log("Hitting tiny hawk");
                 _tinyHawk!.HitEnemy(1, player, true); // poor tiny hawk got hurt
 
                 var directionalVector = (_tinyHawk.transform.position - player.transform.position).normalized;
@@ -443,14 +464,19 @@ namespace LethalMon.Behaviours
                     else
                         endPosition.y -= Time.deltaTime * 7f;
 
-                    TeleportEnemy(_tinyHawk, Vector3.Lerp(startPosition, endPosition, timer / duration));
+                    var newPosition = Vector3.Lerp(startPosition, endPosition, timer / duration);
+                    _tinyHawk.transform.position = newPosition;
+                    _tinyHawk.serverPosition = newPosition;
+
                     yield return null;
                 }
 
-                _tinyHawk.creatureAnimator.SetBool("sit", true);
+                _tinyHawk.creatureAnimator.SetBool("sit", true); // _tinyHawk.EnemyEnterRestModeServerRpc(false, false);
+
                 _tinyHawk.creatureSFX.PlayOneShot(_tinyHawk.enemyType.audioClips[5], 0.2f);
                 yield return new WaitForSeconds(1f);
-                _tinyHawk.creatureAnimator.SetBool("sit", false);
+
+                _tinyHawk.EnemyGetUpServerRpc(); // _tinyHawk.creatureAnimator.SetBool("sit", false);
 
                 _tinyHawk.enabled = true;
                 _tinyHawk.agent.enabled = true;
