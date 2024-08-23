@@ -488,7 +488,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void Start()
     {
-        LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
+        //LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
         AddCustomBehaviours();
 
         if (IsTamed)
