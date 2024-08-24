@@ -172,6 +172,18 @@ public class Utils
     #region Enemy
     public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
 
+    public static EnemyType? GetEnemyType(Enemy enemy)
+    {
+        var enemyName = enemy.ToString();
+        foreach(var enemyType in EnemyTypes)
+        {
+            if (enemyType.name == enemyName)
+                return enemyType;
+        }
+
+        return null;
+    }
+
     public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
     {
         Collider[] colliders = Physics.OverlapSphere(position, 0.5f);

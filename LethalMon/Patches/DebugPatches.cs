@@ -6,6 +6,8 @@ using Unity.Netcode;
 using System.Collections;
 using LethalMon.Items;
 using LethalMon.CustomPasses;
+using System;
+using static LethalMon.Utils;
 
 namespace LethalMon.Patches
 {
@@ -58,16 +60,22 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.CaveDweller);
+                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Flowerman);
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler, 0.5f);
+                var crawler = SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler/*, 0.5f*/);
+                crawler?.StartCoroutine(DoTillDeath(crawler, (crawler) =>
+                {
+                    if(crawler.agent != null && crawler.stunNormalizedTimer <= 0f)
+                        crawler.agent.speed = 1f;
+                }));
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
+                SpawnBall(Pokeball.SpawnPrefab, Enemy.RedLocustBees);
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
@@ -122,33 +130,50 @@ namespace LethalMon.Patches
         #endregion
 
         #region Item
-        public static void SpawnItemInFront(Item item)
+        public static PokeballItem? SpawnBall(GameObject? networkPrefab, Utils.Enemy? withEnemyInside = null)
         {
-            if (item == null) return;
+            var ball = SpawnItemInFront(networkPrefab);
+            if(ball == null) return null;
 
-            SpawnItemInFront(item.spawnPrefab);
+            if(!ball.TryGetComponent(out PokeballItem pokeballItem))
+                return null;
+
+            if(withEnemyInside != null)
+            {
+                var enemyName = withEnemyInside.ToString();
+                if (!Data.CatchableMonsters.ContainsKey(enemyName))
+                    LethalMon.Logger.LogInfo("Spawning ball: Enemy not found.");
+                else
+                    pokeballItem.SetCaughtEnemyServerRpc(enemyName);
+            }
+
+            return pokeballItem;
         }
 
-        public static void SpawnItemInFront(GameObject? networkPrefab)
+        public static GameObject? SpawnItemInFront(Item item) => item != null ? SpawnItemInFront(item.spawnPrefab) : null;
+
+        public static GameObject? SpawnItemInFront(GameObject? networkPrefab)
         {
             if (!Utils.IsHost)
             {
                 LethalMon.Logger.LogError("That's a host-only debug feature.");
-                return;
+                return null;
             }
 
             if (networkPrefab == null)
             {
                 LethalMon.Logger.LogError("Unable to spawn item. networkPrefab was null.");
-                return;
+                return null;
             }
 
-            var item = Instantiate(networkPrefab);
+            var position = Utils.CurrentPlayer.transform.position + Utils.CurrentPlayer.transform.forward * 1.5f;
+            var item = Instantiate(networkPrefab, position, Quaternion.identity, RoundManager.Instance.spawnedScrapContainer);
             DontDestroyOnLoad(item);
             item.GetComponent<NetworkObject>()?.Spawn();
-            item.transform.position = Utils.CurrentPlayer.transform.position + Utils.CurrentPlayer.transform.forward * 1.5f;
             if (item.TryGetComponent(out GrabbableObject grabbableObject))
                 grabbableObject.itemProperties.canBeGrabbedBeforeGameStart = true;
+
+            return item;
         }
         #endregion
 
@@ -165,28 +190,44 @@ namespace LethalMon.Patches
         public static EnemyAI? SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy enemy, float? killTimer = null) => SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, enemy, killTimer);
         public static EnemyAI? SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, Utils.Enemy enemy, float? killTimer = null)
         {
-            var enemyName = enemy.ToString();
-            foreach (EnemyType enemyType in Utils.EnemyTypes)
+            var enemyType = Utils.GetEnemyType(enemy);
+            if (enemyType == null)
             {
-                if (enemyName != enemyType.name) continue;
-
-                var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
-                LethalMon.Logger.LogInfo("Spawn enemy: " + enemyName);
-                GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
-                gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-                var enemyAI = gameObject.GetComponent<EnemyAI>();
-                RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
-                enemyAI.enabled = StartOfRound.Instance.testRoom == null;
-                enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
-
-                if(killTimer != null)
-                    KillEnemyLater(enemyAI, killTimer.Value);
-
-                return enemyAI;
+                LethalMon.Logger.LogInfo("No enemy found..");
+                return null;
             }
 
-            LethalMon.Logger.LogInfo("No enemy found..");
-            return null;
+            var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
+            LethalMon.Logger.LogInfo("Spawn enemy: " + enemyType.name);
+            GameObject gameObject = Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
+            gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+            var enemyAI = gameObject.GetComponent<EnemyAI>();
+            RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
+            enemyAI.enabled = StartOfRound.Instance.testRoom == null;
+            enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
+
+            if(killTimer != null)
+                KillEnemyLater(enemyAI, killTimer.Value);
+
+            return enemyAI;
+        }
+
+        /* EXAMPLE
+        enemyAI?.StartCoroutine(DoTillDeath(enemyAI, (enemyAI) =>
+        {
+            if(enemyAI.agent != null)
+                enemyAI.agent.speed = 1f;
+        }));
+         */
+        public static IEnumerator DoTillDeath(EnemyAI? enemyAI, Action<EnemyAI> action)
+        {
+            if (enemyAI == null) yield break;
+
+            yield return new WaitUntil(() =>
+            {
+                action(enemyAI);
+                return enemyAI == null || !enemyAI.gameObject.activeSelf || enemyAI.isEnemyDead;
+            });
         }
         #endregion
 
