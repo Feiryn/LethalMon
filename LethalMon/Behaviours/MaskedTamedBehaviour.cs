@@ -791,7 +791,9 @@ namespace LethalMon.Behaviours
             if (IsOwnerPlayer)
             {
                 SetRedVision();
-                CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true);
+                var customPass = CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughEnemies, true) as SeeThroughCustomPass;
+                if (customPass != null)
+                    customPass.maxVisibilityDistance = ModConfig.Instance.values.MaskedEffectDistance;
             }
             else
                 SetMaskGlowNoSound();

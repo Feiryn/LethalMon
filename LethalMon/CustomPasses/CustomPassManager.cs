@@ -116,12 +116,14 @@ namespace LethalMon.CustomPasses
             return _customPasses.ContainsKey(type) ? _customPasses[type].enabled : false;
         }
 
-        public void EnableCustomPass(CustomPassType type, bool enable = true)
+        public CustomPass? EnableCustomPass(CustomPassType type, bool enable = true)
         {
-            if (!enable && !HasCustomPass(type)) return;
+            if (!enable && !HasCustomPass(type)) return null;
 
             InitCustomPass(type); // ensure it exists
             _customPasses[type].enabled = enable;
+
+            return _customPasses[type];
         }
 
         public void CleanUp()
