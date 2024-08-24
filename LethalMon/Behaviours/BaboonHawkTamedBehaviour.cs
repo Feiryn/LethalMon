@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections;
 using LethalMon.CustomPasses;
 using static LethalMon.Utils;
+using System;
 
 namespace LethalMon.Behaviours
 {
@@ -23,13 +24,9 @@ namespace LethalMon.Behaviours
             }
         }
 
-        //internal override string DefendingBehaviourDescription => "Y";
-
-        internal override bool CanDefend => false;
         internal override float TargetingRange => 5f;
 
         internal static AudioClip? EchoLotSFX = null;
-
         internal const float MaximumEchoDistance = 50f;
         internal const float EchoKeepAlive = 3f; // Keep-alive once full distance is reached
         internal static readonly Color EchoLotColor = new(1f, 1f, 0f, 0.45f);
@@ -54,7 +51,7 @@ namespace LethalMon.Behaviours
         #region Action Keys
         private readonly List<ActionKey> _actionKeys =
         [
-            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Search for items" }
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Scan for items" }
         ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
@@ -64,76 +61,12 @@ namespace LethalMon.Behaviours
             if (echoLotCooldown != null && echoLotCooldown.IsFinished())
                 StartEchoLotServerRpc();
         }
-
-        [ServerRpc(RequireOwnership = false)]
-        internal void StartEchoLotServerRpc()
-        {
-            StartEchoLotClientRpc();
-        }
-
-        [ClientRpc]
-        internal void StartEchoLotClientRpc()
-        {
-            echoLotCooldown?.Reset();
-
-            HUDManager.Instance.scanEffectAnimator.transform.position = BaboonHawk.transform.position;
-            HUDManager.Instance.scanEffectAnimator.SetTrigger("scan");
-            ownerPlayer?.StartCoroutine(EchoLotColorAdjust());
-
-            if (EchoLotSFX != null)
-                BaboonHawk.creatureSFX.PlayOneShot(EchoLotSFX);
-
-            ownerPlayer?.StartCoroutine(EchoLotScanCoroutine()); // Putting it on the ownerPlayer just in case they retreive the enemy during the process
-        }
-
-        internal IEnumerator EchoLotColorAdjust()
-        {
-            var scanMaterial = HUDManager.Instance.scanEffectAnimator.GetComponent<MeshRenderer>()?.material;
-            if (scanMaterial == null) yield break;
-
-            var originalColor = scanMaterial.color;
-            scanMaterial.color = EchoLotColor;
-            yield return new WaitForSeconds(1f);
-            scanMaterial.color = originalColor;
-        }
-
-        internal IEnumerator EchoLotScanCoroutine()
-        {
-            var customPass = CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughItems, true) as SeeThroughCustomPass;
-            if (customPass == null) yield break;
-
-            customPass.maxVisibilityDistance = 0f;
-
-            yield return new WaitWhile(() =>
-            {
-                customPass.maxVisibilityDistance += Time.deltaTime * MaximumEchoDistance; // takes 1s
-                return customPass.maxVisibilityDistance < MaximumEchoDistance;
-            });
-
-            yield return new WaitForSeconds(EchoKeepAlive);
-
-            yield return new WaitWhile(() =>
-            {
-                customPass.maxVisibilityDistance -= Time.deltaTime * MaximumEchoDistance * 2f; // takes half a sec
-                return customPass.maxVisibilityDistance > 0f;
-            });
-            customPass.enabled = false;
-        }
-
-        internal static void LoadAudio(AssetBundle assetBundle)
-        {
-            EchoLotSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/BaboonHawk/EchoLot.ogg");
-        }
         #endregion
 
         #region Base Methods
         internal override void Start()
         {
-            //SetTamedByHost_DEBUG(); // DEBUG
-
             base.Start();
-
-            //SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing); // DEBUG
 
             echoLotCooldown = GetCooldownWithId(EchoLotCooldownId);
             hittingEnemyCooldown = GetCooldownWithId(HittingEnemyCooldownId);
@@ -327,6 +260,10 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Methods
+        internal static void LoadAudio(AssetBundle assetBundle)
+        {
+            EchoLotSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/BaboonHawk/EchoLot.ogg");
+        }
         internal bool IsSleeping => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("sleep");
         internal void SetSleeping(bool sleeping = true) => BaboonHawk.creatureAnimator?.SetBool("sleep", sleeping);
         internal bool IsSitting => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("sitting");
@@ -335,6 +272,63 @@ namespace LethalMon.Behaviours
         internal void SetFighting(bool fighting = true) => BaboonHawk.creatureAnimator?.SetBool("fighting", fighting);
         internal bool IsAggressive => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("aggressiveDisplay");
         internal void SetAggressive(bool aggressive = true) => BaboonHawk.creatureAnimator?.SetBool("aggressiveDisplay", aggressive);
+        #endregion
+
+        #region EchoLot
+        [ServerRpc(RequireOwnership = false)]
+        internal void StartEchoLotServerRpc()
+        {
+            StartEchoLotClientRpc();
+        }
+
+        [ClientRpc]
+        internal void StartEchoLotClientRpc()
+        {
+            echoLotCooldown?.Reset();
+
+            HUDManager.Instance.scanEffectAnimator.transform.position = BaboonHawk.transform.position;
+            HUDManager.Instance.scanEffectAnimator.SetTrigger("scan");
+            ownerPlayer?.StartCoroutine(EchoLotColorAdjust());
+
+            if (EchoLotSFX != null)
+                BaboonHawk.creatureSFX.PlayOneShot(EchoLotSFX);
+
+            ownerPlayer?.StartCoroutine(EchoLotScanCoroutine()); // Putting it on the ownerPlayer just in case they retreive the enemy during the process
+        }
+
+        internal IEnumerator EchoLotColorAdjust()
+        {
+            var scanMaterial = HUDManager.Instance.scanEffectAnimator.GetComponent<MeshRenderer>()?.material;
+            if (scanMaterial == null) yield break;
+
+            var originalColor = scanMaterial.color;
+            scanMaterial.color = EchoLotColor;
+            yield return new WaitForSeconds(1f);
+            scanMaterial.color = originalColor;
+        }
+
+        internal IEnumerator EchoLotScanCoroutine()
+        {
+            var customPass = CustomPassManager.Instance.EnableCustomPass(CustomPassManager.CustomPassType.SeeThroughItems, true) as SeeThroughCustomPass;
+            if (customPass == null) yield break;
+
+            customPass.maxVisibilityDistance = 0f;
+
+            yield return new WaitWhile(() =>
+            {
+                customPass.maxVisibilityDistance += Time.deltaTime * MaximumEchoDistance; // takes 1s
+                return customPass.maxVisibilityDistance < MaximumEchoDistance;
+            });
+
+            yield return new WaitForSeconds(EchoKeepAlive);
+
+            yield return new WaitWhile(() =>
+            {
+                customPass.maxVisibilityDistance -= Time.deltaTime * MaximumEchoDistance * 2f; // takes half a sec
+                return customPass.maxVisibilityDistance > 0f;
+            });
+            customPass.enabled = false;
+        }
         #endregion
 
         #region TinyHawk
