@@ -342,7 +342,7 @@ namespace LethalMon.Behaviours
                 tinyHawk.gameObject.AddComponent<TinyHawkBehaviour>().motherBird = BaboonHawk;
         }
 
-        // TODO: Maybe make it a CustomBehaviour in BaboonHawkTamedBehaviour, or somehow make this class here a Networkbehaviour...
+        // TODO: Make it a Networkbehaviour somehow...
         internal class TinyHawkBehaviour : MonoBehaviour
         {
             #region Properties
