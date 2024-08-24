@@ -161,7 +161,7 @@ public abstract class PokeballItem : ThrowableItem
         base.OnDestroy();
     }
 
-    public override void TouchGround()
+    public override void OnHitGround()
     {
         LethalMon.Log("Touch ground");
 
