@@ -5,6 +5,7 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Items;
 using LethalMon.Patches;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -60,6 +61,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return _enemy!;
         }
     }
+
+    private Canvas? _nameCanvas = null;
+    private TextMeshProUGUI? _nameText = null;
 
     public PlayerControllerB? ownerPlayer = null;
     public ulong OwnerID => ownerPlayer != null ? ownerPlayer.playerClientId : ulong.MaxValue;
@@ -468,7 +472,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void LateUpdate() { }
+    internal virtual void LateUpdate()
+    {
+        if (IsTamed)
+            UpdateNameTag();
+    }
 
     internal virtual void Awake()
     {
@@ -495,6 +503,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             Enemy.Start();
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
+            CreateNameTag();
         }
         else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
         {
@@ -578,6 +587,87 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region Methods
+    private void CreateNameTag()
+    {
+        var nameCanvasObject = Instantiate(ownerPlayer!.usernameCanvas.gameObject, transform.position, Quaternion.identity);
+        if (nameCanvasObject == null)
+        {
+            LethalMon.Log("Unable to create name tooltip for tamed enemy " + Enemy.enemyType.name);
+            return;
+        }
+
+        _nameText = nameCanvasObject.GetComponentInChildren<TextMeshProUGUI>();
+        if (_nameText == null)
+        {
+            LethalMon.Log("No text object found in name tag.", LethalMon.LogType.Error);
+            return;
+        }
+
+        _nameText.enabled = true;
+        _nameText.text = $"{ownerPlayer.playerUsername}'s\n{Data.CatchableMonsters[Enemy.enemyType.name].DisplayName}";
+        _nameText.fontSize = 140;
+        _nameText.fontSizeMin = 140;
+        _nameText.fontSizeMax = 140;
+        _nameText.autoSizeTextContainer = false;
+        _nameText.enableWordWrapping = false;
+
+        if (nameCanvasObject.TryGetComponent(out _nameCanvas) && _nameCanvas != null)
+            _nameCanvas.gameObject.SetActive(true);
+
+        nameCanvasObject.transform.localPosition = Vector3.zero;
+        nameCanvasObject.transform.position = new(Enemy.transform.position.x, Enemy.transform.position.y + GetNameTagHeight(), Enemy.transform.position.z);
+        nameCanvasObject.transform.SetParent(Enemy.transform, true);
+    }
+
+    private float GetNameTagHeight()
+    {
+        var maxPosY = 0f;
+        var renderer = Enemy.gameObject.GetComponentsInChildren<Renderer>()?.Where(r => r != null);
+        if (renderer != null && renderer.Any())
+        {
+            var enemyPosY = Enemy.transform.position.y;
+            foreach (var r in renderer)
+            {
+                var posY = r.transform.position.y + r.bounds.size.y / 2f;
+                if (posY > maxPosY)
+                    maxPosY = posY;
+            }
+
+            maxPosY /= 2f; // idk why... honestly
+        }
+
+        return Mathf.Min(maxPosY, 1.5f);
+    }
+
+
+    private void UpdateNameTag()
+    {
+        if (_nameCanvas?.gameObject == null) return;
+
+        var distance = Vector3.Distance(Enemy.transform.position, Utils.CurrentPlayer.transform.position);
+        var minNameTagVisibility = 3f;
+        var maxNameTagVisibility = 6f;
+        var alpha = 1f - (Mathf.Clamp(distance, minNameTagVisibility, maxNameTagVisibility) - minNameTagVisibility) / (maxNameTagVisibility - minNameTagVisibility);
+        UpdateNameTagVisibility(alpha);
+        if (alpha > 0f)
+            UpdateNameTagRotation();
+    }
+
+    private void UpdateNameTagVisibility(float alpha)
+    {
+        if (_nameText != null)
+            _nameText.alpha = alpha;
+    }
+
+    private void UpdateNameTagRotation()
+    {
+        if (_nameCanvas?.gameObject == null) return;
+
+        RoundManager.Instance.tempTransform.position = Enemy.transform.position;
+        RoundManager.Instance.tempTransform.LookAt(Utils.CurrentPlayer.transform.position);
+
+        _nameCanvas.gameObject.transform.rotation = RoundManager.Instance.tempTransform.rotation;
+    }
 
     public void FollowPosition(Vector3 targetPosition)
     {

@@ -8,6 +8,7 @@ using LethalMon.Items;
 using LethalMon.CustomPasses;
 using System;
 using static LethalMon.Utils;
+using System.Linq;
 
 namespace LethalMon.Patches
 {
@@ -75,7 +76,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                SpawnBall(Pokeball.SpawnPrefab, Enemy.RedLocustBees);
+                SpawnRandomlyFilledBall(Pokeball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
@@ -130,6 +131,20 @@ namespace LethalMon.Patches
         #endregion
 
         #region Item
+        public static PokeballItem? SpawnRandomlyFilledBall(GameObject? networkPrefab)
+        {
+            var ball = SpawnItemInFront(networkPrefab);
+            if (ball == null) return null;
+
+            if (!ball.TryGetComponent(out PokeballItem pokeballItem))
+                return null;
+
+            var enemyName = Data.CatchableMonsters.ElementAt(UnityEngine.Random.RandomRangeInt(0, Data.CatchableMonsters.Count - 1)).Key;
+                    pokeballItem.SetCaughtEnemyServerRpc(enemyName);
+
+            return pokeballItem;
+        }
+
         public static PokeballItem? SpawnBall(GameObject? networkPrefab, Utils.Enemy? withEnemyInside = null)
         {
             var ball = SpawnItemInFront(networkPrefab);
