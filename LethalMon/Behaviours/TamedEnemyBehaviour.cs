@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -503,6 +504,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             Enemy.Start();
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
+
             CreateNameTag();
         }
         else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
@@ -589,7 +591,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #region Methods
     private void CreateNameTag()
     {
-        var nameCanvasObject = Instantiate(ownerPlayer!.usernameCanvas.gameObject, transform.position, Quaternion.identity);
+        var nameCanvasObject = Instantiate(Utils.CurrentPlayer.usernameCanvas.gameObject, transform.position, Quaternion.identity);
         if (nameCanvasObject == null)
         {
             LethalMon.Log("Unable to create name tooltip for tamed enemy " + Enemy.enemyType.name);
@@ -604,41 +606,29 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         _nameText.enabled = true;
-        _nameText.text = $"{ownerPlayer.playerUsername}'s\n{Data.CatchableMonsters[Enemy.enemyType.name].DisplayName}";
-        _nameText.fontSize = 140;
-        _nameText.fontSizeMin = 140;
-        _nameText.fontSizeMax = 140;
+        _nameText.text = $"{ownerPlayer!.playerUsername}'s\n{Data.CatchableMonsters[Enemy.enemyType.name].DisplayName}";
+        _nameText.fontSize = 100;
+        _nameText.fontSizeMin = 100;
+        _nameText.fontSizeMax = 100;
         _nameText.autoSizeTextContainer = false;
         _nameText.enableWordWrapping = false;
 
         if (nameCanvasObject.TryGetComponent(out _nameCanvas) && _nameCanvas != null)
             _nameCanvas.gameObject.SetActive(true);
 
-        nameCanvasObject.transform.localPosition = Vector3.zero;
-        nameCanvasObject.transform.position = new(Enemy.transform.position.x, Enemy.transform.position.y + GetNameTagHeight(), Enemy.transform.position.z);
-        nameCanvasObject.transform.SetParent(Enemy.transform, true);
-    }
-
-    private float GetNameTagHeight()
-    {
-        var maxPosY = 0f;
-        var renderer = Enemy.gameObject.GetComponentsInChildren<Renderer>()?.Where(r => r != null);
-        if (renderer != null && renderer.Any())
+        var position = Enemy.transform.position;
+        if (Utils.TryGetRealEnemyBounds(Enemy, out Bounds bounds))
+            position.y = bounds.max.y;
+        else
         {
-            var enemyPosY = Enemy.transform.position.y;
-            foreach (var r in renderer)
-            {
-                var posY = r.transform.position.y + r.bounds.size.y / 2f;
-                if (posY > maxPosY)
-                    maxPosY = posY;
-            }
-
-            maxPosY /= 2f; // idk why... honestly
+            LethalMon.Log("Unable to load enemy bounds. Using default height for name canvas.", LethalMon.LogType.Error);
+            position.y += 2f;
         }
 
-        return Mathf.Min(maxPosY, 1.5f);
+        nameCanvasObject.transform.localPosition = Vector3.zero;
+        nameCanvasObject.transform.position = position;
+        nameCanvasObject.transform.SetParent(Enemy.transform, true); // todo: not working for non-owners so far
     }
-
 
     private void UpdateNameTag()
     {
