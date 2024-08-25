@@ -181,7 +181,8 @@ namespace LethalMon.Throw
                     for (float i = t - timeStep; i > 0; i -= timeStep)
                     {
                         var goBackPosition = startPosition + initialVelocity * i + 0.5f * gravity * i * i;
-                        if (Vector3.Distance(hitPosition, goBackPosition) > radius)
+                        float distanceToHitPlane = Mathf.Abs(Vector3.Dot(hitPoint.normal, hitPoint.point - goBackPosition));
+                        if (distanceToHitPlane > radius)
                         {
                             totalFallTime = i;
                             return goBackPosition;
