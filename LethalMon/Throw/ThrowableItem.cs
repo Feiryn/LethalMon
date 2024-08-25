@@ -27,17 +27,20 @@ namespace LethalMon.Throw
                     Utils.LayerMasks.Mask.Room,
                     Utils.LayerMasks.Mask.Colliders,
                     Utils.LayerMasks.Mask.Railing,
-                    Utils.LayerMasks.Mask.InteractableObject,
+                    /*Utils.LayerMasks.Mask.InteractableObject,
                     Utils.LayerMasks.Mask.PhysicsObject,
                     Utils.LayerMasks.Mask.Terrain,
                     Utils.LayerMasks.Mask.PlaceableShipObjects,
                     Utils.LayerMasks.Mask.PlacementBlocker,
-                    Utils.LayerMasks.Mask.CompanyCruiser,
+                    Utils.LayerMasks.Mask.CompanyCruiser,*/
                     
                 ]);
             }
         }
 
+        protected virtual float BounceCoefficient => 0.2f;
+        
+        protected virtual float ThrowForce => 20f;
         #endregion
         
         #region Properties
@@ -52,6 +55,8 @@ namespace LethalMon.Throw
         private Vector3 _initialVelocity;
         
         private int? _layerMask;
+
+        private Vector3? _hitPointNormal;
         #endregion
 
         #region ThrowRpc
@@ -89,7 +94,7 @@ namespace LethalMon.Throw
                 playerThrownBy = playerHeldBy;
                 lastThrower = playerThrownBy;
                 _throwTime = 0;
-                playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination(20f, out _initialVelocity, out _totalFallTime));
+                playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination(ThrowForce, out _initialVelocity, out _totalFallTime, out _hitPointNormal));
                 this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>());
             }
         }
@@ -105,101 +110,74 @@ namespace LethalMon.Throw
             }
             
             _throwTime += Time.deltaTime;
+            Vector3 previousPosition = this.transform.localPosition;
             this.transform.localPosition = this.startFallingPosition + _initialVelocity * _throwTime + 0.5f * Gravity * _throwTime * _throwTime;
             this.fallTime = _throwTime / _totalFallTime;
             
-            LethalMon.Log("Throw time: " + _throwTime + ", total fall time: " + _totalFallTime + ", fall time: " + this.fallTime);
-            
-            // todo make it bounce or slide maybe
             // todo make it rotate
             
             if (this.fallTime >= 1)
             {
-                if (Physics.Raycast(this.transform.position, Vector3.down, out var hitInfo, 30f, LayerMask, QueryTriggerInteraction.Ignore))
+                // todo play hit song
+
+                if (_hitPointNormal != null)
                 {
-                    if (hitInfo.distance > ItemRadius - TimeStep * Gravity.y)
+                    Vector3 velocityBefore = (this.transform.localPosition - previousPosition) / Time.deltaTime;
+                    Vector3 velocityAfter = velocityBefore - 2 * Vector3.Dot(velocityBefore, _hitPointNormal.Value) * _hitPointNormal.Value;
+                    velocityAfter *= BounceCoefficient;
+
+                    // Does it hit the ground with a small velocity magnitude?
+                    LethalMon.Log("Velocity after magnitude: " + velocityAfter.magnitude);
+                    if (Physics.Raycast(this.transform.localPosition, Vector3.down, out var hitPoint, 30f, LayerMask,
+                            QueryTriggerInteraction.Ignore))
                     {
-                        // Make it fall
-                        this.fallTime = 0;
-                        this.startFallingPosition = this.transform.localPosition;
-                        this._initialVelocity = Vector3.zero;
-                        this._throwTime = 0;
-                        this._totalFallTime = Mathf.Sqrt(Mathf.Abs((hitInfo.distance - ItemRadius) / (0.5f * Gravity.y)));
-                        this.targetFloorPosition = this.startFallingPosition + _initialVelocity * this._totalFallTime + 0.5f * Gravity * this._totalFallTime * this._totalFallTime;
-                        return;
+                        if (Vector3.Distance(hitPoint.point, this.transform.localPosition) <= ItemRadius + TimeStep * Gravity.y && velocityAfter.magnitude < 0.5f)
+                        {
+                            this.playerThrownBy = null;
+                            return;
+                        }
                     }
-                }
-                
-                this.playerThrownBy = null;
-            }
-            
-            /*
-            float magnitude = (this.startFallingPosition - this.targetFloorPosition).magnitude;
-            this.transform.rotation = Quaternion.Lerp(this.transform.rotation, Quaternion.Euler(this.itemProperties.restingRotation.x, this.transform.eulerAngles.y, this.itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
-            this.transform.localPosition = Vector3.Lerp(this.startFallingPosition, this.targetFloorPosition, FallCurve.fallCurve.Evaluate(this.fallTime));
-            if (magnitude > 5f)
-            {
-                this.transform.localPosition = Vector3.Lerp(new Vector3(this.transform.localPosition.x, this.startFallingPosition.y, this.transform.localPosition.z), new Vector3(this.transform.localPosition.x, this.targetFloorPosition.y, this.transform.localPosition.z), FallCurve.verticalFallCurveNoBounce.Evaluate(this.fallTime));
-            }
-            else
-            {
-                this.transform.localPosition = Vector3.Lerp(new Vector3(this.transform.localPosition.x, this.startFallingPosition.y, this.transform.localPosition.z), new Vector3(this.transform.localPosition.x, this.targetFloorPosition.y, this.transform.localPosition.z), FallCurve.verticalFallCurve.Evaluate(this.fallTime));
-            }
-            this.fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
-            
-            if (this.fallTime > 1)
-            {
-                this.TouchGround();
-                this.playerThrownBy = null;
-            }
-            */
-        }
 
-        private IEnumerator DebugThrowCoroutine(List<Vector3> positions)
-        {
-            List<GameObject> debugBalls = new List<GameObject>();
-            
-            foreach (var position in positions)
-            {
-                GameObject? debugBall = Instantiate(Pokeball.SpawnPrefab);
-                if (debugBall != null)
-                {
-                    debugBall.GetComponent<GrabbableObject>().itemProperties.itemSpawnsOnGround = false;
-                    debugBalls.Add(debugBall);
-                    debugBall.transform.localScale *= 0.2f;
-                    debugBall.transform.localPosition = position;
+                    // Make it bounce
+                    this.startFallingPosition = this.transform.localPosition;
+                    this.fallTime = 0;
+                    this._initialVelocity = velocityAfter;
+                    this._throwTime = 0;
+                    GetSphereProjectileCollisionPoint(this.transform.position, _initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
+                    this.targetFloorPosition = this.startFallingPosition + _initialVelocity * _totalFallTime + 0.5f * Gravity * _totalFallTime * _totalFallTime;
+                    this.startFallingPosition = base.transform.parent.InverseTransformPoint(base.transform.position);
                 }
-            }
-            
-            yield return new WaitForSeconds(15f);
-            
-            foreach (var debugBall in debugBalls)
-            {
-                Destroy(debugBall);
+
+                this.playerThrownBy = null;
             }
         }
 
-        private Vector3 GetSphereProjectileCollisionPoint(Vector3 startPosition, Vector3 initialVelocity, Vector3 gravity, float maxTime, float timeStep, float radius, out float totalFallTime)
+        private Vector3 GetSphereProjectileCollisionPoint(Vector3 startPosition, Vector3 initialVelocity, Vector3 gravity, float maxTime, float timeStep, float radius, out float totalFallTime, out Vector3? hitPointNormal)
         {
             Vector3 previousPosition = startPosition;
-            
-#if DEBUG
-            List<Vector3> positions = [];
-#endif
 
             for (float t = timeStep; t < maxTime; t += timeStep)
             {
                 Vector3 newPosition = startPosition + initialVelocity * t + 0.5f * gravity * t * t;
                 
 #if DEBUG
-                positions.Add(newPosition);
-#endif
+                var lineRenderer = new GameObject("Line").AddComponent<LineRenderer>();
+                lineRenderer.startColor = Color.red;
+                lineRenderer.endColor = Color.red;
+                lineRenderer.startWidth = 0.01f;
+                lineRenderer.endWidth = 0.01f;
+                lineRenderer.positionCount = 2;
+                lineRenderer.useWorldSpace = true;    
+                lineRenderer.SetPosition(0, previousPosition);
+                lineRenderer.SetPosition(1, newPosition);
+#endif    
 
-                if (Physics.Linecast(previousPosition, newPosition, LayerMask, QueryTriggerInteraction.Ignore))
+
+                if (Physics.Raycast(previousPosition, (newPosition - previousPosition).normalized, out var hitPoint, Vector3.Distance(previousPosition, newPosition), LayerMask, QueryTriggerInteraction.Ignore))
                 {
                     // We hit something, now we go back until the distance between this position and another on the curve is more than the radius
                     Vector3 hitPosition = newPosition;
-
+                    hitPointNormal = hitPoint.normal;
                     for (float i = t - timeStep; i > 0; i -= timeStep)
                     {
                         var goBackPosition = startPosition + initialVelocity * i + 0.5f * gravity * i * i;
@@ -215,28 +193,22 @@ namespace LethalMon.Throw
                     return startPosition;
                 }
                 
-#if DEBUG
-                //StartCoroutine(DebugThrowCoroutine(positions));
-#endif
                 previousPosition = newPosition;
             }
             
-#if DEBUG
-            //StartCoroutine(DebugThrowCoroutine(positions));
-#endif
-            
             // No collider found, don't look farther than the max time
             totalFallTime = maxTime;
+            hitPointNormal = null;
             return previousPosition;
         }
         
-        private Vector3 GetItemThrowDestination(float force, out Vector3 initialVelocity, out float totalFallTime)
+        private Vector3 GetItemThrowDestination(float force, out Vector3 initialVelocity, out float totalFallTime, out Vector3? hitPointNormal)
         {
             Vector3 playerVelocity = playerHeldBy.oldPlayerPosition - playerHeldBy.transform.position;
             
             initialVelocity = (playerHeldBy.gameplayCamera.transform.forward + playerVelocity) * force;
             
-            return GetSphereProjectileCollisionPoint(this.transform.localPosition, initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out totalFallTime);
+            return GetSphereProjectileCollisionPoint(this.transform.localPosition, initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out totalFallTime, out hitPointNormal);
         }
     }
 }
