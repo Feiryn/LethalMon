@@ -7,7 +7,6 @@ using System.Collections;
 using LethalMon.Items;
 using LethalMon.CustomPasses;
 using System;
-using static LethalMon.Utils;
 using System.Linq;
 
 namespace LethalMon.Patches
@@ -61,26 +60,22 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Flowerman);
+                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.CaveDweller);
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                var crawler = SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler/*, 0.5f*/);
-                crawler?.StartCoroutine(DoTillDeath(crawler, (crawler) =>
-                {
-                    if(crawler.agent != null && crawler.stunNormalizedTimer <= 0f)
-                        crawler.agent.speed = 1f;
-                }));
+                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler, 0.5f);
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                SpawnRandomlyFilledBall(Pokeball.SpawnPrefab);
+                MakeLayerColor();
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
+                LogCollidersInRange(1f);
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
@@ -304,6 +299,45 @@ namespace LethalMon.Patches
         {
             CustomPassManager.Instance.EnableCustomPass(customPassType, !CustomPassManager.Instance.IsCustomPassEnabled(customPassType));
         }
+
+        private static int _currentLayerColored = 0;
+        
+        public static void MakeLayerColor()
+        {
+            foreach (var go in FindObjectsOfType<GameObject>())
+            {
+                if (go.layer == _currentLayerColored)
+                {
+                    if (go.TryGetComponent(out MeshRenderer meshRenderer))
+                    {
+                        meshRenderer.material.color = Color.white;
+                    }
+                }
+            }
+
+            _currentLayerColored++;
+            if (_currentLayerColored == (int) Utils.LayerMasks.Mask.HelmetVisor) // Skip, else it will screw the vision up
+            {
+                _currentLayerColored++;
+            }
+            if (_currentLayerColored > 31)
+                _currentLayerColored = 0;
+            
+            LethalMon.Log("Layer: " + LayerMask.LayerToName(_currentLayerColored));
+
+            foreach (var go in FindObjectsOfType<GameObject>())
+            {
+                if (go.layer == _currentLayerColored)
+                {
+                    if (go.TryGetComponent(out MeshRenderer meshRenderer))
+                    {
+                        meshRenderer.material = Utils.Glass;
+                        meshRenderer.material.color = Color.red;
+                    }
+                }
+            }
+        }
+
         #endregion
 #endif
     }

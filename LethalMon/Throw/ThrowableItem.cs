@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using GameNetcodeStuff;
 using LethalMon.Items;
 using Unity.Netcode;
@@ -27,13 +28,10 @@ namespace LethalMon.Throw
                     Utils.LayerMasks.Mask.Room,
                     Utils.LayerMasks.Mask.Colliders,
                     Utils.LayerMasks.Mask.Railing,
-                    /*Utils.LayerMasks.Mask.InteractableObject,
-                    Utils.LayerMasks.Mask.PhysicsObject,
-                    Utils.LayerMasks.Mask.Terrain,
-                    Utils.LayerMasks.Mask.PlaceableShipObjects,
-                    Utils.LayerMasks.Mask.PlacementBlocker,
-                    Utils.LayerMasks.Mask.CompanyCruiser,*/
-                    
+                    Utils.LayerMasks.Mask.MiscLevelGeometry,
+                    Utils.LayerMasks.Mask.CompanyCruiser,
+                    Utils.LayerMasks.Mask.MapHazards,
+                    Utils.LayerMasks.Mask.InteractableObject
                 ]);
             }
         }
@@ -133,7 +131,7 @@ namespace LethalMon.Throw
                     {
                         if (Vector3.Distance(hitPoint.point, this.transform.localPosition) <= ItemRadius + TimeStep * Gravity.y && velocityAfter.magnitude < 0.5f)
                         {
-                            this.playerThrownBy = null;
+                            StopMoving();
                             return;
                         }
                     }
@@ -147,11 +145,32 @@ namespace LethalMon.Throw
                     this.targetFloorPosition = this.startFallingPosition + _initialVelocity * _totalFallTime + 0.5f * Gravity * _totalFallTime * _totalFallTime;
                     this.startFallingPosition = base.transform.parent.InverseTransformPoint(base.transform.position);
                 }
-
-                this.playerThrownBy = null;
+                
+                // todo touch ground
+                StopMoving();
             }
         }
 
+        private void StopMoving()
+        {
+            this.playerThrownBy = null;
+            
+            if (StartOfRound.Instance.shipBounds.bounds.Contains(this.transform.localPosition))
+            {
+                base.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+                this.isInElevator = true;
+                this.isInShipRoom = StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(this.transform.localPosition);
+            }
+            else
+            {
+                base.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+                this.isInElevator = false;
+                this.isInShipRoom = false;
+            }
+            
+            GameNetworkManager.Instance.localPlayerController.SetItemInElevator(this.isInElevator, this.isInShipRoom, this);
+        }
+        
         private Vector3 GetSphereProjectileCollisionPoint(Vector3 startPosition, Vector3 initialVelocity, Vector3 gravity, float maxTime, float timeStep, float radius, out float totalFallTime, out Vector3? hitPointNormal)
         {
             Vector3 previousPosition = startPosition;
@@ -171,27 +190,31 @@ namespace LethalMon.Throw
                 lineRenderer.SetPosition(0, previousPosition);
                 lineRenderer.SetPosition(1, newPosition);
 #endif    
-
-
+                
                 if (Physics.Raycast(previousPosition, (newPosition - previousPosition).normalized, out var hitPoint, Vector3.Distance(previousPosition, newPosition), LayerMask, QueryTriggerInteraction.Ignore))
                 {
-                    // We hit something, now we go back until the distance between this position and another on the curve is more than the radius
-                    Vector3 hitPosition = newPosition;
-                    hitPointNormal = hitPoint.normal;
-                    for (float i = t - timeStep; i > 0; i -= timeStep)
+                    var interactTrigger = hitPoint.collider.GetComponentInParent<InteractTrigger>();
+                    var entrance = hitPoint.collider.GetComponentInParent<EntranceTeleport>();
+                    if (hitPoint.collider.gameObject.layer != (int) Utils.LayerMasks.Mask.InteractableObject || entrance != null || (interactTrigger != null && FindObjectsOfType<DoorLock>().Any(dl => dl.doorTrigger == interactTrigger)))
                     {
-                        var goBackPosition = startPosition + initialVelocity * i + 0.5f * gravity * i * i;
-                        float distanceToHitPlane = Mathf.Abs(Vector3.Dot(hitPoint.normal, hitPoint.point - goBackPosition));
-                        if (distanceToHitPlane > radius)
+                        // We hit something, now we go back until the distance between this position and another on the curve is more than the radius
+                        hitPointNormal = hitPoint.normal;
+                        for (float i = t - timeStep; i > 0; i -= timeStep)
                         {
-                            totalFallTime = i;
-                            return goBackPosition;
+                            var goBackPosition = startPosition + initialVelocity * i + 0.5f * gravity * i * i;
+                            float distanceToHitPlane =
+                                Mathf.Abs(Vector3.Dot(hitPoint.normal, hitPoint.point - goBackPosition));
+                            if (distanceToHitPlane > radius)
+                            {
+                                totalFallTime = i;
+                                return goBackPosition;
+                            }
                         }
+
+                        // We reached the beginning of the curve, so we return the start position
+                        totalFallTime = 0;
+                        return startPosition;
                     }
-                    
-                    // We reached the beginning of the curve, so we return the start position
-                    totalFallTime = 0;
-                    return startPosition;
                 }
                 
                 previousPosition = newPosition;
@@ -209,7 +232,8 @@ namespace LethalMon.Throw
             
             initialVelocity = (playerHeldBy.gameplayCamera.transform.forward + playerVelocity) * force;
             
-            return GetSphereProjectileCollisionPoint(this.transform.localPosition, initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out totalFallTime, out hitPointNormal);
+            Vector3 startPosition = this.transform.parent == null ? this.transform.localPosition : this.transform.parent.TransformPoint(this.transform.localPosition);
+            return GetSphereProjectileCollisionPoint(startPosition, initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out totalFallTime, out hitPointNormal);
         }
     }
 }
