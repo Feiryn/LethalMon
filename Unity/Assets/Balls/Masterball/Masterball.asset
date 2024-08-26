@@ -52,7 +52,7 @@ MonoBehaviour:
   isDefensiveWeapon: 0
   toolTips:
   - Ball empty
-  verticalOffset: 0.25
+  verticalOffset: 0.21
   floorYOffset: 0
   allowDroppingAheadOfPlayer: 0
   restingRotation: {x: 0, y: 0, z: 0}
