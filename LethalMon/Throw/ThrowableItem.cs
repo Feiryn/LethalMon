@@ -1,8 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
-using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -31,7 +28,8 @@ namespace LethalMon.Throw
                     Utils.LayerMasks.Mask.MiscLevelGeometry,
                     Utils.LayerMasks.Mask.CompanyCruiser,
                     Utils.LayerMasks.Mask.MapHazards,
-                    Utils.LayerMasks.Mask.InteractableObject
+                    Utils.LayerMasks.Mask.InteractableObject,
+                    Utils.LayerMasks.Mask.DecalStickableSurface
                 ]);
             }
         }
@@ -125,7 +123,6 @@ namespace LethalMon.Throw
                     velocityAfter *= BounceCoefficient;
 
                     // Does it hit the ground with a small velocity magnitude?
-                    LethalMon.Log("Velocity after magnitude: " + velocityAfter.magnitude);
                     if (Physics.Raycast(this.transform.localPosition, Vector3.down, out var hitPoint, 30f, LayerMask,
                             QueryTriggerInteraction.Ignore))
                     {
@@ -137,13 +134,13 @@ namespace LethalMon.Throw
                     }
 
                     // Make it bounce
-                    this.startFallingPosition = this.transform.localPosition;
                     this.fallTime = 0;
                     this._initialVelocity = velocityAfter;
                     this._throwTime = 0;
-                    GetSphereProjectileCollisionPoint(this.transform.position, _initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
-                    this.targetFloorPosition = this.startFallingPosition + _initialVelocity * _totalFallTime + 0.5f * Gravity * _totalFallTime * _totalFallTime;
-                    this.startFallingPosition = base.transform.parent.InverseTransformPoint(base.transform.position);
+                    this.targetFloorPosition = GetSphereProjectileCollisionPoint(this.transform.position, _initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
+                    UpdateParent();
+                    this.targetFloorPosition = !isInElevator ? StartOfRound.Instance.propsContainer.InverseTransformPoint(this.targetFloorPosition) : StartOfRound.Instance.elevatorTransform.InverseTransformPoint(this.targetFloorPosition);
+                    this.startFallingPosition = this.transform.localPosition;;
                 }
                 
                 // todo touch ground
@@ -151,15 +148,13 @@ namespace LethalMon.Throw
             }
         }
 
-        private void StopMoving()
+        private void UpdateParent()
         {
-            this.playerThrownBy = null;
-            
-            if (StartOfRound.Instance.shipBounds.bounds.Contains(this.transform.localPosition))
+            if (StartOfRound.Instance.shipBounds.bounds.Contains(this.transform.position))
             {
                 base.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
                 this.isInElevator = true;
-                this.isInShipRoom = StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(this.transform.localPosition);
+                this.isInShipRoom = StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(this.transform.position);
             }
             else
             {
@@ -167,6 +162,13 @@ namespace LethalMon.Throw
                 this.isInElevator = false;
                 this.isInShipRoom = false;
             }
+        }
+        
+        private void StopMoving()
+        {
+            this.playerThrownBy = null;
+
+            UpdateParent();
             
             GameNetworkManager.Instance.localPlayerController.SetItemInElevator(this.isInElevator, this.isInShipRoom, this);
         }
@@ -228,7 +230,7 @@ namespace LethalMon.Throw
         
         private Vector3 GetItemThrowDestination(float force, out Vector3 initialVelocity, out float totalFallTime, out Vector3? hitPointNormal)
         {
-            Vector3 playerVelocity = playerHeldBy.oldPlayerPosition - playerHeldBy.transform.position;
+            Vector3 playerVelocity = playerHeldBy.oldPlayerPosition - playerHeldBy.transform.localPosition;
             
             initialVelocity = (playerHeldBy.gameplayCamera.transform.forward + playerVelocity) * force;
             
