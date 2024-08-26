@@ -205,23 +205,9 @@ namespace LethalMon.Patches
         public static EnemyAI? SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy enemy, float? killTimer = null) => SpawnEnemyInFrontOfPlayer(Utils.CurrentPlayer, enemy, killTimer);
         public static EnemyAI? SpawnEnemyInFrontOfPlayer(PlayerControllerB targetPlayer, Utils.Enemy enemy, float? killTimer = null)
         {
-            var enemyType = Utils.GetEnemyType(enemy);
-            if (enemyType == null)
-            {
-                LethalMon.Logger.LogInfo("No enemy found..");
-                return null;
-            }
-
             var location = targetPlayer.transform.position + targetPlayer.transform.forward * 5f;
-            LethalMon.Logger.LogInfo("Spawn enemy: " + enemyType.name);
-            GameObject gameObject = Instantiate(enemyType.enemyPrefab, location, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
-            gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-            var enemyAI = gameObject.GetComponent<EnemyAI>();
-            RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
-            enemyAI.enabled = StartOfRound.Instance.testRoom == null;
-            enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || !Utils.CurrentPlayer.isInsideFactory);
-
-            if(killTimer != null)
+            var enemyAI = Utils.SpawnEnemyAtPosition(enemy, location);
+            if (enemyAI != null && killTimer != null)
                 KillEnemyLater(enemyAI, killTimer.Value);
 
             return enemyAI;
