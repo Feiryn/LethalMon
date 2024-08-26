@@ -8,14 +8,20 @@ namespace LethalMon.Throw
     public abstract class ThrowableItem : GrabbableObject
     {
         #region Parameters
+        // The maximum time the item can fall
         protected virtual float MaxFallTime => 30f;
 
+        // The time step used to calculate the item's trajectory
         protected virtual float TimeStep => 0.01f;
         
+        // The gravity applied to the item
         protected virtual Vector3 Gravity => Physics.gravity;
         
+        // The radius of the item
         protected virtual float ItemRadius => itemProperties.verticalOffset;
         
+        // The layer mask used to detect collisions
+        // InteractableObject can only be used for doors and entrances
         protected virtual int LayerMask
         {
             get
@@ -34,29 +40,37 @@ namespace LethalMon.Throw
             }
         }
 
+        // The coefficient of restitution
         protected virtual float BounceCoefficient => 0.2f;
         
+        // The force of the throw
         protected virtual float ThrowForce => 20f;
         #endregion
         
         #region Properties
+        // The player that threw the item
         public PlayerControllerB? playerThrownBy;
 
+        // The last player that threw the item
         public PlayerControllerB? lastThrower;
 
+        // The trajectory total fall time
         private float _totalFallTime;
         
+        // The time the item has been thrown
         private float _throwTime;
 
+        // The initial velocity of the item
         private Vector3 _initialVelocity;
         
+        // Layer mask cache
         private int? _layerMask;
 
+        // The collision surface normal vector
         private Vector3? _hitPointNormal;
         #endregion
 
         #region ThrowRpc
-
         [ServerRpc(RequireOwnership = false)]
         public void ThrowServerRpc(NetworkObjectReference playerThrownByReference)
         {
@@ -112,6 +126,7 @@ namespace LethalMon.Throw
             
             // todo make it rotate
             
+            // The item finished falling
             if (this.fallTime >= 1)
             {
                 OnHitSurface();
@@ -205,6 +220,8 @@ namespace LethalMon.Throw
                 Vector3 newPosition = startPosition + initialVelocity * t + 0.5f * gravity * t * t;
                 
 #if DEBUG
+                // Really useful for debugging trajectories
+                /*
                 var lineRenderer = new GameObject("Line").AddComponent<LineRenderer>();
                 lineRenderer.startColor = Color.red;
                 lineRenderer.endColor = Color.red;
@@ -214,8 +231,10 @@ namespace LethalMon.Throw
                 lineRenderer.useWorldSpace = true;    
                 lineRenderer.SetPosition(0, previousPosition);
                 lineRenderer.SetPosition(1, newPosition);
+                */
 #endif    
                 
+                // Check if we hit a collider
                 if (Physics.Raycast(previousPosition, (newPosition - previousPosition).normalized, out var hitPoint, Vector3.Distance(previousPosition, newPosition), LayerMask, QueryTriggerInteraction.Ignore))
                 {
                     var interactTrigger = hitPoint.collider.GetComponentInParent<InteractTrigger>();
