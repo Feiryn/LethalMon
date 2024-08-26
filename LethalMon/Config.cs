@@ -113,7 +113,7 @@ namespace LethalMon
             // Monsters
             values.DisabledMonsters = LethalMon.Instance.Config.Bind("Monsters", "DisabledMonsters", "", "Disabled monsters types. Separate with a comma and don't put spaces. Example: Monster1,Monster2. Available monsters: " + string.Join(", ", Enum.GetNames(typeof(Utils.Enemy)))).Value.Split(",");
             values.MonstersReactToFailedCaptures = LethalMon.Instance.Config.Bind("Monsters", "MonstersReactToFailedCaptures", true, "Make the monsters react aggressively if a capture fails").Value;
-            values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, new ConfigDescription("Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch", new AcceptableValueRange<float>(-10f, 10f))).Value;
+            values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, new ConfigDescription("Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch", new AcceptableValueRange<int>(-10, 10))).Value;
             values.TamedNameFontSize = LethalMon.Instance.Config.Bind("Monsters", "TamedNameFontSize", 10f, new ConfigDescription("Font size of the text above tamed monsters, that shows the owner. Set this to 0 to disable the text.", new AcceptableValueRange<float>(0f, 20f))).Value;
 
             // Cooldowns
