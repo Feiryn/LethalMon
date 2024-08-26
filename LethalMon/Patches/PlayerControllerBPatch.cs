@@ -79,6 +79,16 @@ public class PlayerControllerBPatch
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
         player.SetItemInElevator(inShip, inShip, pokeballItem);
         pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        
+        if (StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos))
+        {
+            player.SetItemInElevator(inShip, inShip, pokeballItem);
+            pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        }
+        else
+        {
+            pokeballItem.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+        }
     }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ConnectClientToPlayerObject))]
