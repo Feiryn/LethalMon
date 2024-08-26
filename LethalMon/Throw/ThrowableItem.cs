@@ -90,18 +90,18 @@ namespace LethalMon.Throw
                 playerThrownBy = playerHeldBy;
                 lastThrower = playerThrownBy;
                 _throwTime = 0;
+                hasHitGround = true; // Prevents the base code from calling OnHitGround
                 playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination(ThrowForce, out _initialVelocity, out _totalFallTime, out _hitPointNormal));
                 this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>());
             }
         }
-
-        // public abstract void TouchGround();
         
         public override void FallWithCurve()
         {
             if (_totalFallTime == 0)
             {
                 this.fallTime = 1;
+                StopMovingAfterHittingGround();
                 return;
             }
             
@@ -114,7 +114,7 @@ namespace LethalMon.Throw
             
             if (this.fallTime >= 1)
             {
-                // todo play hit song
+                OnHitSurface();
 
                 if (_hitPointNormal != null)
                 {
@@ -123,12 +123,12 @@ namespace LethalMon.Throw
                     velocityAfter *= BounceCoefficient;
 
                     // Does it hit the ground with a small velocity magnitude?
-                    if (Physics.Raycast(this.transform.localPosition, Vector3.down, out var hitPoint, 30f, LayerMask,
+                    if (Physics.Raycast(this.transform.position, Vector3.down, out var hitPoint, 30f, LayerMask,
                             QueryTriggerInteraction.Ignore))
                     {
-                        if (Vector3.Distance(hitPoint.point, this.transform.localPosition) <= ItemRadius + TimeStep * Gravity.y && velocityAfter.magnitude < 0.5f)
+                        if (Vector3.Distance(hitPoint.point, this.transform.position) <= ItemRadius + Mathf.Abs(TimeStep * Gravity.y) && velocityAfter.magnitude < 0.5f)
                         {
-                            StopMoving();
+                            StopMovingAfterHittingGround();
                             return;
                         }
                     }
@@ -140,12 +140,29 @@ namespace LethalMon.Throw
                     this.targetFloorPosition = GetSphereProjectileCollisionPoint(this.transform.position, _initialVelocity, Gravity, MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
                     UpdateParent();
                     this.targetFloorPosition = !isInElevator ? StartOfRound.Instance.propsContainer.InverseTransformPoint(this.targetFloorPosition) : StartOfRound.Instance.elevatorTransform.InverseTransformPoint(this.targetFloorPosition);
-                    this.startFallingPosition = this.transform.localPosition;;
+                    this.startFallingPosition = this.transform.localPosition;
+                    return;
                 }
                 
-                // todo touch ground
-                StopMoving();
+                StopMovingAfterHittingGround();
             }
+        }
+
+        public new void FallToGround(bool randomizePosition = false)
+        {
+            this.fallTime = 0;
+            this._throwTime = 0;
+            this.startFallingPosition = this.transform.localPosition;
+            this._initialVelocity = Vector3.zero;
+            this.targetFloorPosition = GetSphereProjectileCollisionPoint(this.transform.position, Vector3.zero, Gravity,
+                MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
+            UpdateParent();
+            this.targetFloorPosition = !isInElevator ? StartOfRound.Instance.propsContainer.InverseTransformPoint(this.targetFloorPosition) : StartOfRound.Instance.elevatorTransform.InverseTransformPoint(this.targetFloorPosition);
+        }
+
+        public void OnHitSurface()
+        {
+            PlayDropSFX();
         }
 
         private void UpdateParent()
@@ -164,13 +181,19 @@ namespace LethalMon.Throw
             }
         }
         
-        private void StopMoving()
+        private void StopMovingAfterHittingGround()
         {
+            LethalMon.Log("Stop moving");
+            
+            OnHitGround();
+            
             this.playerThrownBy = null;
 
             UpdateParent();
             
             GameNetworkManager.Instance.localPlayerController.SetItemInElevator(this.isInElevator, this.isInShipRoom, this);
+            
+            hasHitGround = true;
         }
         
         private Vector3 GetSphereProjectileCollisionPoint(Vector3 startPosition, Vector3 initialVelocity, Vector3 gravity, float maxTime, float timeStep, float radius, out float totalFallTime, out Vector3? hitPointNormal)
@@ -231,7 +254,7 @@ namespace LethalMon.Throw
         private Vector3 GetItemThrowDestination(float force, out Vector3 initialVelocity, out float totalFallTime, out Vector3? hitPointNormal)
         {
             Vector3 playerVelocity = playerHeldBy.oldPlayerPosition - playerHeldBy.transform.localPosition;
-            
+        
             initialVelocity = (playerHeldBy.gameplayCamera.transform.forward + playerVelocity) * force;
             
             Vector3 startPosition = this.transform.parent == null ? this.transform.localPosition : this.transform.parent.TransformPoint(this.transform.localPosition);

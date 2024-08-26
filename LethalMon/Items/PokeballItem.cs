@@ -286,7 +286,9 @@ public abstract class PokeballItem : ThrowableItem
 
     public void PlayCaptureAnimation()
     {
-        this.targetFloorPosition = this.transform.localPosition; // Stop moving
+        this.startFallingPosition = this.transform.localPosition;
+        this.targetFloorPosition = this.transform.localPosition;
+        this.fallTime = 1f; // Stop moving
         this.currentCaptureRound = 0;
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
