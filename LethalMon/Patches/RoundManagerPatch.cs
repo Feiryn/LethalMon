@@ -2,6 +2,7 @@ using System.Linq;
 using HarmonyLib;
 using LethalMon.Items;
 using Unity.Netcode;
+using static LethalMon.ModConfig.ConfigValues;
 
 namespace LethalMon.Patches;
 
@@ -23,9 +24,9 @@ public class RoundManagerPatch
     [HarmonyPrefix]
     private static void DespawnPropsAtEndOfRoundPrefix(RoundManager __instance, bool despawnAllItems = false)
     {
-        if (ModConfig.Instance.values.KeepBallsIfAllPlayersDead != "no")
+        if (ModConfig.Instance.values.KeepBallsIfAllPlayersDead != KeepBalls.No)
         {
-            ChangeIsScrapForBalls(false, ModConfig.Instance.values.KeepBallsIfAllPlayersDead == "fullOnly");
+            ChangeIsScrapForBalls(false, ModConfig.Instance.values.KeepBallsIfAllPlayersDead == KeepBalls.FullOnly);
         }
     }
     
@@ -33,9 +34,9 @@ public class RoundManagerPatch
     [HarmonyPostfix]
     private static void DespawnPropsAtEndOfRoundPostfix(RoundManager __instance, bool despawnAllItems = false)
     {
-        if (ModConfig.Instance.values.KeepBallsIfAllPlayersDead != "no")
+        if (ModConfig.Instance.values.KeepBallsIfAllPlayersDead != KeepBalls.No)
         {
-            ChangeIsScrapForBalls(true, ModConfig.Instance.values.KeepBallsIfAllPlayersDead == "fullOnly");
+            ChangeIsScrapForBalls(true, ModConfig.Instance.values.KeepBallsIfAllPlayersDead == KeepBalls.FullOnly);
         }
     }
 

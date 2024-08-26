@@ -11,6 +11,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using BepInEx.Configuration;
 using static Unity.Netcode.CustomMessagingManager;
+using static LethalMon.ModConfig.ConfigValues;
 
 namespace LethalMon
 {
@@ -39,7 +40,14 @@ namespace LethalMon
             
             public float EnemyHPCaptureProbabilityMultiplier { get; set; }
 
-            public string KeepBallsIfAllPlayersDead { get; set; }
+            public enum KeepBalls
+            {
+                No,
+                FullOnly,
+                Yes
+            }
+
+            public KeepBalls KeepBallsIfAllPlayersDead { get; set; }
 
             public int CaptureRateModifier { get; set; }
 
@@ -98,14 +106,14 @@ namespace LethalMon
             values.Tier2BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier2BallSpawnWeight", 10, "The spawn weight of the tier 2 ball (great ball). Higher = more common").Value;
             values.Tier3BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier3BallSpawnWeight", 6, "The spawn weight of the tier 3 ball (ultra ball). Higher = more common").Value;
             values.Tier4BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier4BallSpawnWeight", 2, "The spawn weight of the tier 4 ball (master ball). Higher = more common").Value;
-            values.KeepBallsIfAllPlayersDead = LethalMon.Instance.Config.Bind("Items", "KeepBallsIfAllPlayersDead", "no", "Make the balls don't despawn even if all the players are dead. Values are: no, fullOnly, all").Value;
+            values.KeepBallsIfAllPlayersDead = LethalMon.Instance.Config.Bind("Items", "KeepBallsIfAllPlayersDead", KeepBalls.No, "Make the balls don't despawn even if all the players are dead.").Value;
             values.FilledBallsPercentage = LethalMon.Instance.Config.Bind("Items", "FilledBallsPercentage", 0.5f, "Percentage of filled balls in the dungeon").Value;
             values.EnemyHPCaptureProbabilityMultiplier = LethalMon.Instance.Config.Bind("Items", "EnemyHPCaptureProbabilityMultiplier", 1f, "Lower enemy HP increases the capture probability. Set this to 0 to disable this feature").Value;
             
             // Monsters
             values.DisabledMonsters = LethalMon.Instance.Config.Bind("Monsters", "DisabledMonsters", "", "Disabled monsters types. Separate with a comma and don't put spaces. Example: Monster1,Monster2. Available monsters: " + string.Join(", ", Enum.GetNames(typeof(Utils.Enemy)))).Value.Split(",");
             values.MonstersReactToFailedCaptures = LethalMon.Instance.Config.Bind("Monsters", "MonstersReactToFailedCaptures", true, "Make the monsters react aggressively if a capture fails").Value;
-            values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, "Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch").Value;
+            values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, new ConfigDescription("Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch", new AcceptableValueRange<float>(-10f, 10f))).Value;
             values.TamedNameFontSize = LethalMon.Instance.Config.Bind("Monsters", "TamedNameFontSize", 10f, new ConfigDescription("Font size of the text above tamed monsters, that shows the owner. Set this to 0 to disable the text.", new AcceptableValueRange<float>(0f, 20f))).Value;
 
             // Cooldowns
