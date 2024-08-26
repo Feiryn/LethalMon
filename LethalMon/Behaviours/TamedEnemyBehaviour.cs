@@ -63,24 +63,35 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    // Name Tag
     private Canvas? _nameCanvas = null;
     private TextMeshProUGUI? _nameText = null;
+    private float _nameCanvasYOffset = 2f;
 
+    private bool IsNameTagVisible => _nameText != null ? _nameText.alpha > 0f : false;
+
+    private const float MinNameTagRange = 3f;
+    private const float MaxNameTagRange = 6f;
+
+    private float _timeSinceNameTagVisible = 0f;
+
+    // Owner
     public PlayerControllerB? ownerPlayer = null;
     public ulong OwnerID => ownerPlayer != null ? ownerPlayer.playerClientId : ulong.MaxValue;
     public bool IsTamed => ownerPlayer != null;
     public bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
     public float DistanceToOwner => ownerPlayer != null ? Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) : 0f;
 
-
+    // Target enemy
     public EnemyAI? targetEnemy = null;
     public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
     public float DistanceToTargetEnemy => HasTargetEnemy ? Vector3.Distance(Enemy.transform.position, targetEnemy!.transform.position) : 0f;
 
-
+    // Target player
     public PlayerControllerB? targetPlayer = null;
     public float DistanceToTargetPlayer => targetPlayer != null ? Vector3.Distance(Enemy.transform.position, targetPlayer.transform.position) : 0f;
 
+    // Ball
     public BallType ballType;
 
     public int ballValue;
@@ -91,6 +102,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool hasBeenRetrieved = false;
 
+    // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
     {
@@ -266,6 +278,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (IsOwnerPlayer)
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+
+        HideNameTag();
     }
 
     internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
@@ -341,6 +355,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         //LethalMon.Logger.LogInfo($"TamedEnemyBehaviour.Update for {Enemy.name} -> {customBehaviour}");
         OnUpdate();
+
 
         if (Enemy.IsOwner)
         {
@@ -505,7 +520,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.Start();
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
-            CreateNameTag();
+            Utils.CallNextFrame(CreateNameTag);
         }
         else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
         {
@@ -539,6 +554,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (IsOwnerPlayer)
             HUDManagerPatch.EnableHUD(false);
+
+        HideNameTag();
     }
 
     internal virtual void TurnTowardsPosition(Vector3 position)
@@ -607,53 +624,85 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         _nameText.enabled = true;
         _nameText.text = $"{ownerPlayer!.playerUsername}'s\n{Data.CatchableMonsters[Enemy.enemyType.name].DisplayName}";
-        _nameText.fontSize = 100;
-        _nameText.fontSizeMin = 100;
-        _nameText.fontSizeMax = 100;
+        UpdateNameTagFontSize();
         _nameText.autoSizeTextContainer = false;
         _nameText.enableWordWrapping = false;
 
         if (nameCanvasObject.TryGetComponent(out _nameCanvas) && _nameCanvas != null)
             _nameCanvas.gameObject.SetActive(true);
-
-        var position = Enemy.transform.position;
+        
         if (Utils.TryGetRealEnemyBounds(Enemy, out Bounds bounds))
-            position.y = bounds.max.y;
+            _nameCanvasYOffset = bounds.max.y - Enemy.transform.position.y;
         else
-        {
             LethalMon.Log("Unable to load enemy bounds. Using default height for name canvas.", LethalMon.LogType.Error);
-            position.y += 2f;
-        }
+        LethalMon.Log("offset y: " + _nameCanvasYOffset, LethalMon.LogType.Warning);
+    }
 
-        nameCanvasObject.transform.localPosition = Vector3.zero;
-        nameCanvasObject.transform.position = position;
-        nameCanvasObject.transform.SetParent(Enemy.transform, true); // todo: not working for non-owners so far
+    private void HideNameTag()
+    {
+        if (IsNameTagVisible)
+            _nameText!.alpha = 0f;
     }
 
     private void UpdateNameTag()
     {
         if (_nameCanvas?.gameObject == null) return;
 
-        var distance = Vector3.Distance(Enemy.transform.position, Utils.CurrentPlayer.transform.position);
-        var minNameTagVisibility = 3f;
-        var maxNameTagVisibility = 6f;
-        var alpha = 1f - (Mathf.Clamp(distance, minNameTagVisibility, maxNameTagVisibility) - minNameTagVisibility) / (maxNameTagVisibility - minNameTagVisibility);
-        UpdateNameTagVisibility(alpha);
-        if (alpha > 0f)
-            UpdateNameTagRotation();
+        if(ModConfig.Instance.values.TamedNameFontSize == 0f)
+        {
+            if(_nameText != null)
+                _nameText.alpha = 0f;
+            return;
+        }
+
+        UpdateNameTagVisibility();
+
+        if (IsNameTagVisible)
+            UpdateNameTagPositionAndRotation();
     }
 
-    private void UpdateNameTagVisibility(float alpha)
+    private void UpdateNameTagFontSize()
     {
-        if (_nameText != null)
-            _nameText.alpha = alpha;
+        if (_nameText == null) return;
+
+        var fontSize = ModConfig.Instance.values.TamedNameFontSize * 10f;
+        _nameText.fontSize = fontSize;
+        _nameText.fontSizeMin = fontSize;
+        _nameText.fontSizeMax = fontSize;
     }
 
-    private void UpdateNameTagRotation()
+    private void UpdateNameTagVisibility()
+    {
+        if (_nameText == null) return;
+
+        float expectedAlpha;
+        var distance = Vector3.Distance(Enemy.transform.position, Utils.CurrentPlayer.transform.position);
+        if (distance < 2f)
+            expectedAlpha = Mathf.Max(distance - 1.5f, 0f);
+        else
+            expectedAlpha = 1f - (Mathf.Clamp(distance, MinNameTagRange, MaxNameTagRange) - MinNameTagRange) / (MaxNameTagRange - MinNameTagRange);
+
+        if (expectedAlpha > 0f)
+            _timeSinceNameTagVisible += Time.deltaTime;
+        else
+            _timeSinceNameTagVisible = 0f;
+
+        if (_timeSinceNameTagVisible > 4f)
+            _nameText.alpha = Mathf.Lerp(_nameText.alpha, 0f, Time.deltaTime * 4f);
+        else
+            _nameText.alpha = Mathf.Lerp(_nameText.alpha, expectedAlpha, Time.deltaTime * 10f);
+    }
+
+    private void UpdateNameTagPositionAndRotation()
     {
         if (_nameCanvas?.gameObject == null) return;
 
-        RoundManager.Instance.tempTransform.position = Enemy.transform.position;
+        var pos = Enemy.transform.position;
+        pos.y += _nameCanvasYOffset;
+        _nameCanvas.gameObject.transform.position = pos;
+
+        pos.y = Utils.CurrentPlayer.transform.position.y; // Make the name tag not not rotate up/down
+        RoundManager.Instance.tempTransform.position = pos;
         RoundManager.Instance.tempTransform.LookAt(Utils.CurrentPlayer.transform.position);
 
         _nameCanvas.gameObject.transform.rotation = RoundManager.Instance.tempTransform.rotation;
@@ -898,8 +947,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if(Controllable && TryGetComponent(out EnemyController controller))
         {
-            controller.AddTrigger();
-            controller.SetControlTriggerVisible(true);
+            Utils.CallNextFrame(() =>
+            {
+                controller.AddTrigger();
+                controller.SetControlTriggerVisible(true);
+            });
         }
     }
     #endregion

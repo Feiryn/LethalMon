@@ -9,6 +9,7 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using BepInEx.Configuration;
 using static Unity.Netcode.CustomMessagingManager;
 
 namespace LethalMon
@@ -39,9 +40,11 @@ namespace LethalMon
             public float EnemyHPCaptureProbabilityMultiplier { get; set; }
 
             public string KeepBallsIfAllPlayersDead { get; set; }
-            
+
             public int CaptureRateModifier { get; set; }
-            
+
+            public float TamedNameFontSize { get; set; }
+
             public string[] DisabledMonsters { get; set; }
             
             public bool MonstersReactToFailedCaptures { get; set; }
@@ -103,7 +106,8 @@ namespace LethalMon
             values.DisabledMonsters = LethalMon.Instance.Config.Bind("Monsters", "DisabledMonsters", "", "Disabled monsters types. Separate with a comma and don't put spaces. Example: Monster1,Monster2. Available monsters: " + string.Join(", ", Enum.GetNames(typeof(Utils.Enemy)))).Value.Split(",");
             values.MonstersReactToFailedCaptures = LethalMon.Instance.Config.Bind("Monsters", "MonstersReactToFailedCaptures", true, "Make the monsters react aggressively if a capture fails").Value;
             values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, "Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch").Value;
-            
+            values.TamedNameFontSize = LethalMon.Instance.Config.Bind("Monsters", "TamedNameFontSize", 10f, new ConfigDescription("Font size of the text above tamed monsters, that shows the owner. Set this to 0 to disable the text.", new AcceptableValueRange<float>(0f, 20f))).Value;
+
             // Cooldowns
             values.BrackenGrabCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BrackenGrabCooldown", 20f, "Grab cooldown time in seconds for the bracken").Value;
             values.DressGirlTeleportCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "DressGirlTeleportCooldown", 60f, "Teleport cooldown time in seconds for the dress girl").Value;

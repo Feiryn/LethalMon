@@ -132,7 +132,7 @@ namespace LethalMon.Behaviours
             base.OnCallFromBall();
 
             if(_flyingTrigger == null && IsOwnerPlayer)
-                _controller!.AddTrigger("Fly");
+                Utils.CallNextFrame(() => _controller!.AddTrigger("Fly"));
 
             _controller!.SetControlTriggerVisible();
         }

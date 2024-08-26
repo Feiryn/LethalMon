@@ -116,7 +116,7 @@ namespace LethalMon.Behaviours
             base.OnCallFromBall();
 
             if(_ridingTrigger == null && IsOwnerPlayer)
-                _controller!.AddTrigger("Ride");
+                Utils.CallNextFrame(() => _controller!.AddTrigger("Ride"));
 
             _controller!.SetControlTriggerVisible();
         }
