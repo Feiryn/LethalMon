@@ -607,7 +607,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     #endregion
 
-    #region Methods
+    #region NameTag
     private void CreateNameTag()
     {
         var nameCanvasObject = Instantiate(Utils.CurrentPlayer.usernameCanvas.gameObject, transform.position, Quaternion.identity);
@@ -629,6 +629,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         UpdateNameTagFontSize();
         _nameText.autoSizeTextContainer = false;
         _nameText.enableWordWrapping = false;
+        _nameText.alpha = 0f;
 
         if (nameCanvasObject.TryGetComponent(out _nameCanvas) && _nameCanvas != null)
             _nameCanvas.gameObject.SetActive(true);
@@ -709,7 +710,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         _nameCanvas.gameObject.transform.rotation = RoundManager.Instance.tempTransform.rotation;
     }
+    #endregion
 
+    #region Methods
     public void FollowPosition(Vector3 targetPosition)
     {
         if (Vector3.Distance(Enemy.destination, targetPosition) > 2f)

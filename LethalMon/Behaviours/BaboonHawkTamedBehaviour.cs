@@ -78,6 +78,15 @@ namespace LethalMon.Behaviours
 
             if(BaboonHawk.agent != null)
                 BaboonHawk.agent.angularSpeed = 0f;
+
+            //BaboonHawk.creatureAnimator.Play("Base Layer.BaboonIdle");
+            StartCoroutine(SkipSpawnAnim());
+        }
+        internal IEnumerator SkipSpawnAnim()
+        {
+            BaboonHawk.creatureAnimator.speed = 1000f;
+            yield return null;
+            BaboonHawk.creatureAnimator.speed = 1f;
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -272,7 +281,7 @@ namespace LethalMon.Behaviours
         }
         internal bool IsSleeping => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("sleep");
         internal void SetSleeping(bool sleeping = true) => BaboonHawk.creatureAnimator?.SetBool("sleep", sleeping);
-        internal bool IsSitting => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("sitting");
+        internal bool IsSitting => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("sit");
         internal void SetSitting(bool sitting = true) => BaboonHawk.creatureAnimator?.SetBool("sit", sitting);
         internal bool IsFighting => BaboonHawk.creatureAnimator != null && BaboonHawk.creatureAnimator.GetBool("fighting");
         internal void SetFighting(bool fighting = true) => BaboonHawk.creatureAnimator?.SetBool("fighting", fighting);
