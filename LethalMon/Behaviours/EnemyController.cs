@@ -2,6 +2,7 @@
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 namespace LethalMon.Behaviours
@@ -207,7 +208,15 @@ namespace LethalMon.Behaviours
             _enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
 
             if (EnemyCanFly)
+            {
+                if (Physics.Raycast(_enemy.transform.position + Vector3.up, -Vector3.up, out var hitInfo, 50f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+                {
+                    Vector3 navMeshPosition = RoundManager.Instance.GetNavMeshPosition(hitInfo.point, default(NavMeshHit), 10f);
+                    _enemy.transform.position = navMeshPosition;
+                }
+                
                 _enemy!.agent.enabled = true;
+            }
 
             if (IsControlledByUs)
             {
