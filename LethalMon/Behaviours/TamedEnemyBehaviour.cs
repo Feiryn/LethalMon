@@ -271,7 +271,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (scanNode != null)
         {
             scanNode.headerText = "Tamed " + Enemy.enemyType.enemyName;
-            scanNode.subText = "Owner: " + ownerPlayer!.name;
+            scanNode.subText = "Owner: " + ownerPlayer!.playerUsername;
             scanNode.nodeType = 2;
         }
     }
