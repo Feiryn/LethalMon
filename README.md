@@ -65,6 +65,11 @@ To get capture probabilities, use the command `lethaldex` in the terminal (the i
 
 ![lethaldex.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/lethaldex.png)
 
+## Monsters are not working at the company building!
+
+By default, there are no path in the company building for the monsters to move.
+You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.io/c/lethal-company/p/Kittenji/NavMeshInCompany/)
+
 ## Bug reports
 
-You can report bugs on github https://github.com/Feiryn/LethalMon/issues or on the LC discord modding server https://discord.com/invite/lcmod
+You can report bugs on GitHub https://github.com/Feiryn/LethalMon/issues or on the LC discord modding server https://discord.com/invite/lcmod
