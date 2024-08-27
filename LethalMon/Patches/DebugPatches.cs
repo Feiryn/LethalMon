@@ -75,7 +75,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                LogCollidersInRange(1f);
+                Instantiate(PC.PC.pcPrefab, Utils.CurrentPlayer.transform.position, Quaternion.identity);
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
