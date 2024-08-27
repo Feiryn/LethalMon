@@ -74,13 +74,11 @@ namespace LethalMon.Behaviours
             if (IsTamed)
             {
                 BaboonHawk.transform.localScale = Vector3.one * 0.75f;
+                StartCoroutine(SkipSpawnAnim());
             }
 
             if(BaboonHawk.agent != null)
                 BaboonHawk.agent.angularSpeed = 0f;
-
-            //BaboonHawk.creatureAnimator.Play("Base Layer.BaboonIdle");
-            StartCoroutine(SkipSpawnAnim());
         }
         internal IEnumerator SkipSpawnAnim()
         {
