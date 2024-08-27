@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
+using HarmonyLib;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -15,7 +17,7 @@ namespace LethalMon.Throw
         protected virtual float TimeStep => 0.01f;
         
         // The gravity applied to the item
-        protected virtual Vector3 Gravity => Physics.gravity;
+        protected virtual Vector3 Gravity => Physics.gravity * 1.5f;
         
         // The radius of the item
         protected virtual float ItemRadius => itemProperties.verticalOffset;
@@ -68,17 +70,72 @@ namespace LethalMon.Throw
 
         // The collision surface normal vector
         private Vector3? _hitPointNormal;
+
+        // Used to prevent the ball to be thrown with the base code RPC
+        private bool _throwCorrectlyInitialized = false;
         #endregion
 
+        #region Patches
+
+        private static ThrowableItem? _lastDroppedItem;
+
+        private static List<ThrowableItem>? _dropAllHeldItems;
+        
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DiscardHeldObject))]
+        [HarmonyPrefix]
+        private static void DiscardHeldObjectPrefix(PlayerControllerB __instance, bool placeObject = false/*, NetworkObject parentObjectTo = null, Vector3 placePosition = default(Vector3), bool matchRotationOfParent = true*/)
+        {
+            // If dropped without being thrown, we save the item for the postfix
+            if (__instance.currentlyHeldObjectServer is ThrowableItem throwableItem && !placeObject)
+            {
+                _lastDroppedItem = throwableItem;
+            }
+        }
+        
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DiscardHeldObject))]
+        [HarmonyPostfix]
+        private static void DiscardHeldObjectPostfix(PlayerControllerB __instance, bool placeObject = false/*, NetworkObject parentObjectTo = null, Vector3 placePosition = default(Vector3), bool matchRotationOfParent = true*/)
+        {
+            // If dropped without being thrown, we make it fall to the ground after all the other logic
+            if (!placeObject)
+            {
+                _lastDroppedItem?.FallToGround();
+            }
+        }
+        
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DropAllHeldItems))]
+        [HarmonyPrefix]
+        private static void DropAllHeldItemsPrefix(PlayerControllerB __instance, bool itemsFall = true/*, bool disconnecting = false*/)
+        {
+            if (itemsFall)
+            {
+                _dropAllHeldItems = __instance.ItemSlots.OfType<ThrowableItem>().ToList();
+            }
+        }
+        
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DropAllHeldItems))]
+        [HarmonyPostfix]
+        private static void DropAllHeldItemsPostfix(PlayerControllerB __instance, bool itemsFall = true/*, bool disconnecting = false*/)
+        {
+            if (itemsFall && _dropAllHeldItems != null)
+            {
+                foreach (var item in _dropAllHeldItems)
+                {
+                    item.FallToGround();
+                }
+            }
+        }
+        #endregion
+        
         #region ThrowRpc
         [ServerRpc(RequireOwnership = false)]
-        public void ThrowServerRpc(NetworkObjectReference playerThrownByReference)
+        public void ThrowServerRpc(NetworkObjectReference playerThrownByReference, float totalFallTime, Vector3 initialVelocity, Vector3 hitPointNormal, Vector3 startPosition, Vector3 targetPosition, bool inElevator, bool isInShip)
         {
-            ThrowClientRpc(playerThrownByReference);
+            ThrowClientRpc(playerThrownByReference, totalFallTime, initialVelocity, hitPointNormal, startPosition, targetPosition, inElevator, isInShip);
         }
     
         [ClientRpc]
-        public void ThrowClientRpc(NetworkObjectReference playerThrownByReference)
+        public void ThrowClientRpc(NetworkObjectReference playerThrownByReference, float totalFallTime, Vector3 initialVelocity, Vector3 hitPointNormal, Vector3 startPosition, Vector3 targetPosition, bool inElevator, bool isInShip)
         {
             LethalMon.Log("SendThrowRpc server rpc received");
             if (!playerThrownByReference.TryGet(out NetworkObject playerNetworkObject))
@@ -87,11 +144,38 @@ namespace LethalMon.Throw
                 return;
             }
 
+            _throwTime = 0;
+            _totalFallTime = totalFallTime;
+            _initialVelocity = initialVelocity;
+            _hitPointNormal = hitPointNormal == Vector3.zero ? null : hitPointNormal;
+            this.startFallingPosition = startPosition;
+            this.targetFloorPosition = targetPosition;
+            _throwCorrectlyInitialized = true;
+            UpdateParent(inElevator, isInShip);
             if (playerNetworkObject.TryGetComponent(out PlayerControllerB player))
             {
                 playerThrownBy = player;
                 lastThrower = playerThrownBy;
             }
+        }
+        
+        [ServerRpc(RequireOwnership = false)]
+        public void FallToGroundServerRpc(float totalFallTime, Vector3 initialVelocity, Vector3 hitPointNormal, Vector3 startPosition, Vector3 targetPosition, bool inElevator, bool isInShip)
+        {
+            FallToGroundClientRpc(totalFallTime, initialVelocity, hitPointNormal, startPosition, targetPosition, inElevator, isInShip);
+        }
+        
+        [ClientRpc]
+        public void FallToGroundClientRpc(float totalFallTime, Vector3 initialVelocity, Vector3 hitPointNormal, Vector3 startPosition, Vector3 targetPosition, bool inElevator, bool isInShip)
+        {
+            _throwTime = 0;
+            _totalFallTime = totalFallTime;
+            _initialVelocity = initialVelocity;
+            _hitPointNormal = hitPointNormal == Vector3.zero ? null : hitPointNormal;
+            this.startFallingPosition = startPosition;
+            this.targetFloorPosition = targetPosition;
+            UpdateParent(inElevator, isInShip);
+            _throwCorrectlyInitialized = true;
         }
         #endregion
         
@@ -106,12 +190,17 @@ namespace LethalMon.Throw
                 _throwTime = 0;
                 hasHitGround = true; // Prevents the base code from calling OnHitGround
                 playerHeldBy.DiscardHeldObject(placeObject: true, null, GetItemThrowDestination(ThrowForce, out _initialVelocity, out _totalFallTime, out _hitPointNormal));
-                this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>());
+                this.ThrowServerRpc(playerThrownBy.GetComponent<NetworkObject>(), _totalFallTime, _initialVelocity, _hitPointNormal ?? Vector3.zero, this.startFallingPosition, this.targetFloorPosition, this.isInElevator, this.isInShipRoom);
             }
         }
         
         public override void FallWithCurve()
         {
+            if (!_throwCorrectlyInitialized)
+            {
+                return;
+            }
+            
             if (_totalFallTime == 0)
             {
                 this.fallTime = 1;
@@ -173,6 +262,7 @@ namespace LethalMon.Throw
                 MaxFallTime, TimeStep, ItemRadius, out _totalFallTime, out _hitPointNormal);
             UpdateParent();
             this.targetFloorPosition = !isInElevator ? StartOfRound.Instance.propsContainer.InverseTransformPoint(this.targetFloorPosition) : StartOfRound.Instance.elevatorTransform.InverseTransformPoint(this.targetFloorPosition);
+            this.FallToGroundServerRpc(_totalFallTime, _initialVelocity, _hitPointNormal ?? Vector3.zero, this.startFallingPosition, this.targetFloorPosition, this.isInElevator, this.isInShipRoom);
         }
 
         public void OnHitSurface()
@@ -182,11 +272,17 @@ namespace LethalMon.Throw
 
         private void UpdateParent()
         {
-            if (StartOfRound.Instance.shipBounds.bounds.Contains(this.transform.position))
+            bool inElevator = StartOfRound.Instance.shipBounds.bounds.Contains(this.transform.position);
+            UpdateParent(inElevator, inElevator && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(this.transform.position));
+        }
+        
+        private void UpdateParent(bool inElevator, bool inShipRoom)
+        {
+            if (inElevator)
             {
                 base.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
                 this.isInElevator = true;
-                this.isInShipRoom = StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(this.transform.position);
+                this.isInShipRoom = inShipRoom;
             }
             else
             {
@@ -209,6 +305,7 @@ namespace LethalMon.Throw
             GameNetworkManager.Instance.localPlayerController.SetItemInElevator(this.isInElevator, this.isInShipRoom, this);
             
             hasHitGround = true;
+            _throwCorrectlyInitialized = false;
         }
         
         private Vector3 GetSphereProjectileCollisionPoint(Vector3 startPosition, Vector3 initialVelocity, Vector3 gravity, float maxTime, float timeStep, float radius, out float totalFallTime, out Vector3? hitPointNormal)

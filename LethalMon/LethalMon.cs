@@ -9,6 +9,7 @@ using LethalMon.Behaviours;
 using LethalMon.Compatibility;
 using LethalMon.Items;
 using LethalMon.Patches;
+using LethalMon.Throw;
 using UnityEngine;
 
 namespace LethalMon;
@@ -126,6 +127,9 @@ public class LethalMon : BaseUnityPlugin
             Harmony.PatchAll(typeof(MirageCompatibility));
         if (SnatchingBrackenCompatibility.Enabled)
             Harmony.PatchAll(typeof(SnatchingBrackenCompatibility));
+        
+        // Items
+        Harmony.PatchAll(typeof(ThrowableItem));
     }
 
     private static void Unpatch()
