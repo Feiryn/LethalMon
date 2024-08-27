@@ -1,3 +1,14 @@
+# 0.5.0
+
+- Baboon hawk is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Throw algorithm has been greatly improved in order to prevent clipping and make it more natural
+- Tamed monsters now have {owner}'s {monster} above them and parameters are configurable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Balls are now smaller
+- Balls now fall correctly after a capture
+- Masked xray distance is now configurable (thanks to [@NiroDev](https://github.com/NiroDev))
+- Fixed tamed monsters owner's name in the scan node
+- Fixed tulip snake being stuck in air when stopped controlling from too high (thanks to [@NiroDev](https://github.com/NiroDev))
+
 # 0.4.10
 
 - The less an enemy has health, the more it is easy to catch (thanks to [@NiroDev](https://github.com/NiroDev))
