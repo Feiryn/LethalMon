@@ -91,6 +91,18 @@ namespace LethalMon.Behaviours
 
             if (BaboonHawk.headLookRig.weight < 1f)
                 BaboonHawk.headLookRig.weight = Mathf.Lerp(BaboonHawk.headLookRig.weight, 1f, Time.deltaTime * 10f);
+            
+            // Idle animations
+            if (CurrentTamingBehaviour == TamingBehaviour.TamedFollowing)
+            {
+                if (BaboonHawk.agentLocalVelocity.x == 0f && BaboonHawk.agentLocalVelocity.z == 0f) // Idle
+                    _idleTimer += Time.deltaTime;
+                else
+                    _idleTimer = 0f;
+
+                SetSitting(_idleTimer > 1f && _idleTimer <= 6f);
+                SetSleeping(_idleTimer > 6f);
+            }
         }
 
         internal override void TurnTowardsPosition(Vector3 position)
@@ -141,13 +153,6 @@ namespace LethalMon.Behaviours
                 BaboonHawk.aggressionAudio.volume = Mathf.Max(BaboonHawk.aggressionAudio.volume + Time.deltaTime * 5f, 0f);
             else if (BaboonHawk.aggressionAudio.isPlaying)
                 BaboonHawk.aggressionAudio.Stop();
-
-            // Animations
-            if (BaboonHawk.agentLocalVelocity.x == 0f && BaboonHawk.agentLocalVelocity.z == 0f) // Idle
-                _idleTimer += Time.deltaTime;
-
-            SetSitting(_idleTimer > 1f && _idleTimer <= 6f);
-            SetSleeping(_idleTimer > 6f);
 
             // Targeting
             TargetNearestEnemy();
