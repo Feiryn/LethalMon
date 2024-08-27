@@ -265,6 +265,13 @@ namespace LethalMon.Throw
             this.FallToGroundServerRpc(_totalFallTime, _initialVelocity, _hitPointNormal ?? Vector3.zero, this.startFallingPosition, this.targetFloorPosition, this.isInElevator, this.isInShipRoom);
         }
 
+        public override void DiscardItemFromEnemy()
+        {
+            base.DiscardItemFromEnemy();
+            
+            FallToGround();
+        }
+
         public void OnHitSurface()
         {
             PlayDropSFX();
