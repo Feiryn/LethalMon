@@ -70,6 +70,11 @@ To get capture probabilities, use the command `lethaldex` in the terminal (the i
 By default, there are no path in the company building for the monsters to move.
 You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.io/c/lethal-company/p/Kittenji/NavMeshInCompany/)
 
+## Addons
+
+We also got you covered with additional mods that add up on this one:
+- [LethalMonReservedSlot](https://thunderstore.io/c/lethal-company/p/Niro/LethalMonReservedSlot/) - A reserved slot for the first pokeball you pick up!
+
 ## Bug reports
 
 You can report bugs on GitHub https://github.com/Feiryn/LethalMon/issues or on the LC discord modding server https://discord.com/invite/lcmod
