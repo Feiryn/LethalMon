@@ -31,32 +31,32 @@ Here are the implementation status of monsters:
 
 |     Monster     | Implemented |                               Behaviour                                |                   Capture failure                    |
 |:---------------:|:-----------:|:----------------------------------------------------------------------:|:----------------------------------------------------:|
+|   Baboon Hawk   |     Yes     |                  Echo-localize items and defends you                   | Spawns a tiny baboon hawk that attract other baboons |
+|     Barber      |     No      |                                  TBD                                   |                         TBD                          |
+|      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |              Attacking thrower for 10s               |
 |     Bracken     |     Yes     |                           Drags enemies away                           |                   Chasing thrower                    |
-|     Spider      |     No      |                                  TBD                                   |                         TBD                          |
 |     Butler      |     Yes     |                 Clean up dead enemies and spawn scraps                 |                    Stabs thrower                     |
 |    Coil-head    |     No      |                                  TBD                                   |                         TBD                          |
+| Earth Leviathan |     No      |                                  TBD                                   |                         TBD                          |
+|   Eyeless Dog   |     Yes     | Run far from the owner and howls in order to draw other dogs attention |           Chasing player more aggressively           |
+|  Forest Keeper  |     No      |                                  TBD                                   |                         TBD                          |
 |   Ghost Girl    |     Yes     |                   Teleports enemies and damages them                   |     Scaring thrower 3 times, followed by a hunt      |
 |  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |                   Angry at thrower                   |
 |    Hygrodere    |     No      |                                  TBD                                   |                         TBD                          |
 |     Jester      |     No      |                                  TBD                                   |                         TBD                          |
-|     Masked      |     Yes     |      Can lend you its mask to make you see enemies through walls       |          Spawning 2 ghosts that deal damage          |
-|   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |     Shooting while rotating, similar to a turret     |
-|   Snare Flea    |     No      |                                  TBD                                   |                         TBD                          |
-|  Spore Lizard   |     Yes     |                          Can be used as mount                          |                    Spawns a cloud                    |
-|     Thumper     |     Yes     |   Can open all doors and disable turrets, but is not really obedient   |                    Target thrower                    |
-|      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |              Attacking thrower for 10s               |
-|    Manticoil    |     No      |                                  TBD                                   |                         TBD                          |
-| Roaming Locusts | Will not be |                                   -                                    |                          -                           |
-|   Tulip Snake   |     Yes     |                        Allows the player to fly                        |  Clinging to player, during which it is uncatchable  |
-|   Baboon Hawk   |     Yes     |                  Echo-localize items and defends you                   | Spawns a tiny baboon hawk that attract other baboons |
-| Earth Leviathan |     No      |                                  TBD                                   |                         TBD                          |
-|   Eyeless Dog   |     Yes     | Run far from the owner and howls in order to draw other dogs attention |           Chasing player more aggressively           |
-|  Forest Keeper  |     No      |                                  TBD                                   |                         TBD                          |
-|    Old Bird     |     No      |                                  TBD                                   |                         TBD                          |
-|  Mask Hornets   |     No      |                                  TBD                                   |                         TBD                          |
-|     Barber      |     No      |                                  TBD                                   |                         TBD                          |
 |  Kidnapper Fox  |     Yes     |             Shoots its tongue at enemies and can kill them             |     Chase player or shoot tongue if close enough     |
 |    Maneater     |     No      |                                  TBD                                   |                         TBD                          |
+|    Manticoil    |     No      |                                  TBD                                   |                         TBD                          |
+|  Mask Hornets   |     No      |                                  TBD                                   |                         TBD                          |
+|     Masked      |     Yes     |      Can lend you its mask to make you see enemies through walls       |          Spawning 2 ghosts that deal damage          |
+|   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |     Shooting while rotating, similar to a turret     |
+|    Old Bird     |     No      |                                  TBD                                   |                         TBD                          |
+| Roaming Locusts | Will not be |                                   -                                    |                          -                           |
+|   Snare Flea    |     No      |                                  TBD                                   |                         TBD                          |
+|     Spider      |     No      |                                  TBD                                   |                         TBD                          |
+|  Spore Lizard   |     Yes     |                          Can be used as mount                          |                    Spawns a cloud                    |
+|     Thumper     |     Yes     |   Can open all doors and disable turrets, but is not really obedient   |                    Target thrower                    |
+|   Tulip Snake   |     Yes     |                        Allows the player to fly                        |  Clinging to player, during which it is uncatchable  |
 
 
 ## Capture probabilities
