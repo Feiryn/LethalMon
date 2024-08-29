@@ -469,7 +469,7 @@ namespace LethalMon.Behaviours
             escapeFromBallEventRunning = true;
 
             Masked.enabled = false;
-            if (IsOwner)
+            if (IsOwner && Masked.agent != null)
                 Masked.agent.enabled = false;
 
             if (targetPlayer != null)
@@ -645,6 +645,8 @@ namespace LethalMon.Behaviours
 
             Masked.SetMovingTowardsTargetPlayer(targetPlayer);
             Masked.addPlayerVelocityToDestination = 0f;
+
+            Masked.inSpecialAnimationWithPlayer = targetPlayer;
         }
 
         [ServerRpc]

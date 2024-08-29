@@ -36,6 +36,14 @@ public abstract class PokeballItem : ThrowableItem
     private readonly BallType ballType;
 
     public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
+
+    internal Animator animator;
+
+    internal AudioSource audioSource;
+
+    internal static AudioClip? BeepSFX = null;
+    internal static AudioClip? SuccessSFX = null;
+    internal static AudioClip? FailureSFX = null;
     #endregion
 
     #region Initialization
@@ -74,6 +82,9 @@ public abstract class PokeballItem : ThrowableItem
         base.Start();
         for (int i = 0; i < propColliders.Length; i++)
             propColliders[i].excludeLayers = 0; // 0 = nothing, -1 = everything (default since v55)
+
+        audioSource = gameObject.GetComponent<AudioSource>();
+        animator = gameObject.GetComponent<Animator>();
     }
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
@@ -126,6 +137,10 @@ public abstract class PokeballItem : ThrowableItem
                     ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(true);
 
                 Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
+
+                if (FailureSFX != null)
+                    Utils.PlaySoundAtPosition(gameObject.transform.position, FailureSFX); // Can't use audioSource as it gets destroyed
+
                 if (Utils.IsHost)
                 {
                     if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
@@ -303,8 +318,18 @@ public abstract class PokeballItem : ThrowableItem
 
     public void PlayCaptureAnimationAnimator()
     {
-        Animator animator = this.GetComponent<Animator>(); // Play capture animation
-        animator.Play("Base Layer.Capture", 0);
+        if (animator == null) return;
+        
+        animator.Play("Base Layer.Capture", 0); // Play capture animation
+
+        PlayCaptureBeepSound();
+        Invoke(nameof(PlayCaptureBeepSound), 1.5f * animator.speed);
+    }
+
+    public void PlayCaptureBeepSound()
+    {
+        if (audioSource != null && BeepSFX != null)
+            audioSource.PlayOneShot(BeepSFX);
     }
     
     private void CaptureEnemy(EnemyAI enemyAI, CatchableEnemy.CatchableEnemy catchable)
@@ -378,6 +403,13 @@ public abstract class PokeballItem : ThrowableItem
     #endregion
 
     #region Methods
+    public static void LoadAudio(AssetBundle assetBundle)
+    {
+        BeepSFX    = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/beep.ogg");
+        SuccessSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/success.ogg");
+        FailureSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/fail.ogg");
+    }
+
     public void SetCaughtEnemy(EnemyType enemyType)
     {
         this.enemyType = enemyType;
@@ -453,6 +485,9 @@ public abstract class PokeballItem : ThrowableItem
 
         EnemyType enemyType = EnemyTypes.First(type => type.name == enemyTypeName);
         SetCaughtEnemy(enemyType);
+
+        if (audioSource != null && SuccessSFX != null)
+            audioSource.PlayOneShot(SuccessSFX);
     }
     #endregion
 }

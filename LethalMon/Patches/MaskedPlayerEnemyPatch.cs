@@ -13,6 +13,8 @@ namespace LethalMon.Patches
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.OnCollideWithPlayer))]
         public static void OnCollideWithPlayerPrefix(MaskedPlayerEnemy __instance, Collider other)
         {
+            if(!__instance.IsSpawned) return;
+
             if (lastColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return; // Don't re-run this patch every frame
             lastColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
 

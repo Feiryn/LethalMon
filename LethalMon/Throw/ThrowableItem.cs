@@ -157,6 +157,12 @@ namespace LethalMon.Throw
                 playerThrownBy = player;
                 lastThrower = playerThrownBy;
             }
+
+            if (itemProperties.throwSFX != null && base.gameObject.TryGetComponent(out AudioSource audioSource))
+            {
+                audioSource.PlayOneShot(itemProperties.throwSFX);
+                WalkieTalkie.TransmitOneShotAudio(audioSource, itemProperties.throwSFX);
+            }
         }
         
         [ServerRpc(RequireOwnership = false)]
