@@ -1,7 +1,10 @@
+using System.Linq;
 using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
@@ -31,6 +34,8 @@ public class PC : NetworkBehaviour
     private PlayerControllerB _currentPlayer;
     
     private RectTransform _cursor;
+
+    private GameObject _screen;
     #endregion
 
     public void Start()
@@ -63,6 +68,17 @@ public class PC : NetworkBehaviour
         
         // Load screen components
         _cursor = gameObject.transform.Find("Screen/Cursor")?.GetComponent<RectTransform>()!;
+        _screen = gameObject.transform.Find("Screen")?.gameObject!;
+        
+        // Assign buttons to functions
+        gameObject.transform.Find("Screen/MainMenu/Tutorial").GetComponent<Button>().onClick = FunctionToButtonClickEvent(OnTutorialButtonClick);
+    }
+
+    private static Button.ButtonClickedEvent FunctionToButtonClickEvent(UnityAction action)
+    {
+        var buttonClickedEvent = new Button.ButtonClickedEvent();
+        buttonClickedEvent.AddListener(action);
+        return buttonClickedEvent;
     }
     
     public void OnBallPlaceInteract(PlayerControllerB player)
@@ -75,8 +91,6 @@ public class PC : NetworkBehaviour
         // Don't trust Zeekerss code... the player is always null on an interact early event
         player = Utils.CurrentPlayer;
         
-        LethalMon.Log("Start using");
-
         try
         {
             _currentPlayer = player;
@@ -88,8 +102,8 @@ public class PC : NetworkBehaviour
                 clearAllOther: true);
             
             _playerActions.Movement.OpenMenu.performed += PressEsc;
-            _playerActions.Movement.Move.performed += Move_performed;
             _playerActions.Movement.Look.performed += Look_performed;
+            _playerActions.Movement.Use.performed += LeftClick_performed;
             _playerActions.Enable();
             player.playerActions.Movement.Move.Disable();
             player.playerActions.Movement.Look.Disable();
@@ -102,13 +116,11 @@ public class PC : NetworkBehaviour
     
     public void StopUsing()
     {
-        LethalMon.Log("Stop using");
-        
         if (_currentPlayer != null)
         {
             _playerActions.Movement.OpenMenu.performed -= PressEsc;
-            _playerActions.Movement.Move.performed -= Move_performed;
             _playerActions.Movement.Look.performed -= Look_performed;
+            _playerActions.Movement.Use.performed -= LeftClick_performed;
             _playerActions.Disable();
             _currentPlayer.playerActions.Movement.Move.Enable();
             _currentPlayer.playerActions.Movement.Look.Enable();
@@ -120,25 +132,44 @@ public class PC : NetworkBehaviour
     
     public void PressEsc(InputAction.CallbackContext context)
     {
-        LethalMon.Log("Press ESC");
         StopUsing();
-    }
-    
-    public void Move_performed(InputAction.CallbackContext context)
-    {
-        LethalMon.Log("Move performed");
-        
-        Vector2 move = context.ReadValue<Vector2>();
-        LethalMon.Log($"Move: {move}");
     }
     
     public void Look_performed(InputAction.CallbackContext context)
     {
-        LethalMon.Log("Look performed");
-        
         Vector2 move = context.ReadValue<Vector2>();
-        LethalMon.Log($"Look: {move}");
         _cursor.anchoredPosition = new Vector2(Mathf.Clamp(_cursor.anchoredPosition.x - move.x * CursorSpeed, CursorMinX, CursorMaxX), Mathf.Clamp(_cursor.anchoredPosition.y + move.y * CursorSpeed, CursorMinY, CursorMaxY));
+    }
+    
+    public void LeftClick_performed(InputAction.CallbackContext context)
+    {
+        LethalMon.Log("Left click performed");
+
+        foreach (var button in _screen.GetComponentsInChildren<Button>())
+        {
+            LethalMon.Log("Button: " + button.name);
+            if (button.IsActive() && IsCursorOnButton(button))
+            {
+                button.onClick.Invoke();
+            }
+        }
+    }
+
+    private bool IsCursorOnButton(Button button)
+    {
+        RectTransform rectTransform = button.GetComponent<RectTransform>();
+        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
+        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
+        Vector3 cursorPosition = _screen.transform.InverseTransformPoint(_cursor.position);
+        LethalMon.Log("Button min: " + buttonMin);
+        LethalMon.Log("Button max: " + buttonMax);
+        LethalMon.Log("Cursor position: " + cursorPosition);
+        return cursorPosition.x >= buttonMin.x && cursorPosition.x <= buttonMax.x && cursorPosition.y >= buttonMin.y && cursorPosition.y <= buttonMax.y;
+    }
+    
+    public void OnTutorialButtonClick()
+    {
+        LethalMon.Log("Tutorial button click");
     }
     
     internal static void LoadAssets(AssetBundle assetBundle)
