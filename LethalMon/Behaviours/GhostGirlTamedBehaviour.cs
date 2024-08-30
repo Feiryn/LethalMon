@@ -29,7 +29,6 @@ namespace LethalMon.Behaviours
         private int _fakeHunts = 0;
         private bool _playerHasSeenGhostGirlInFakeHunt = false;
         private float _fakeHuntStartTime = 0f;
-        private bool _startNextFakeHunt = false;
 
         private bool TargetingUs => targetPlayer == Utils.CurrentPlayer;
 
@@ -68,7 +67,9 @@ namespace LethalMon.Behaviours
         {
             base.InitCustomBehaviour(behaviour);
 
-            switch((CustomBehaviour)behaviour)
+            //LethalMon.Log("InitCustomBehaviour: " + ((CustomBehaviour)behaviour).ToString());
+
+            switch ((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.RunningBackToOwner:
                     _ownerInsideFactory = ownerPlayer!.isInsideFactory;
@@ -77,10 +78,9 @@ namespace LethalMon.Behaviours
                 case CustomBehaviour.EscapePhaseStare:      // Phase 1
                     if (targetPlayer == null) return;
 
-                    LethalMon.Log("Target: " +  targetPlayer.name + " / Is us? " + (TargetingUs ? "yes" : "no"));
+                    //LethalMon.Log("Target: " +  targetPlayer.name + " / Is us? " + (TargetingUs ? "yes" : "no"));
                     GhostGirl.EnableEnemyMesh(TargetingUs, true);
                     GhostGirl.creatureSFX.Stop();
-                    GhostGirl.enabled = false;
 
                     if (GhostGirl.agent != null)
                         GhostGirl.agent.speed = 0f;
@@ -91,7 +91,7 @@ namespace LethalMon.Behaviours
                         PlayRandomSoundForTarget();
                     }
 
-                    if(Utils.IsHost)
+                    if (Utils.IsHost)
                         Invoke(nameof(StartFakeHunt), 3f);
                     break;
 
@@ -138,9 +138,6 @@ namespace LethalMon.Behaviours
                         RoundManager.Instance.FlickerLights(true, true);
                     }
 
-                    if(GhostGirl.agent != null)
-                        GhostGirl.agent.speed = 0f;
-
                     if (Utils.IsHost)
                     {
                         if (GhostGirl.agent != null)
@@ -155,7 +152,10 @@ namespace LethalMon.Behaviours
                         }
                     }
 
-                    if(Utils.IsHost)
+                    if (GhostGirl.agent != null)
+                        GhostGirl.agent.speed = 0f;
+
+                    if (Utils.IsHost)
                         Invoke(nameof(StartHuntServerRpc), 3f);
 
                     break;
@@ -175,7 +175,7 @@ namespace LethalMon.Behaviours
 
         public void OnRunningBackToOwner()
         {
-            LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
+            //LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
 
             if(ownerPlayer == Utils.CurrentPlayer)
                 AnimateWalking();
@@ -196,6 +196,7 @@ namespace LethalMon.Behaviours
             }
         }
 
+        public void StartEscapeStare() => SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseStare);
         public void OnEscapePhaseStare()
         {
             if(!EscapePhaseCondition)
@@ -207,16 +208,10 @@ namespace LethalMon.Behaviours
             TurnTowardsPosition(targetPlayer!.transform.position);
         }
 
-        public void StartFakeHunt() => SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
+        internal void StartFakeHunt() => SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
 
         public void OnEscapePhaseFakeHunt()
         {
-            if(_startNextFakeHunt)
-            {
-                _startNextFakeHunt = false;
-                InitCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
-            }
-
             if (!EscapePhaseCondition)
             {
                 ExitEscapePhase();
@@ -226,32 +221,58 @@ namespace LethalMon.Behaviours
             if (TargetingUs)
                 TurnTowardsPosition(targetPlayer!.transform.position);
 
-            if (!Enemy.IsOwner) return;
+            //LethalMon.Log("OnEscapePhaseFakeHunt. Hunts: " + _fakeHunts);
+
+            if (!Utils.IsHost) return;
 
             var distanceTowardsPlayer = DistanceToTargetPlayer;
             if (distanceTowardsPlayer > 2f)
             {
+                //LethalMon.Log("Distance ABOVE 2f");
                 GhostGirl.SetDestinationToPosition(targetPlayer!.transform.position);
             }
             else
             {
-                var angleTowardsOwner = (GhostGirl.transform.position - targetPlayer!.transform.position).normalized;
-                GhostGirl.SetDestinationToPosition(targetPlayer.transform.position + angleTowardsOwner);
+                //LethalMon.Log("Distance BELOW 2f");
+                var angleTowardsTarget = (GhostGirl.transform.position - targetPlayer!.transform.position).normalized;
+                GhostGirl.SetDestinationToPosition(targetPlayer.transform.position + angleTowardsTarget);
             }
 
             if (!_playerHasSeenGhostGirlInFakeHunt)
                 _playerHasSeenGhostGirlInFakeHunt = targetPlayer.HasLineOfSightToPosition(GhostGirl.transform.position, 60f);
 
             var timeSinceFakeHunt = Time.realtimeSinceStartup - _fakeHuntStartTime;
-            GhostGirl.agent.speed = Mathf.Max(10f - distanceTowardsPlayer, 3f) + timeSinceFakeHunt / 3f; // Faster the longer it takes
+
+            // base speed + speed over time + jumpscare (faster the long it took)
+            GhostGirl.agent.speed = 3f + timeSinceFakeHunt / 5f + Mathf.Max(12f - distanceTowardsPlayer, 0.5f) * Mathf.Max(timeSinceFakeHunt / 10f, 1f);
+
+            //LethalMon.Log("Girl speed: " + GhostGirl.agent.speed + " (Girl distance to player: " + distanceTowardsPlayer + " / timeSinceHunt: " + timeSinceFakeHunt + ")");
 
             if ((_playerHasSeenGhostGirlInFakeHunt && distanceTowardsPlayer < 2f) || timeSinceFakeHunt > 10f)
-            {
-                if (_fakeHunts >= 3)
-                    SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseHunt);
-                else
-                    _startNextFakeHunt = true;
-            }
+                HitTargetPlayerOnFakeHunt();
+        }
+
+        public void HitTargetPlayerOnFakeHunt()
+        {
+            //LethalMon.Log($"Fake hunt {_fakeHunts} ended.");
+            if (_fakeHunts >= 3)
+                SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseHunt);
+            else
+                StartNextFakeHuntServerRpc();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void StartNextFakeHuntServerRpc()
+        {
+            //LethalMon.Log("StartHuntServerRpc");
+            StartNextFakeHuntClientRpc();
+        }
+
+        [ClientRpc]
+        internal void StartNextFakeHuntClientRpc()
+        {
+            //LethalMon.Log("StartNextFakeHuntClientRpc.");
+            InitCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
         }
 
         public void OnEscapePhaseHunt()
@@ -269,6 +290,7 @@ namespace LethalMon.Behaviours
 
         public void ExitEscapePhase()
         {
+            //LethalMon.Log("ExitEscapePhase");
             _playerHasSeenGhostGirlInFakeHunt = false;
             _fakeHunts = 0;
             targetPlayer = null;
@@ -278,6 +300,7 @@ namespace LethalMon.Behaviours
         [ServerRpc(RequireOwnership = false)]
         internal void StartHuntServerRpc()
         {
+            //LethalMon.Log("StartHuntServerRpc");
             if (targetPlayer == null)
             {
                 LethalMon.Log("targetPlayer is null at start of ghost girl hunt.", LethalMon.LogType.Warning);
@@ -292,6 +315,7 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         internal void StartHuntClientRpc()
         {
+            //LethalMon.Log("StartHuntClientRpc");
             GhostGirl.hauntingPlayer = targetPlayer;
             GhostGirl.hauntingLocalPlayer = targetPlayer == Utils.CurrentPlayer;
 
@@ -329,12 +353,16 @@ namespace LethalMon.Behaviours
 
             if (IsTamed)
             {
-                if(!IsOwnerPlayer)
+                if (!IsOwnerPlayer)
                     MuteGhostGirl();
 
                 GhostGirl.EnableEnemyMesh(IsOwnerPlayer, true);
                 GhostGirl.enemyMeshEnabled = IsOwnerPlayer;
             }
+#if DEBUG
+            //else
+            //    Utils.CallNextFrame(ShowForHost);
+#endif
 
             teleportCooldown = GetCooldownWithId(TeleportCooldownId);
         }
@@ -391,7 +419,7 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            if (IsCollidingWithTargetEnemy)
+            if (DistanceToTargetEnemy < 2f)
             {
                 LethalMon.Log("GhostGirlTamedBehaviour: Teleporting enemy.");
 
@@ -419,10 +447,15 @@ namespace LethalMon.Behaviours
             if (playerWhoThrewBall != Utils.CurrentPlayer)
                 MuteGhostGirl();
 
+            GhostGirl.enabled = false;
+
             if (Utils.IsHost)
-                SwitchToCustomBehaviour((int)CustomBehaviour.EscapePhaseStare);
+            {
+                GhostGirl.ChangeOwnershipOfEnemy(Utils.CurrentPlayer.actualClientId); // Change it so that the host can control it during the event
+                Utils.CallNextFrame(StartEscapeStare);
+            }
         }
-        #endregion
+#endregion
 
         #region Methods
         internal void MuteGhostGirl()
@@ -558,5 +591,49 @@ namespace LethalMon.Behaviours
             GhostGirl.EnableEnemyMesh(enable && targetPlayerID == Utils.CurrentPlayerID, true);
         }
         #endregion
+
+#if DEBUG
+        #region DEBUG
+        internal void HauntPlayer(PlayerControllerB player) // DEBUG
+        {
+            GhostGirl.hauntingPlayer = player;
+            if (GhostGirl.hauntingPlayer.isPlayerDead)
+            {
+                for (int k = 0; k < StartOfRound.Instance.allPlayerScripts.Length; k++)
+                {
+                    if (!StartOfRound.Instance.allPlayerScripts[k].isPlayerDead)
+                    {
+                        GhostGirl.hauntingPlayer = StartOfRound.Instance.allPlayerScripts[k];
+                        break;
+                    }
+                }
+            }
+            Utils.CallNextFrame(HauntTargetPlayer);
+        }
+
+        internal void HauntTargetPlayer() // DEBUG
+        {
+            GhostGirl.ChangeOwnershipOfEnemy(GhostGirl.hauntingPlayer.actualClientId);
+            GhostGirl.hauntingLocalPlayer = GameNetworkManager.Instance.localPlayerController == GhostGirl.hauntingPlayer;
+            if (GhostGirl.switchHauntedPlayerCoroutine != null)
+            {
+                StopCoroutine(GhostGirl.switchHauntedPlayerCoroutine);
+            }
+            GhostGirl.switchHauntedPlayerCoroutine = StartCoroutine(GhostGirl.setSwitchingHauntingPlayer());
+        }
+
+        internal void ShowForHost() // DEBUG
+        {
+            GhostGirl.EnableEnemyMesh(Utils.IsHost, true);
+            GhostGirl.agent.speed = 0f;
+        }
+
+        internal void ShowForHauntingPlayer() // DEBUG
+        {
+            GhostGirl.EnableEnemyMesh(Utils.CurrentPlayer == GhostGirl.hauntingPlayer, true);
+            GhostGirl.agent.speed = 0f;
+        }
+        #endregion
+#endif
     }
 }
