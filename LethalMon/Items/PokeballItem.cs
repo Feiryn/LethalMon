@@ -37,9 +37,9 @@ public abstract class PokeballItem : ThrowableItem
 
     public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
 
-    internal Animator animator;
+    internal Animator? animator;
 
-    internal AudioSource audioSource;
+    internal AudioSource? audioSource;
 
     internal static AudioClip? BeepSFX = null;
     internal static AudioClip? SuccessSFX = null;
@@ -68,6 +68,7 @@ public abstract class PokeballItem : ThrowableItem
         script.itemProperties = ballItem;
         script.grabbable = true;
         script.grabbableToEnemies = true;
+
         LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(ballItem.spawnPrefab);
 
         LethalLib.Modules.Items.RegisterScrap(ballItem, scrapRarity, Levels.LevelTypes.All);

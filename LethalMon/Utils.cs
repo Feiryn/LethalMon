@@ -105,19 +105,6 @@ public class Utils
 
             return pos;
     }
-
-    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip, float volume = 1f)
-    {
-        var audioSource = SoundManager.Instance.tempAudio1.isPlaying ? SoundManager.Instance.tempAudio2 : SoundManager.Instance.tempAudio1;
-        audioSource.transform.position = position;
-        audioSource.PlayOneShot(clip, volume);
-    }
-
-    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)
-    {
-        SoundManager.Instance.tempAudio1.transform.position = position;
-        SoundManager.Instance.tempAudio1.PlayOneShot(clip);
-    }
     
     public static void EnableShotgunHeldByEnemyAi(EnemyAI enemyAI, bool enable)
     {
@@ -142,6 +129,40 @@ public class Utils
             }
         }
     }
+
+    #region Sounds
+
+    internal static List<AudioSource> diageticAudios = [];
+    internal static AudioSource CreateAudioSource(GameObject parent, float minDistance = 0f, float maxDistance = 25f)
+    {
+        var audioSource = parent.AddComponent<AudioSource>();
+        audioSource.minDistance = minDistance;
+        audioSource.maxDistance = maxDistance;
+        audioSource.rolloffMode = AudioRolloffMode.Linear;
+        audioSource.spatialBlend = 1f; // default 0
+        audioSource.priority = 127; // default 128
+        audioSource.outputAudioMixerGroup = SoundManager.Instance.tempAudio1.outputAudioMixerGroup;
+        return audioSource;
+    }
+
+    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip, float volume = 1f)
+    {
+        foreach(var audioSource in diageticAudios)
+        {
+            if (audioSource == null || audioSource.isPlaying) continue;
+
+            audioSource.transform.position = position;
+            audioSource.PlayOneShot(clip, volume);
+            return;
+        }
+
+        var newAudioSource = CreateAudioSource(SoundManager.Instance.gameObject);
+        diageticAudios.Add(newAudioSource);
+
+        newAudioSource.transform.position = position;
+        newAudioSource.PlayOneShot(clip, volume);
+    }
+    #endregion
 
     #region Player
     public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();

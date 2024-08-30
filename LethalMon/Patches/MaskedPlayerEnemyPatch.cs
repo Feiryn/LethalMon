@@ -23,7 +23,7 @@ namespace LethalMon.Patches
 
             if (!__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour) || tamedBehaviour.targetPlayer == null) return;
 
-            if (tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
+            if (tamedBehaviour.CurrentCustomBehaviour == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
             {
                 LethalMon.Log("Ghost hitting player " + player.playerClientId);
                 tamedBehaviour.Masked.startingKillAnimationLocalClient = true; // Make player unkillable by this ghost

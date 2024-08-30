@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -147,7 +146,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
-    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
+    public int CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -735,13 +734,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
                 if (distance1 > 4f && distance2 > 4f)
                 {
-                    if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
-                    {
-                        LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
-                        Enemy.agent.enabled = false;
-                        Enemy.agent.enabled = true;
-                    }
-
+                    PlaceOnNavMesh();
                     MoveTowards(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
                 }
             }
@@ -750,7 +743,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         // Turn in the direction of the owner gradually
         TurnTowardsPosition(targetPosition);
     }
-    
+
+    internal void PlaceOnNavMesh() => PlaceEnemyOnNavMesh(Enemy);
+
+    internal static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
+    {
+        if (enemyAI.agent != null && enemyAI.agent.enabled && !enemyAI.agent.isOnNavMesh)
+        {
+            LethalMon.Log("Enemy not on a valid navMesh. Repositioning.", LethalMon.LogType.Warning);
+            var location = RoundManager.Instance.GetNavMeshPosition(enemyAI.transform.position);
+            enemyAI.agent.Warp(location);
+
+            enemyAI.agent.enabled = false;
+            enemyAI.agent.enabled = true;
+        }
+    }
+
     public void FollowOwner()
     {
         if (ownerPlayer == null) return;
@@ -921,7 +929,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     };
 
-    public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
+    public void Teleport(Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false) => TeleportEnemy(Enemy, position, placeOnNavMesh, syncPosition);
+
+    public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false)
     {
         if (!Utils.IsHost || enemyAI?.agent == null) return;
 
@@ -929,9 +939,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             enemyAI.agent.Warp(position);
         else
             enemyAI.transform.position = position;
-        enemyAI.serverPosition = position;
 
-        //enemyAI.SyncPositionToClients();
+        if (placeOnNavMesh)
+            PlaceEnemyOnNavMesh(enemyAI);
+
+        if(syncPosition)
+            enemyAI.SyncPositionToClients();
+        else
+            enemyAI.serverPosition = position;
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);

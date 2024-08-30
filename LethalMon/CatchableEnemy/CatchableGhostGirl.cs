@@ -15,8 +15,7 @@ namespace LethalMon.CatchableEnemy
             if(tamedBehaviour == null)
                 return base.CanBeCapturedBy(enemyAI!, player);
 
-            var customBehaviour = tamedBehaviour.CurrentCustomBehaviour;
-            return customBehaviour == null || customBehaviour != (int)GhostGirlTamedBehaviour.CustomBehaviour.ScareThrowerAndHunt; // Unable to be captured again during this phase
+            return tamedBehaviour.CurrentCustomBehaviour < 0;
         }
     }
 }
