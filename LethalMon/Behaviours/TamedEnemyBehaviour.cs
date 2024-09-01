@@ -933,7 +933,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false)
     {
-        if (!Utils.IsHost || enemyAI?.agent == null) return;
+        if (!(Utils.IsHost || enemyAI.IsOwner) || enemyAI?.agent == null) return;
 
         if (enemyAI.agent.enabled)
             enemyAI.agent.Warp(position);

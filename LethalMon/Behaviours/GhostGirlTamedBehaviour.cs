@@ -80,6 +80,7 @@ namespace LethalMon.Behaviours
 
                     //LethalMon.Log("Target: " +  targetPlayer.name + " / Is us? " + (TargetingUs ? "yes" : "no"));
                     GhostGirl.EnableEnemyMesh(TargetingUs, true);
+                    GhostGirl.enemyMeshEnabled = TargetingUs;
                     GhostGirl.creatureSFX.Stop();
 
                     if (GhostGirl.agent != null)
@@ -91,8 +92,13 @@ namespace LethalMon.Behaviours
                         PlayRandomSoundForTarget();
                     }
 
-                    if (Utils.IsHost)
+                    LethalMon.Log("Current owner: " + Enemy.currentOwnershipOnThisClient + " / " + Enemy.IsOwner);
+
+                    if (Enemy.IsOwner)
+                    {
+                        PlaceOnNavMesh();
                         Invoke(nameof(StartFakeHunt), 3f);
+                    }
                     break;
 
                 case CustomBehaviour.EscapePhaseFakeHunt:   // Phase 2
@@ -110,7 +116,7 @@ namespace LethalMon.Behaviours
                             RoundManager.Instance.FlickerLights(true, true);
                     }
 
-                    if (Utils.IsHost)
+                    if (Enemy.IsOwner)
                     {
                         if (!WarpToHauntPosition())
                         {
@@ -138,25 +144,19 @@ namespace LethalMon.Behaviours
                         RoundManager.Instance.FlickerLights(true, true);
                     }
 
-                    if (Utils.IsHost)
+                    if (Enemy.IsOwner)
                     {
                         if (GhostGirl.agent != null)
-                        {
-                            var location = RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position + targetPlayer.transform.forward * 5f, GhostGirl.navHit);
-                            if (GhostGirl.navHit.hit)
-                                Teleport(location, true, true);
-                            else
-                                WarpToHauntPosition();
+                            GhostGirl.agent.speed = 0f;
 
-                            PlaceOnNavMesh();
-                        }
-                    }
+                        var location = RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position + targetPlayer.transform.forward * 5f, GhostGirl.navHit);
+                        if (GhostGirl.navHit.hit)
+                            Teleport(location, true, true);
+                        else
+                            WarpToHauntPosition();
 
-                    if (GhostGirl.agent != null)
-                        GhostGirl.agent.speed = 0f;
-
-                    if (Utils.IsHost)
                         Invoke(nameof(StartHuntServerRpc), 3f);
+                    }
 
                     break;
 
@@ -221,19 +221,17 @@ namespace LethalMon.Behaviours
             if (TargetingUs)
                 TurnTowardsPosition(targetPlayer!.transform.position);
 
-            //LethalMon.Log("OnEscapePhaseFakeHunt. Hunts: " + _fakeHunts);
+            if (!Enemy.IsOwner) return;
 
-            if (!Utils.IsHost) return;
+            PlaceOnNavMesh();
 
             var distanceTowardsPlayer = DistanceToTargetPlayer;
             if (distanceTowardsPlayer > 2f)
             {
-                //LethalMon.Log("Distance ABOVE 2f");
                 GhostGirl.SetDestinationToPosition(targetPlayer!.transform.position);
             }
             else
             {
-                //LethalMon.Log("Distance BELOW 2f");
                 var angleTowardsTarget = (GhostGirl.transform.position - targetPlayer!.transform.position).normalized;
                 GhostGirl.SetDestinationToPosition(targetPlayer.transform.position + angleTowardsTarget);
             }
@@ -262,18 +260,10 @@ namespace LethalMon.Behaviours
         }
 
         [ServerRpc(RequireOwnership = false)]
-        internal void StartNextFakeHuntServerRpc()
-        {
-            //LethalMon.Log("StartHuntServerRpc");
-            StartNextFakeHuntClientRpc();
-        }
+        internal void StartNextFakeHuntServerRpc() => StartNextFakeHuntClientRpc();
 
         [ClientRpc]
-        internal void StartNextFakeHuntClientRpc()
-        {
-            //LethalMon.Log("StartNextFakeHuntClientRpc.");
-            InitCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
-        }
+        internal void StartNextFakeHuntClientRpc() => InitCustomBehaviour((int)CustomBehaviour.EscapePhaseFakeHunt);
 
         public void OnEscapePhaseHunt()
         {
@@ -290,10 +280,11 @@ namespace LethalMon.Behaviours
 
         public void ExitEscapePhase()
         {
-            //LethalMon.Log("ExitEscapePhase");
+            LethalMon.Log("GhostGirl.ExitEscapePhase");
             _playerHasSeenGhostGirlInFakeHunt = false;
             _fakeHunts = 0;
             targetPlayer = null;
+            GhostGirl.enabled = true;
             SwitchToDefaultBehaviour(0);
         }
 
@@ -308,7 +299,6 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            GhostGirl.ChangeOwnershipOfEnemy(targetPlayer!.actualClientId);
             StartHuntClientRpc();
         }
 
@@ -322,6 +312,8 @@ namespace LethalMon.Behaviours
             GhostGirl.enabled = true;
             if(TargetingUs)
                 GhostGirl.BeginChasing();
+            else
+                GhostGirl.SwitchToBehaviourStateOnLocalClient(1);
         }
         #endregion
 
@@ -360,8 +352,8 @@ namespace LethalMon.Behaviours
                 GhostGirl.enemyMeshEnabled = IsOwnerPlayer;
             }
 #if DEBUG
-            //else
-            //    Utils.CallNextFrame(ShowForHost);
+            else
+                Utils.CallNextFrame(ShowForHauntingPlayer);
 #endif
 
             teleportCooldown = GetCooldownWithId(TeleportCooldownId);
@@ -397,7 +389,6 @@ namespace LethalMon.Behaviours
             if (!GhostGirl.enemyMeshEnabled)
             {
                 EnableEnemyMeshForTargetServerRpc(OwnerID, true);
-                GhostGirl.enemyMeshEnabled = true;
             }
 
             if (teleportCooldown != null && teleportCooldown.IsFinished())
@@ -449,9 +440,9 @@ namespace LethalMon.Behaviours
 
             GhostGirl.enabled = false;
 
-            if (Utils.IsHost)
+            if (Enemy.IsOwner)
             {
-                GhostGirl.ChangeOwnershipOfEnemy(Utils.CurrentPlayer.actualClientId); // Change it so that the host can control it during the event
+                GhostGirl.ChangeOwnershipOfEnemy(playerWhoThrewBall.actualClientId); // Change it so that the host can control it during the event
                 Utils.CallNextFrame(StartEscapeStare);
             }
         }
@@ -493,6 +484,10 @@ namespace LethalMon.Behaviours
 
         internal bool WarpToHauntPosition()
         {
+            if (GhostGirl.hauntingPlayer == null) return false;
+
+            GhostGirl.hauntingPlayer.isInsideFactory = GhostGirl.hauntingPlayer.transform.position.y < -50f;
+            LethalMon.Log("WarpToHauntPosition");
             var newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: true);
             if (newPosition == Vector3.zero)
                 newPosition = GhostGirl.TryFindingHauntPosition(staringMode: false, mustBeInLOS: false);
@@ -588,7 +583,9 @@ namespace LethalMon.Behaviours
         [ClientRpc]
         public void EnableEnemyMeshForTargetClientRpc(ulong targetPlayerID, bool enable = true)
         {
-            GhostGirl.EnableEnemyMesh(enable && targetPlayerID == Utils.CurrentPlayerID, true);
+            var isEnabled = enable && targetPlayerID == Utils.CurrentPlayerID;
+            GhostGirl.EnableEnemyMesh(isEnabled, true);
+            GhostGirl.enemyMeshEnabled = isEnabled;
         }
         #endregion
 
@@ -625,12 +622,15 @@ namespace LethalMon.Behaviours
         internal void ShowForHost() // DEBUG
         {
             GhostGirl.EnableEnemyMesh(Utils.IsHost, true);
+            GhostGirl.enemyMeshEnabled = Utils.IsHost;
             GhostGirl.agent.speed = 0f;
         }
 
         internal void ShowForHauntingPlayer() // DEBUG
         {
-            GhostGirl.EnableEnemyMesh(Utils.CurrentPlayer == GhostGirl.hauntingPlayer, true);
+            var isEnabled = Utils.CurrentPlayer == GhostGirl.hauntingPlayer;
+            GhostGirl.EnableEnemyMesh(isEnabled, true);
+            GhostGirl.enemyMeshEnabled = isEnabled;
             GhostGirl.agent.speed = 0f;
         }
         #endregion

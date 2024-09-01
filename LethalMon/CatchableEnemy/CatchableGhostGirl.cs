@@ -11,11 +11,14 @@ namespace LethalMon.CatchableEnemy
 
         public override bool CanBeCapturedBy(EnemyAI enemyAI, PlayerControllerB player)
         {
-            var tamedBehaviour = enemyAI?.GetComponent<GhostGirlTamedBehaviour>();
-            if(tamedBehaviour == null)
-                return base.CanBeCapturedBy(enemyAI!, player);
+            var ghostGirl = enemyAI as DressGirlAI;
+            if (ghostGirl == null || !ghostGirl.enemyMeshEnabled)
+                return false;
 
-            return tamedBehaviour.CurrentCustomBehaviour < 0;
+            if (ghostGirl.TryGetComponent(out GhostGirlTamedBehaviour tamedBehaviour) && tamedBehaviour.CurrentCustomBehaviour >= 0)
+                return false;
+
+            return base.CanBeCapturedBy(enemyAI!, player);
         }
     }
 }
