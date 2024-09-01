@@ -4,6 +4,17 @@ LethalMon is a Lethal Company mod that includes the possibility to catch monster
 
 This mod is still in alpha so expect bugs or not a lot of features.
 
+## We are recruiting!
+
+We are looking for people to help us with mod.
+
+We need people to help us with:
+- Coding
+- Modeling
+- Animating
+- Testing
+
+If you are interested, please contact us on the LC discord modding server https://discord.com/invite/lcmod (thread in #mod-releases).
 
 ## How to catch monsters?
 
