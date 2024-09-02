@@ -1,5 +1,7 @@
-﻿using HarmonyLib;
+﻿using GameNetcodeStuff;
+using HarmonyLib;
 using LethalMon.Behaviours;
+using UnityEngine;
 
 namespace LethalMon.Patches
 {
@@ -11,6 +13,26 @@ namespace LethalMon.Patches
         {
             TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
             return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
+        }
+
+        [HarmonyPatch(typeof(SandSpiderWebTrap), nameof(SandSpiderWebTrap.OnTriggerStay))]
+        [HarmonyPrefix]
+        public static bool OnTriggerStayPrefix(SandSpiderWebTrap __instance, Collider other)
+        {
+            SpiderTamedBehaviour spiderEnemyBehaviour = __instance.mainScript.GetComponent<SpiderTamedBehaviour>();
+            if(spiderEnemyBehaviour != null && spiderEnemyBehaviour.IsTamed)
+            {
+                if ((Time.realtimeSinceStartup - spiderEnemyBehaviour.localPlayerJumpFromWebTime) < 1f) return false;
+
+                if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
+                {
+                    if (player.isJumping || player.isFallingFromJump || player.isFallingNoJump)
+                        spiderEnemyBehaviour.StartCoroutine(spiderEnemyBehaviour.PerformWebJump());
+                }
+                return false;
+            }
+
+            return true;
         }
     }
 }

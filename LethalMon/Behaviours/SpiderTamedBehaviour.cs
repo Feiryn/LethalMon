@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System;
 using LethalMon.Items;
 using UnityEngine;
-using static UnityEngine.Rendering.HighDefinition.ScalableSettingLevelParameter;
 using System.Linq;
-using static LethalMon.Utils;
 using Unity.Netcode;
+using System.Collections;
+using LethalLib.Modules;
 
 namespace LethalMon.Behaviours
 {
@@ -24,6 +24,10 @@ namespace LethalMon.Behaviours
                 return _spider;
             }
         }
+
+        internal float localPlayerJumpFromWebTime = 0f;
+
+        public static readonly float SpiderBounceForce = 3f;
 
         internal override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
         #endregion
@@ -72,7 +76,7 @@ namespace LethalMon.Behaviours
         #region Action Keys
         private readonly List<ActionKey> _actionKeys =
         [
-            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Action description here" }
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Shoot web in front" }
         ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
@@ -80,9 +84,11 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            /* USE THIS SOMEWHERE TO SHOW OR HIDE THE CONTROL TIP
-                *   EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true/false);
-            */
+            if (ownerPlayer != null && CanDefend)
+            {
+                var basePos = ownerPlayer.transform.position + Vector3.up * 0.5f + ownerPlayer.transform.forward * 3f;
+                ShootWeb(basePos, basePos + ownerPlayer.transform.forward * 2f);
+            }
         }
         #endregion
 
@@ -95,6 +101,8 @@ namespace LethalMon.Behaviours
 
             if(IsTamed)
                 Spider.transform.localScale = Vector3.one * 0.7f;
+
+            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -118,7 +126,6 @@ namespace LethalMon.Behaviours
                     {
                         LethalMon.Log("Spider: Shoot web on target!", LethalMon.LogType.Warning);
                         ShootWebAt(targetPosition.Value);
-                        shootWebCooldown?.Reset();
                     }
 
                     SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
@@ -155,6 +162,8 @@ namespace LethalMon.Behaviours
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            ShootWebsAround();
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -190,6 +199,29 @@ namespace LethalMon.Behaviours
         }
         #endregion
 
+        internal IEnumerator PerformWebJump()
+        {
+            localPlayerJumpFromWebTime = Time.realtimeSinceStartup;
+
+            var player = Utils.CurrentPlayer;
+
+            if (player.jumpCoroutine != null)
+                player.StopCoroutine(player.jumpCoroutine);
+            player.jumpCoroutine = player.StartCoroutine(player.PlayerJump());
+
+            // not working yet
+            var previousJumpForce = player.jumpForce;
+            var modifiedJumpForce = previousJumpForce * SpiderBounceForce;
+
+            yield return new WaitUntil(() =>
+            {
+                player.jumpForce = modifiedJumpForce;
+                return player.thisController.isGrounded;
+            });
+
+            player.jumpForce = previousJumpForce;
+        }
+
         #region Webshooting
         // HOST ONLY!
         internal void ShootWebsAround(int amount = 10) // Shoot webs in any direction
@@ -219,14 +251,25 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void ShootWebAt(Vector3 targetPosition, float size = 5f) => ShootWeb(targetPosition - (Spider.transform.position - targetPosition).normalized * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
+        internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
 
         internal void ShootWeb(Vector3 from, Vector3 to)
         {
+            shootWebCooldown?.Reset();
+
             if (!Spider.IsOwner) return;
 
             Spider.SpawnWebTrapServerRpc(from, to);
-            Spider.webTraps.Last().gameObject.AddComponent<WebBehaviour>().spawnedBy = Spider; // todo: check if it's fine that only host has it, or if the current owner of Spider needs to run it
+            Spider.webTraps.Last().gameObject.AddComponent<WebBehaviour>().spawnedBy = this;
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void BreakWebServerRpc(int trapID) // avoids chase
+        {
+            if (trapID > Spider.webTraps.Count - 1) return; // no such web
+
+            Vector3 position = Spider.webTraps[trapID].centerOfWeb.position;
+            Spider.BreakWebClientRpc(position, trapID);
         }
         #endregion
 
@@ -235,7 +278,7 @@ namespace LethalMon.Behaviours
         {
             private const float SpeedDivider = 20f;
 
-            private float _lifeTime = 5f;
+            private float _lifeTime = 5f; // Time how long the web can handle enemies
 
             private struct EnemyInfo(EnemyAI enemyAI, float enterAgentSpeed, float enterAnimationSpeed)
             {
@@ -244,7 +287,7 @@ namespace LethalMon.Behaviours
                 internal float enterAnimationSpeed { get; set; } = enterAnimationSpeed;
             }
 
-            internal SandSpiderAI? spawnedBy = null;
+            internal SpiderTamedBehaviour? spawnedBy = null;
             internal SandSpiderWebTrap? webTrap = null;
 
             private Dictionary<int, EnemyInfo> _touchingEnemies = new Dictionary<int, EnemyInfo>();
@@ -276,6 +319,11 @@ namespace LethalMon.Behaviours
 
                 LethalMon.Log($"Enemy {enemyAI.name} entered the web.", LethalMon.LogType.Warning);
                 _touchingEnemies.Add(other.GetInstanceID(), new EnemyInfo(enemyAI, enemyAI.agent.speed, enemyAI.creatureAnimator.speed));
+                if (webTrap != null && spawnedBy?.Spider != null)
+                {
+                    webTrap.webAudio.Play();
+                    webTrap.webAudio.PlayOneShot(spawnedBy.Spider.hitWebSFX);
+                }
             }
 
             void OnTriggerStay(Collider other)
@@ -290,12 +338,7 @@ namespace LethalMon.Behaviours
                 }
 
                 if( _lifeTime <= 0 && webTrap != null && spawnedBy != null )
-                {
-                    if (spawnedBy.webTraps.Count < webTrap.trapID)
-                        LethalMon.Log("Unable to destroy trap...", LethalMon.LogType.Warning);
-                    else
-                        spawnedBy.BreakWebServerRpc(webTrap.trapID, 0);
-                }
+                    spawnedBy.BreakWebServerRpc(webTrap.trapID);
             }
 
             void OnTriggerExit(Collider other)
@@ -304,6 +347,9 @@ namespace LethalMon.Behaviours
                     LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} left the web.", LethalMon.LogType.Warning);
                 ResetEnemyValues(other.GetInstanceID());
                 _touchingEnemies.Remove(other.GetInstanceID());
+
+                if(_touchingEnemies.Count == 0 && webTrap != null && !webTrap.currentTrappedPlayer)
+                    webTrap.webAudio.Stop();
             }
 
             void OnDestroy()
