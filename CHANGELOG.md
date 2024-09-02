@@ -1,3 +1,8 @@
+# 0.5.2
+
+- Fixed balls clipping for some players
+- Fixed thumper not working in mines
+
 # 0.5.1
 
 - Added sounds to balls (thanks to [@NiroDev](https://github.com/NiroDev))
