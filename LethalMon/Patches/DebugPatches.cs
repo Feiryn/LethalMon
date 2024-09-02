@@ -56,6 +56,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f4Key.wasPressedThisFrame)
             {
+                LogCollidersInRange(1f);
             }
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
@@ -231,13 +232,15 @@ namespace LethalMon.Patches
         public static void LogCollidersInRange(float range)
         {
             Collider[] colliders = Physics.OverlapSphere(Utils.CurrentPlayer.transform.position, range);
-            // Log all the colliders and sub components
+            // Log all the colliders and subcomponents
             foreach (var collider in colliders)
             {
                 LethalMon.Log(collider.name);
                 foreach (var component in collider.GetComponents<Component>())
                 {
-                    LethalMon.Log("  " + component.GetType().Name + " (los: " + !Physics.Linecast(Utils.CurrentPlayer.transform.position, component.transform.position, StartOfRound.Instance.collidersAndRoomMaskAndDefault) + ")");
+                    LethalMon.Log("  " + component.GetType().Name);
+                    LethalMon.Log("    LOS: " + !Physics.Linecast(Utils.CurrentPlayer.transform.position, component.transform.position, StartOfRound.Instance.collidersAndRoomMaskAndDefault));
+                    LethalMon.Log("    Layer: " + LayerMask.LayerToName(component.gameObject.layer));
                 }
             }
         }

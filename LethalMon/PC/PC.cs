@@ -37,6 +37,14 @@ public class PC : NetworkBehaviour
 
     private GameObject _screen;
     #endregion
+    
+    #region PCApp
+    private Button _appCloseButton;
+    
+    private DexApp? _currentApp;
+    
+    private DexApp _dexApp;
+    #endregion
 
     public void Start()
     {
@@ -71,7 +79,13 @@ public class PC : NetworkBehaviour
         _screen = gameObject.transform.Find("Screen")?.gameObject!;
         
         // Assign buttons to functions
-        gameObject.transform.Find("Screen/MainMenu/Tutorial").GetComponent<Button>().onClick = FunctionToButtonClickEvent(OnTutorialButtonClick);
+        gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>().onClick = FunctionToButtonClickEvent(OnDexButtonClick);
+        
+        // Load PC apps
+        _appCloseButton = _screen.transform.Find("Window/CloseButton").GetComponent<Button>();
+        _appCloseButton.onClick.AddListener(CloseCurrentApp);
+        _dexApp = new DexApp(_screen);
+        _dexApp.Hide();
     }
 
     private static Button.ButtonClickedEvent FunctionToButtonClickEvent(UnityAction action)
@@ -130,15 +144,31 @@ public class PC : NetworkBehaviour
         }
     }
     
+    public void CloseCurrentApp()
+    {
+        if (_currentApp != null)
+        {
+            _currentApp.Hide();
+            _currentApp = null;
+        }
+    }
+    
     public void PressEsc(InputAction.CallbackContext context)
     {
-        StopUsing();
+        if (_currentApp != null)
+        {
+            CloseCurrentApp();
+        }
+        else
+        {
+            StopUsing();
+        }
     }
     
     public void Look_performed(InputAction.CallbackContext context)
     {
         Vector2 move = context.ReadValue<Vector2>();
-        _cursor.anchoredPosition = new Vector2(Mathf.Clamp(_cursor.anchoredPosition.x - move.x * CursorSpeed, CursorMinX, CursorMaxX), Mathf.Clamp(_cursor.anchoredPosition.y + move.y * CursorSpeed, CursorMinY, CursorMaxY));
+        _cursor.anchoredPosition = new Vector2(Mathf.Clamp(_cursor.anchoredPosition.x + move.x * CursorSpeed, CursorMinX, CursorMaxX), Mathf.Clamp(_cursor.anchoredPosition.y + move.y * CursorSpeed, CursorMinY, CursorMaxY));
     }
     
     public void LeftClick_performed(InputAction.CallbackContext context)
@@ -147,7 +177,6 @@ public class PC : NetworkBehaviour
 
         foreach (var button in _screen.GetComponentsInChildren<Button>())
         {
-            LethalMon.Log("Button: " + button.name);
             if (button.IsActive() && IsCursorOnButton(button))
             {
                 button.onClick.Invoke();
@@ -158,18 +187,16 @@ public class PC : NetworkBehaviour
     private bool IsCursorOnButton(Button button)
     {
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
-        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
+        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
+        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
         Vector3 cursorPosition = _screen.transform.InverseTransformPoint(_cursor.position);
-        LethalMon.Log("Button min: " + buttonMin);
-        LethalMon.Log("Button max: " + buttonMax);
-        LethalMon.Log("Cursor position: " + cursorPosition);
         return cursorPosition.x >= buttonMin.x && cursorPosition.x <= buttonMax.x && cursorPosition.y >= buttonMin.y && cursorPosition.y <= buttonMax.y;
     }
     
-    public void OnTutorialButtonClick()
+    public void OnDexButtonClick()
     {
-        LethalMon.Log("Tutorial button click");
+        _dexApp.Show();
+        _currentApp = _dexApp;
     }
     
     internal static void LoadAssets(AssetBundle assetBundle)

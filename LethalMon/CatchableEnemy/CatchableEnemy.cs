@@ -8,7 +8,7 @@ namespace LethalMon.CatchableEnemy;
 /// <summary>
 /// An enemy that can be catched
 /// </summary>
-public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty)
+public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty, string behaviourDescription = "TODO")
 {
     private readonly int _baseCatchDifficulty = catchDifficulty;
     
@@ -27,6 +27,8 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
     /// todo Replace because there can be collisions
     /// </summary>
     public int Id { get; } = id;
+    
+    public string BehaviourDescription { get; } = behaviourDescription;
 
     public float GetCaptureProbability(int ballStrength, EnemyAI? enemyAI = null)
     {
