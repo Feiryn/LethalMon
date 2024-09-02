@@ -2,3 +2,9 @@
 .vs
 *.sln
 *.DotSettings.user
+
+/LethalMon/LethalMon.csproj
+
+# Unity
+/Unity/Packages/*
+/Unity/ProjectSettings/*
