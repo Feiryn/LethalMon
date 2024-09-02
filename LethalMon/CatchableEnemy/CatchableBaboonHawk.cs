@@ -5,7 +5,7 @@ namespace LethalMon.CatchableEnemy;
 
 public class CatchableBaboonHawk : CatchableEnemy
 {
-    public CatchableBaboonHawk() : base(14, "Baboon Hawk", 4)
+    public CatchableBaboonHawk() : base(14, "Baboon Hawk", 4, "Baboon hawks can echo-localize near items and defend the owner.\nWhen they are failed to be captured, they will spawn a baby hawk that will scream and attracts other baboon hawks.")
     {
     }
 

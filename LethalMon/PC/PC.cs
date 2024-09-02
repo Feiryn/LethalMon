@@ -1,9 +1,11 @@
+using System;
 using System.Linq;
 using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 
 namespace LethalMon.PC;
@@ -36,15 +38,21 @@ public class PC : NetworkBehaviour
     private RectTransform _cursor;
 
     private GameObject _screen;
+
+    private Button[] _desktopButtons;
     #endregion
     
     #region PCApp
     private Button _appCloseButton;
     
-    private DexApp? _currentApp;
+    private PCApp? _currentApp;
     
     private DexApp _dexApp;
     #endregion
+
+    private static int _backupRenderTextureWidth;
+    
+    private static int _backupRenderTextureHeight;
 
     public void Start()
     {
@@ -79,7 +87,12 @@ public class PC : NetworkBehaviour
         _screen = gameObject.transform.Find("Screen")?.gameObject!;
         
         // Assign buttons to functions
-        gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>().onClick = FunctionToButtonClickEvent(OnDexButtonClick);
+        _desktopButtons = new Button[4];
+        _desktopButtons[0] = gameObject.transform.Find("Screen/MainMenu/TutorialButton").GetComponent<Button>();
+        _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
+        _desktopButtons[1].onClick = FunctionToButtonClickEvent(OnDexButtonClick);
+        _desktopButtons[2] = gameObject.transform.Find("Screen/MainMenu/ScanButton").GetComponent<Button>();
+        _desktopButtons[3] = gameObject.transform.Find("Screen/MainMenu/DuplicateButton").GetComponent<Button>();
         
         // Load PC apps
         _appCloseButton = _screen.transform.Find("Window/CloseButton").GetComponent<Button>();
@@ -93,6 +106,42 @@ public class PC : NetworkBehaviour
         var buttonClickedEvent = new Button.ButtonClickedEvent();
         buttonClickedEvent.AddListener(action);
         return buttonClickedEvent;
+    }
+
+    private static void HighQualityCamera()
+    {
+        // todo do not do anything if not default settings or too high already
+        // todo small render distance so low end computers won't burn
+
+        Camera camera = Utils.CurrentPlayer.gameplayCamera;
+        if (camera.pixelWidth != 860 || camera.pixelHeight != 520)
+        {
+            LethalMon.Log("Detected custom resolution mod, don't change the target texture");
+            return;
+        }
+        
+        // Backup the target texture (even if it's the default one, we will later maybe support custom settings...
+        _backupRenderTextureWidth = camera.targetTexture.width;
+        _backupRenderTextureHeight = camera.targetTexture.height;
+        
+        // Release the target texture and double the resolution
+        camera.targetTexture.Release();
+        
+        // Let's assume that the user has a 1920x1080. Higher resolutions can make PCs heat
+        camera.targetTexture.width = 1920;
+        camera.targetTexture.height = 1080;
+    }
+
+    private static void RollbackHighQualityCamera()
+    {
+        Camera camera = Utils.CurrentPlayer.gameplayCamera;
+        
+        // Release the target texture and double the resolution
+        camera.targetTexture.Release();
+        
+        // Let's assume that the user has a 1920x1080. Higher resolutions can make PCs heat
+        camera.targetTexture.width = _backupRenderTextureWidth;
+        camera.targetTexture.height = _backupRenderTextureHeight;
     }
     
     public void OnBallPlaceInteract(PlayerControllerB player)
@@ -121,6 +170,8 @@ public class PC : NetworkBehaviour
             _playerActions.Enable();
             player.playerActions.Movement.Move.Disable();
             player.playerActions.Movement.Look.Disable();
+
+            HighQualityCamera();
         }
         catch
         {
@@ -141,6 +192,8 @@ public class PC : NetworkBehaviour
             
             _currentPlayer.inTerminalMenu = false;
             _screenInteractTrigger.StopSpecialAnimation();
+            
+            RollbackHighQualityCamera();
         }
     }
     
@@ -150,6 +203,20 @@ public class PC : NetworkBehaviour
         {
             _currentApp.Hide();
             _currentApp = null;
+            foreach (var desktopButton in _desktopButtons)
+            {
+                desktopButton.gameObject.SetActive(true);
+            }
+        }
+    }
+    
+    public void SwitchToApp(PCApp app)
+    {
+        app.Show();
+        _currentApp = app;
+        foreach (var desktopButton in _desktopButtons)
+        {
+            desktopButton.gameObject.SetActive(false);
         }
     }
     
@@ -195,8 +262,7 @@ public class PC : NetworkBehaviour
     
     public void OnDexButtonClick()
     {
-        _dexApp.Show();
-        _currentApp = _dexApp;
+        SwitchToApp(_dexApp);
     }
     
     internal static void LoadAssets(AssetBundle assetBundle)
