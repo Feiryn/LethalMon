@@ -26,6 +26,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual TargetType Targets => TargetType.Alive;
     internal virtual float TargetingRange => 10f;
+    internal virtual bool TargetOnlyKillableEnemies => false;
 
     internal virtual bool CanBlockOtherEnemies => false;
 
@@ -46,7 +47,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         //{ typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) },
         { typeof(CrawlerAI),         typeof(CrawlerTamedBehaviour) },
         { typeof(MaskedPlayerEnemy), typeof(MaskedTamedBehaviour) },
-        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) }
+        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
+        { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -786,6 +788,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
         if (Targets == TargetType.Dead && !enemyAI.isEnemyDead || Targets == TargetType.Alive && enemyAI.isEnemyDead) return false;
+
+        if(TargetOnlyKillableEnemies && !enemyAI.enemyType.canDie) return false;
 
         return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered &&
             !(enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour) && tamedBehaviour.IsOwnedByAPlayer());
