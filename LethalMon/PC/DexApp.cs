@@ -1,4 +1,5 @@
 using System.Linq;
+using LethalMon.Save;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,7 +8,7 @@ namespace LethalMon.PC;
 
 public class DexApp : PCApp
 {
-    #region MenuComponents
+    #region AppComponents
 
     private readonly Button[] _monstersButtons;
     
@@ -62,11 +63,23 @@ public class DexApp : PCApp
     private void UpdateMonsterInfo(string enemyName)
     {
         _rightColumn.SetActive(true);
-        CatchableEnemy.CatchableEnemy catchableEnemy = Data.CatchableMonsters[enemyName];
-        _monsterName.text = catchableEnemy.DisplayName;
-        _captureRates.text = $"Pokeball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(0) * 100)}%\n\nGreat ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(1) * 100)}%\n\nUltra ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(2) * 100)}%\n\nMaster ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(3) * 100)}%";
-        _behaviourDescription.text = catchableEnemy.BehaviourDescription;
-        _monsterImage.sprite = LethalMon.monstersSprites[enemyName.ToLower()];
+        
+        if (SaveManager.IsDexEntryUnlocked(enemyName))
+        {
+            CatchableEnemy.CatchableEnemy catchableEnemy = Data.CatchableMonsters[enemyName];
+            _monsterName.text = catchableEnemy.DisplayName;
+            _captureRates.text = $"Pokeball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(0) * 100)}%\n\nGreat ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(1) * 100)}%\n\nUltra ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(2) * 100)}%\n\nMaster ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(3) * 100)}%";
+            _behaviourDescription.text = catchableEnemy.BehaviourDescription;
+            _monsterImage.sprite = LethalMon.monstersSprites[enemyName.ToLower()];
+        }
+        else
+        {
+            _monsterName.text = "??????";
+            _captureRates.text = $"Pokeball: ???%\n\nGreat ball: ???%\n\nUltra ball: ???%\n\nMaster ball: ???%";
+            _behaviourDescription.text = "??????";
+            _monsterImage.sprite = LethalMon.monstersSprites["unknown"];
+        }
+
     }
 
     private void UpdateMonstersButtons()
@@ -81,9 +94,9 @@ public class DexApp : PCApp
             }
             
             _monstersButtons[i].gameObject.SetActive(true);
-            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = Data.CatchableMonsters[_enemies[index]].DisplayName;
             _monstersButtons[i].onClick.RemoveAllListeners();
             _monstersButtons[i].onClick.AddListener(() => UpdateMonsterInfo(_enemies[index]));
+            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = SaveManager.IsDexEntryUnlocked(_enemies[index]) ? Data.CatchableMonsters[_enemies[index]].DisplayName : "??????";
         }
     }
 

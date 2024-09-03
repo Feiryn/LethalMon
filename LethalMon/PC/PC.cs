@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Linq;
 using GameNetcodeStuff;
+using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
@@ -13,6 +15,12 @@ namespace LethalMon.PC;
 public class PC : NetworkBehaviour
 {
     internal static GameObject? pcPrefab = null;
+
+    internal static PC Instance;
+
+    private static AudioClip _errorSound;
+    
+    private static AudioClip _successSound;
 
     #region Constants
     private const float CursorSpeed = 0.001f;
@@ -40,6 +48,8 @@ public class PC : NetworkBehaviour
     private GameObject _screen;
 
     private Button[] _desktopButtons;
+    
+    private AudioSource _audioSource;
     #endregion
     
     #region PCApp
@@ -48,15 +58,23 @@ public class PC : NetworkBehaviour
     private PCApp? _currentApp;
     
     private DexApp _dexApp;
+    
+    private ScanApp _scanApp;
     #endregion
 
     private static int _backupRenderTextureWidth;
     
     private static int _backupRenderTextureHeight;
+    
+    internal Coroutine? _currentOperationCoroutine { get; private set; }
+
+    private PokeballItem? _placedBall;
 
     public void Start()
     {
         LethalMon.Log("PC Start");
+
+        Instance = this;
         
         // Load the triggers from the prefab and set missing properties
         InteractTrigger[] interactTriggers = GetComponentsInChildren<InteractTrigger>();
@@ -85,6 +103,7 @@ public class PC : NetworkBehaviour
         // Load screen components
         _cursor = gameObject.transform.Find("Screen/Cursor")?.GetComponent<RectTransform>()!;
         _screen = gameObject.transform.Find("Screen")?.gameObject!;
+        _audioSource = gameObject.transform.Find("Screen")?.GetComponent<AudioSource>()!;
         
         // Assign buttons to functions
         _desktopButtons = new Button[4];
@@ -92,6 +111,7 @@ public class PC : NetworkBehaviour
         _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
         _desktopButtons[1].onClick = FunctionToButtonClickEvent(OnDexButtonClick);
         _desktopButtons[2] = gameObject.transform.Find("Screen/MainMenu/ScanButton").GetComponent<Button>();
+        _desktopButtons[2].onClick = FunctionToButtonClickEvent(OnScanButtonClick);
         _desktopButtons[3] = gameObject.transform.Find("Screen/MainMenu/DuplicateButton").GetComponent<Button>();
         
         // Load PC apps
@@ -99,6 +119,8 @@ public class PC : NetworkBehaviour
         _appCloseButton.onClick.AddListener(CloseCurrentApp);
         _dexApp = new DexApp(_screen);
         _dexApp.Hide();
+        _scanApp = new ScanApp(_screen);
+        _scanApp.Hide();
     }
 
     private static Button.ButtonClickedEvent FunctionToButtonClickEvent(UnityAction action)
@@ -147,6 +169,28 @@ public class PC : NetworkBehaviour
     public void OnBallPlaceInteract(PlayerControllerB player)
     {
         LethalMon.Log("Ball place interact");
+
+        GrabbableObject heldItem = player.ItemSlots[player.currentItemSlot];
+        if (heldItem != null && heldItem is PokeballItem item && GetCurrentPlacedBall() == null)
+        {
+            _placedBall = item;
+            player.DiscardHeldObject(true, this.GetComponent<NetworkObject>(), _ballPlaceInteractTrigger.transform.localPosition + Vector3.up * item.itemProperties.verticalOffset);
+        }
+    }
+
+    public PokeballItem? GetCurrentPlacedBall()
+    {
+        if (_placedBall != null)
+        {
+            return _placedBall;
+        }
+        
+        return null;
+    }
+    
+    public void RemovePlacedBall()
+    {
+        _placedBall = null;
     }
     
     public void StartUsing(PlayerControllerB player)
@@ -199,7 +243,7 @@ public class PC : NetworkBehaviour
     
     public void CloseCurrentApp()
     {
-        if (_currentApp != null)
+        if (_currentApp != null && _currentOperationCoroutine == null)
         {
             _currentApp.Hide();
             _currentApp = null;
@@ -222,7 +266,7 @@ public class PC : NetworkBehaviour
     
     public void PressEsc(InputAction.CallbackContext context)
     {
-        if (_currentApp != null)
+        if (_currentApp != null && _currentOperationCoroutine == null)
         {
             CloseCurrentApp();
         }
@@ -254,8 +298,8 @@ public class PC : NetworkBehaviour
     private bool IsCursorOnButton(Button button)
     {
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
-        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
+        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
+        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
         Vector3 cursorPosition = _screen.transform.InverseTransformPoint(_cursor.position);
         return cursorPosition.x >= buttonMin.x && cursorPosition.x <= buttonMax.x && cursorPosition.y >= buttonMin.y && cursorPosition.y <= buttonMax.y;
     }
@@ -264,11 +308,58 @@ public class PC : NetworkBehaviour
     {
         SwitchToApp(_dexApp);
     }
+
+    public void OnScanButtonClick()
+    {
+        SwitchToApp(_scanApp);
+    }
+    
+    private IEnumerator ProcessOperationCoroutine(Action<float> callback, float duration, float callbackInterval)
+    {
+        float time = 0;
+        float timeBetweenCallbacks = duration * callbackInterval;
+        while (time < duration)
+        {
+            callback(time / duration);
+            time += timeBetweenCallbacks;
+            yield return new WaitForSeconds(timeBetweenCallbacks);
+        }
+
+        _currentOperationCoroutine = null;
+        callback(1);
+    }
+
+    public void ProcessOperation(Action<float> callback, float duration, float callbackInterval)
+    {
+        _currentOperationCoroutine = StartCoroutine(ProcessOperationCoroutine(callback, duration, callbackInterval));
+    }
+    
+    public void StopOperation()
+    {
+        if (_currentOperationCoroutine != null)
+        {
+            StopCoroutine(_currentOperationCoroutine);
+            _currentOperationCoroutine = null;
+        }
+    }
+    
+    public void PlayErrorSound()
+    {
+        _audioSource.PlayOneShot(_errorSound);
+    }
+    
+    public void PlaySuccessSound()
+    {
+        _audioSource.PlayOneShot(_successSound);
+    }
     
     internal static void LoadAssets(AssetBundle assetBundle)
     {
         pcPrefab = assetBundle.LoadAsset<GameObject>("Assets/PC/PC.prefab");
         pcPrefab.AddComponent<PC>();
+        
+        _errorSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/error.mp3");
+        _successSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/success.mp3");
         
         LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(pcPrefab);
     }

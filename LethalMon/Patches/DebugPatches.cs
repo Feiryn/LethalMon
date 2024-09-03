@@ -76,7 +76,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                Instantiate(PC.PC.pcPrefab, Utils.CurrentPlayer.transform.position, Quaternion.identity);
+                Instantiate(PC.PC.pcPrefab, Utils.CurrentPlayer.transform.position, Quaternion.identity)!.GetComponent<NetworkObject>().Spawn();
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)

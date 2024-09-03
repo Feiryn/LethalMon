@@ -19,7 +19,7 @@ public abstract class PokeballItem : ThrowableItem
     #region Properties
     private EnemyAI? enemyAI = null;
     
-    private EnemyType? enemyType = null;
+    internal EnemyType? enemyType = null;
 
     private CatchableEnemy.CatchableEnemy? catchableEnemy = null;
 
@@ -36,6 +36,8 @@ public abstract class PokeballItem : ThrowableItem
     private readonly BallType ballType;
 
     public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
+    
+    public bool isDnaComplete = false;
     #endregion
 
     #region Initialization
@@ -204,6 +206,7 @@ public abstract class PokeballItem : ThrowableItem
             tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
             tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
             tamedBehaviour.SetCooldownTimers(cooldowns);
+            tamedBehaviour.isDnaComplete = isDnaComplete;
 
             gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
             CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
@@ -240,7 +243,7 @@ public abstract class PokeballItem : ThrowableItem
         }
         else
         {
-            return this.catchableEnemy.Id;
+            return (1 << 31) & this.catchableEnemy.Id;
         }
     }
 
@@ -248,9 +251,11 @@ public abstract class PokeballItem : ThrowableItem
     {
         base.LoadItemSaveData(saveData);
 
-        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        int realId = saveData & ~(1 << 31);
+        isDnaComplete = (saveData & (1 << 31)) != 0;
+        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == realId) != 0)
         {
-            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
+            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == realId);
             EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
             SetCaughtEnemy(type);
         }
@@ -362,6 +367,7 @@ public abstract class PokeballItem : ThrowableItem
 
             this.SetCaughtEnemyServerRpc(this.enemyType!.name);
 
+            this.isDnaComplete = true;
             this.playerThrownBy = null;
             this.FallToGround();
             this.grabbable = true;
@@ -396,6 +402,17 @@ public abstract class PokeballItem : ThrowableItem
     {
         return this.itemProperties.itemName + " (" + this.catchableEnemy?.DisplayName + ")";
     }
+
+    public override void GrabItem()
+    {
+        base.GrabItem();
+
+        if (PC.PC.Instance.GetCurrentPlacedBall() == this)
+        {
+            PC.PC.Instance.RemovePlacedBall();
+        }
+    }
+
     #endregion
 
     #region RPCs

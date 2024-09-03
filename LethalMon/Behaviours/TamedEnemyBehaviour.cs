@@ -104,6 +104,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool hasBeenRetrieved = false;
 
+    public bool isDnaComplete = false;
+
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
