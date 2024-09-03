@@ -109,11 +109,21 @@ namespace LethalMon.Behaviours
 
         internal override void OnTamedFollowing()
         {
-            // OWNER ONLY
             base.OnTamedFollowing();
 
-            if (CanDefend)
-                TargetNearestEnemy();
+            if(CanDefend)
+            {
+                if (ownerPlayer!.fallValueUncapped < -30f)
+                {
+                    if (Physics.Raycast(new Ray(ownerPlayer.transform.position, Vector3.down), 3f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore))
+                    {
+                        var baseWebPos = ownerPlayer.transform.position + Vector3.down * 2f;
+                        ShootWeb(baseWebPos + Vector3.left, baseWebPos + Vector3.right, true); // Single-use web
+                    }
+                }
+                else
+                    TargetNearestEnemy();
+            }
         }
 
         public override void MoveTowards(Vector3 position)
@@ -234,7 +244,6 @@ namespace LethalMon.Behaviours
             timeOfLastWebJump = Time.realtimeSinceStartup;
 
             var modifiedJumpForce = _defaultJumpForce.Value * SpiderBounceForce;
-            //LethalMon.Log("Modified jump force: " + modifiedJumpForce);
 
             const string Jumping = "Jumping";
             yield return new WaitUntil(() =>
@@ -261,13 +270,14 @@ namespace LethalMon.Behaviours
 
         internal IEnumerator WebBending(GameObject webObject)
         {
-            LethalMon.Log("WebBending");
             var initialScale = webObject.transform.localScale;
             float duration = 1f;
             float elapsedTime = 0f;
 
             while (elapsedTime < duration)
             {
+                if (webObject == null) yield break;
+
                 float scaleMultiplier = WebBendingCurve.Evaluate(elapsedTime / duration);
 
                 webObject.transform.localScale = initialScale * scaleMultiplier;
@@ -309,15 +319,19 @@ namespace LethalMon.Behaviours
 
         internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
 
-        internal void ShootWeb(Vector3 from, Vector3 to)
+        internal void ShootWeb(Vector3 from, Vector3 to, bool singleUse = false)
         {
             shootWebCooldown?.Reset();
 
             if (!Spider.IsOwner) return;
 
             Spider.SpawnWebTrapServerRpc(from, to);
-            if(IsTamed)
-                Spider.webTraps.Last().gameObject.AddComponent<WebBehaviour>().spawnedBy = this;
+            if (IsTamed)
+            {
+                var webBehaviour = Spider.webTraps.Last().gameObject.AddComponent<TamedWebBehaviour>();
+                webBehaviour.spawnedBy = this;
+                webBehaviour.singleUse = singleUse;
+            }
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -331,11 +345,12 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region WebBehaviour
-        internal class WebBehaviour : MonoBehaviour
+        internal class TamedWebBehaviour : MonoBehaviour
         {
             private const float SpeedDivider = 20f;
 
-            private float _lifeTime = 5f; // Time how long the web can handle enemies
+            internal float webDuration = 5f; // Time how long the web can handle enemies
+            internal bool singleUse = false;
 
             private struct EnemyInfo(EnemyAI enemyAI, float enterAgentSpeed, float enterAnimationSpeed)
             {
@@ -391,10 +406,10 @@ namespace LethalMon.Behaviours
                     enemyInfo.enemyAI.agent.speed = enemyInfo.enterAgentSpeed / SpeedDivider;
                     enemyInfo.enemyAI.creatureAnimator.speed = enemyInfo.enterAnimationSpeed / SpeedDivider;
 
-                    _lifeTime -= Time.deltaTime;
+                    webDuration -= Time.deltaTime;
                 }
 
-                if( _lifeTime <= 0 && webTrap != null && spawnedBy != null )
+                if(webDuration <= 0 && webTrap != null && spawnedBy != null )
                     spawnedBy.BreakWebServerRpc(webTrap.trapID);
             }
 
