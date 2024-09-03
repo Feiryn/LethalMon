@@ -22,13 +22,10 @@ namespace LethalMon.Patches
             SpiderTamedBehaviour spiderEnemyBehaviour = __instance.mainScript.GetComponent<SpiderTamedBehaviour>();
             if(spiderEnemyBehaviour != null && spiderEnemyBehaviour.IsTamed)
             {
-                if ((Time.realtimeSinceStartup - spiderEnemyBehaviour.localPlayerJumpFromWebTime) < 1f) return false;
+                if (Time.realtimeSinceStartup - spiderEnemyBehaviour.timeOfLastWebJump < 1f) return false;
 
                 if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
-                {
-                    if (player.isJumping || player.isFallingFromJump || player.isFallingNoJump)
-                        spiderEnemyBehaviour.StartCoroutine(spiderEnemyBehaviour.PerformWebJump());
-                }
+                    spiderEnemyBehaviour.JumpOnWebLocalClient(__instance.trapID);
                 return false;
             }
 

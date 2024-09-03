@@ -6,6 +6,7 @@ using UnityEngine;
 using System.Linq;
 using Unity.Netcode;
 using System.Collections;
+using Vector3 = UnityEngine.Vector3;
 
 namespace LethalMon.Behaviours
 {
@@ -24,11 +25,16 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal float localPlayerJumpFromWebTime = 0f;
-
         public static readonly float SpiderBounceForce = 1.5f;
+        internal bool isWebJumping = false;
+        internal float timeOfLastWebJump = 0f;
+        private float? _defaultJumpForce = null;
+        private Coroutine? _webJumpCoroutine = null;
 
         internal override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
+
+        // Audio
+        internal static AudioClip[] webBounceSFX = [];
         #endregion
 
         #region Cooldowns
@@ -53,7 +59,7 @@ namespace LethalMon.Behaviours
             if (ownerPlayer != null && CanDefend)
             {
                 var basePos = ownerPlayer.transform.position + Vector3.up * 0.5f + ownerPlayer.transform.forward * 3f;
-                ShootWeb(basePos, basePos + ownerPlayer.transform.forward * 2f);
+                ShootWeb(basePos, basePos + ownerPlayer.transform.forward);
             }
         }
         #endregion
@@ -165,29 +171,112 @@ namespace LethalMon.Behaviours
         }
         #endregion
 
+        #region Methods
+        internal static void LoadAudio(AssetBundle assetBundle)
+        {
+            var webBounceAudioClips = new List<AudioClip>();
+            for(int i = 1; i <= 3; ++i)
+            {
+                var audioClip = assetBundle.LoadAsset<AudioClip>($"Assets/Audio/Spider/webBounce{i}.ogg");
+                if (audioClip != null)
+                    webBounceAudioClips.Add(audioClip);
+            }
+
+            webBounceSFX = webBounceAudioClips.ToArray();
+        }
+        #endregion
+
+        #region WebJumping
+        internal void JumpOnWebLocalClient(int webTrapID)
+        {
+            if (_webJumpCoroutine != null)
+                StopCoroutine(_webJumpCoroutine);
+            _webJumpCoroutine = StartCoroutine(PerformWebJump());
+
+            JumpedOnWebServerRpc(webTrapID);
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void JumpedOnWebServerRpc(int webTrapID) => JumpedOnWebClientRpc(webTrapID);
+
+        [ClientRpc]
+        internal void JumpedOnWebClientRpc(int webTrapID)
+        {
+            if (Spider.webTraps.Count <= webTrapID)
+            {
+                LethalMon.Log("Unable to find web trap for bouncing.", LethalMon.LogType.Error);
+                return;
+            }
+
+            var webTrap = Spider.webTraps[webTrapID];
+            if (webBounceSFX.Length > 0)
+                Utils.PlaySoundAtPosition(webTrap.transform.position, webBounceSFX[UnityEngine.Random.RandomRangeInt(0, webBounceSFX.Length - 1)]);
+
+            StartCoroutine(WebBending(webTrap.gameObject));
+        }
+
         internal IEnumerator PerformWebJump()
         {
-            localPlayerJumpFromWebTime = Time.realtimeSinceStartup;
-
             var player = Utils.CurrentPlayer;
+
+            if (_defaultJumpForce == null || !isWebJumping)
+                _defaultJumpForce = player.jumpForce;
 
             if (player.jumpCoroutine != null)
                 player.StopCoroutine(player.jumpCoroutine);
             player.jumpCoroutine = player.StartCoroutine(player.PlayerJump());
 
-            // not working yet
-            var previousJumpForce = player.jumpForce;
-            var modifiedJumpForce = previousJumpForce * SpiderBounceForce;
+            player.playerSlidingTimer = 0f;
+            player.isJumping = true;
+            player.sprintMeter = Mathf.Clamp(player.sprintMeter - 0.08f, 0f, 1f);
+
+            isWebJumping = true;
+            timeOfLastWebJump = Time.realtimeSinceStartup;
+
+            var modifiedJumpForce = _defaultJumpForce.Value * SpiderBounceForce;
+            //LethalMon.Log("Modified jump force: " + modifiedJumpForce);
 
             const string Jumping = "Jumping";
-            yield return new WaitWhile(() =>
+            yield return new WaitUntil(() =>
             {
                 player.jumpForce = modifiedJumpForce;
-                return (player.playerBodyAnimator.GetBool(Jumping));
+                return (Time.realtimeSinceStartup - timeOfLastWebJump > 1f) && !player.playerBodyAnimator.GetBool(Jumping);
             });
 
-            player.jumpForce = previousJumpForce;
+            player.jumpForce = _defaultJumpForce.Value;
+            isWebJumping = false;
         }
+
+
+        static readonly AnimationCurve WebBendingCurve = new(
+            new Keyframe(0, 1f),
+            new Keyframe(0.05f, 0.4f),
+            new Keyframe(0.2f, 1.3f),
+            new Keyframe(0.3f, 0.65f),
+            new Keyframe(0.4f, 1.2f),
+            new Keyframe(0.6f, 0.9f),
+            new Keyframe(0.8f, 1.05f),
+            new Keyframe(1f, 1f)
+        );
+
+        internal IEnumerator WebBending(GameObject webObject)
+        {
+            LethalMon.Log("WebBending");
+            var initialScale = webObject.transform.localScale;
+            float duration = 1f;
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                float scaleMultiplier = WebBendingCurve.Evaluate(elapsedTime / duration);
+
+                webObject.transform.localScale = initialScale * scaleMultiplier;
+
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+        }
+        #endregion
 
         #region Webshooting
         // HOST ONLY!
