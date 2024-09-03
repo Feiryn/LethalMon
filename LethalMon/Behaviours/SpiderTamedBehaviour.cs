@@ -28,7 +28,7 @@ namespace LethalMon.Behaviours
         }
 
         public static readonly float SpiderBounceForce = 1.5f;
-        internal bool isWebJumping = false;
+        internal static bool IsWebJumping = false;
         internal float timeOfLastWebJump = 0f;
         private float? _defaultJumpForce = null;
         private Coroutine? _webJumpCoroutine = null;
@@ -60,7 +60,7 @@ namespace LethalMon.Behaviours
 
             if (ownerPlayer != null && CanDefend)
             {
-                var basePos = ownerPlayer.transform.position + Vector3.up * 0.5f + ownerPlayer.transform.forward * 3f;
+                var basePos = ownerPlayer.transform.position + Vector3.up * 1.5f + ownerPlayer.transform.forward * 3f;
                 ShootWeb(basePos, basePos + ownerPlayer.transform.forward);
             }
         }
@@ -238,7 +238,7 @@ namespace LethalMon.Behaviours
         {
             var player = Utils.CurrentPlayer;
 
-            if (_defaultJumpForce == null || !isWebJumping)
+            if (_defaultJumpForce == null || !IsWebJumping)
                 _defaultJumpForce = player.jumpForce;
 
             if (player.jumpCoroutine != null)
@@ -249,7 +249,7 @@ namespace LethalMon.Behaviours
             player.isJumping = true;
             player.sprintMeter = Mathf.Clamp(player.sprintMeter - 0.08f, 0f, 1f);
 
-            isWebJumping = true;
+            IsWebJumping = true;
             timeOfLastWebJump = Time.realtimeSinceStartup;
 
             var modifiedJumpForce = _defaultJumpForce.Value * SpiderBounceForce;
@@ -258,11 +258,11 @@ namespace LethalMon.Behaviours
             yield return new WaitUntil(() =>
             {
                 player.jumpForce = modifiedJumpForce;
-                return (Time.realtimeSinceStartup - timeOfLastWebJump > 0.3f) && !player.playerBodyAnimator.GetBool(Jumping);
+                return (Time.realtimeSinceStartup - timeOfLastWebJump > 1f) && !player.playerBodyAnimator.GetBool(Jumping);
             });
 
             player.jumpForce = _defaultJumpForce.Value;
-            isWebJumping = false;
+            IsWebJumping = false;
         }
 
 
@@ -325,7 +325,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * 2f * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
+        internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * 2f * size + Vector3.up, targetPosition + Vector3.up);
 
         internal void ShootWeb(Vector3 from, Vector3 to, int playerUses = 10)
         {
