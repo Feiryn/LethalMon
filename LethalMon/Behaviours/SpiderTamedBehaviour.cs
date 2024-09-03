@@ -229,6 +229,7 @@ namespace LethalMon.Behaviours
             if(webTrap.TryGetComponent(out TamedWebBehaviour webBehaviour))
             {
                 webBehaviour.playerUses--;
+                LethalMon.Log("USES LEFT: " + webBehaviour.playerUses);
                 if (webBehaviour.playerUses == 0)
                     Spider.BreakWebServerRpc(webTrapID, playerID);
             }

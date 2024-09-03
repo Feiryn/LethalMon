@@ -24,14 +24,11 @@ namespace LethalMon.Patches
             {
                 if (Time.realtimeSinceStartup - spiderEnemyBehaviour.timeOfLastWebJump < 1f) return false;
 
-                if(__instance.gameObject.TryGetComponent(out SpiderTamedBehaviour.TamedWebBehaviour webBehaviour))
+                if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
                 {
-                    if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
-                    {
-                        spiderEnemyBehaviour.JumpOnWebLocalClient(__instance.trapID);
-                    }
-                    return false;
+                    spiderEnemyBehaviour.JumpOnWebLocalClient(__instance.trapID);
                 }
+                return false;
 
             }
 
