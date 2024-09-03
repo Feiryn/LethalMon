@@ -29,8 +29,6 @@ namespace LethalMon.Patches
                     if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
                     {
                         spiderEnemyBehaviour.JumpOnWebLocalClient(__instance.trapID);
-                        if (webBehaviour.singleUse)
-                            __instance.mainScript.BreakWebServerRpc(__instance.trapID, (int)player.playerClientId);
                     }
                     return false;
                 }

@@ -7,6 +7,8 @@ using System.Linq;
 using Unity.Netcode;
 using System.Collections;
 using Vector3 = UnityEngine.Vector3;
+using LethalLib.Modules;
+using System.Numerics;
 
 namespace LethalMon.Behaviours
 {
@@ -118,7 +120,7 @@ namespace LethalMon.Behaviours
                     if (Physics.Raycast(new Ray(ownerPlayer.transform.position, Vector3.down), 3f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore))
                     {
                         var baseWebPos = ownerPlayer.transform.position + Vector3.down * 2f;
-                        ShootWeb(baseWebPos + Vector3.left, baseWebPos + Vector3.right, true); // Single-use web
+                        ShootWeb(baseWebPos + Vector3.left, baseWebPos + Vector3.right, 1); // Single-use web
                     }
                 }
                 else
@@ -203,14 +205,14 @@ namespace LethalMon.Behaviours
                 StopCoroutine(_webJumpCoroutine);
             _webJumpCoroutine = StartCoroutine(PerformWebJump());
 
-            JumpedOnWebServerRpc(webTrapID);
+            JumpedOnWebServerRpc(webTrapID, (int)Utils.CurrentPlayerID!);
         }
 
         [ServerRpc(RequireOwnership = false)]
-        internal void JumpedOnWebServerRpc(int webTrapID) => JumpedOnWebClientRpc(webTrapID);
+        internal void JumpedOnWebServerRpc(int webTrapID, int playerID) => JumpedOnWebClientRpc(webTrapID, playerID);
 
         [ClientRpc]
-        internal void JumpedOnWebClientRpc(int webTrapID)
+        internal void JumpedOnWebClientRpc(int webTrapID, int playerID)
         {
             if (Spider.webTraps.Count <= webTrapID)
             {
@@ -223,6 +225,13 @@ namespace LethalMon.Behaviours
                 Utils.PlaySoundAtPosition(webTrap.transform.position, webBounceSFX[UnityEngine.Random.RandomRangeInt(0, webBounceSFX.Length - 1)]);
 
             StartCoroutine(WebBending(webTrap.gameObject));
+
+            if(webTrap.TryGetComponent(out TamedWebBehaviour webBehaviour))
+            {
+                webBehaviour.playerUses--;
+                if (webBehaviour.playerUses == 0)
+                    Spider.BreakWebServerRpc(webTrapID, playerID);
+            }
         }
 
         internal IEnumerator PerformWebJump()
@@ -319,7 +328,7 @@ namespace LethalMon.Behaviours
 
         internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
 
-        internal void ShootWeb(Vector3 from, Vector3 to, bool singleUse = false)
+        internal void ShootWeb(Vector3 from, Vector3 to, int playerUses = 10)
         {
             shootWebCooldown?.Reset();
 
@@ -330,7 +339,7 @@ namespace LethalMon.Behaviours
             {
                 var webBehaviour = Spider.webTraps.Last().gameObject.AddComponent<TamedWebBehaviour>();
                 webBehaviour.spawnedBy = this;
-                webBehaviour.singleUse = singleUse;
+                webBehaviour.playerUses = playerUses;
             }
         }
 
@@ -350,7 +359,7 @@ namespace LethalMon.Behaviours
             private const float SpeedDivider = 20f;
 
             internal float webDuration = 5f; // Time how long the web can handle enemies
-            internal bool singleUse = false;
+            internal int playerUses = 10;
 
             private struct EnemyInfo(EnemyAI enemyAI, float enterAgentSpeed, float enterAnimationSpeed)
             {
@@ -404,7 +413,7 @@ namespace LethalMon.Behaviours
                 {
                     //LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} is inside the web.");
                     enemyInfo.enemyAI.agent.speed = enemyInfo.enterAgentSpeed / SpeedDivider;
-                    enemyInfo.enemyAI.creatureAnimator.speed = enemyInfo.enterAnimationSpeed / SpeedDivider;
+                    enemyInfo.enemyAI.creatureAnimator.speed = enemyInfo.enterAnimationSpeed / (SpeedDivider / 2f);
 
                     webDuration -= Time.deltaTime;
                 }
