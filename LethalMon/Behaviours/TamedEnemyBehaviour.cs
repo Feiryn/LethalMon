@@ -780,9 +780,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (ownerPlayer == null) return;
 
-        Enemy.agent.enabled = false;
-        Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
-        Enemy.agent.enabled = true;
+        Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
 
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
@@ -969,7 +967,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (placeOnNavMesh)
             PlaceEnemyOnNavMesh(enemyAI);
 
-        if(syncPosition)
+        if (syncPosition)
             enemyAI.SyncPositionToClients();
         else
             enemyAI.serverPosition = position;

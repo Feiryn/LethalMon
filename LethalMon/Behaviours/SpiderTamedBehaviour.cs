@@ -229,7 +229,6 @@ namespace LethalMon.Behaviours
             if(webTrap.TryGetComponent(out TamedWebBehaviour webBehaviour))
             {
                 webBehaviour.playerUses--;
-                LethalMon.Log("USES LEFT: " + webBehaviour.playerUses);
                 if (webBehaviour.playerUses == 0)
                     Spider.BreakWebServerRpc(webTrapID, playerID);
             }
@@ -259,7 +258,7 @@ namespace LethalMon.Behaviours
             yield return new WaitUntil(() =>
             {
                 player.jumpForce = modifiedJumpForce;
-                return (Time.realtimeSinceStartup - timeOfLastWebJump > 1f) && !player.playerBodyAnimator.GetBool(Jumping);
+                return (Time.realtimeSinceStartup - timeOfLastWebJump > 0.3f) && !player.playerBodyAnimator.GetBool(Jumping);
             });
 
             player.jumpForce = _defaultJumpForce.Value;
@@ -299,7 +298,6 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Webshooting
-        // HOST ONLY!
         internal void ShootWebsAround(int amount = 10) // Shoot webs in any direction
         {
             for (int i = 0; i < amount; i++)
@@ -327,10 +325,16 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
+        internal void ShootWebAt(Vector3 targetPosition, float size = 3f) => ShootWeb(targetPosition - (targetPosition - ownerPlayer!.transform.position).normalized * 2f * size + Vector3.up * 0.5f, targetPosition + Vector3.up * 0.5f);
 
         internal void ShootWeb(Vector3 from, Vector3 to, int playerUses = 10)
         {
+            if(!Spider.IsOwner)
+            {
+                ShootWebServerRpc(from, to, playerUses);
+                return;
+            }
+
             shootWebCooldown?.Reset();
 
             if (!Spider.IsOwner) return;
@@ -342,6 +346,16 @@ namespace LethalMon.Behaviours
                 webBehaviour.spawnedBy = this;
                 webBehaviour.playerUses = playerUses;
             }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void ShootWebServerRpc(Vector3 from, Vector3 to, int playerUses = 10) => ShootWebClientRpc(from, to, playerUses);
+
+        [ClientRpc]
+        internal void ShootWebClientRpc(Vector3 from, Vector3 to, int playerUses)
+        {
+            if(Spider.IsOwner)
+                ShootWeb(from, to, playerUses);
         }
 
         [ServerRpc(RequireOwnership = false)]
