@@ -6,7 +6,6 @@ using UnityEngine;
 using System.Linq;
 using Unity.Netcode;
 using System.Collections;
-using LethalLib.Modules;
 
 namespace LethalMon.Behaviours
 {
@@ -35,7 +34,7 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private const string ShootWebCooldownID = "monstername_cooldownname";
 
-        internal override Cooldown[] Cooldowns => [new Cooldown(ShootWebCooldownID, "Shooting web", 5f)];
+        internal override Cooldown[] Cooldowns => [new Cooldown(ShootWebCooldownID, "Shooting web", ModConfig.Instance.values.SpiderWebCooldown)];
 
         private CooldownNetworkBehaviour? shootWebCooldown;
         #endregion
@@ -43,7 +42,7 @@ namespace LethalMon.Behaviours
         #region Action Keys
         private readonly List<ActionKey> _actionKeys =
         [
-            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Shoot web in front" }
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Shoot web" }
         ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
@@ -228,7 +227,8 @@ namespace LethalMon.Behaviours
             if (!Spider.IsOwner) return;
 
             Spider.SpawnWebTrapServerRpc(from, to);
-            Spider.webTraps.Last().gameObject.AddComponent<WebBehaviour>().spawnedBy = this;
+            if(IsTamed)
+                Spider.webTraps.Last().gameObject.AddComponent<WebBehaviour>().spawnedBy = this;
         }
 
         [ServerRpc(RequireOwnership = false)]
