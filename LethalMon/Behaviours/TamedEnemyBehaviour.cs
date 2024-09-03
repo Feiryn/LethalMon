@@ -27,6 +27,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual TargetType Targets => TargetType.Alive;
     internal virtual float TargetingRange => 10f;
 
+    internal virtual bool CanBlockOtherEnemies => false;
+
     internal virtual Cooldown[] Cooldowns => [];
 
     // Add your custom behaviour classes here
@@ -520,6 +522,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             Enemy.Start();
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
+
+            if (!CanBlockOtherEnemies && Enemy.agent != null)
+            {
+                Enemy.agent.radius = 0.1f;                    // Enemy goes "mostly" through this one
+                Enemy.agent.avoidancePriority = int.MaxValue; // Lower priority pushes the higher one
+            }
 
             Utils.CallNextFrame(CreateNameTag);
         }
