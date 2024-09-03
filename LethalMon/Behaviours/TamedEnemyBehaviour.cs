@@ -120,6 +120,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     internal float targetNearestEnemyInterval = 0f;
+    internal bool foundEnemiesInRangeInLastSearch = false;
 
     #region Behaviours
     public enum TamingBehaviour
@@ -801,7 +802,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (targetNearestEnemyInterval > 0)
             return;
 
-        targetNearestEnemyInterval = 1f;
+        targetNearestEnemyInterval = foundEnemiesInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
         
         var target = NearestEnemy(requireLOS, fromOwnerPerspective, angle);
         if(target != null)
@@ -814,6 +815,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
+        foundEnemiesInRangeInLastSearch = false;
         const int layerMask = 1 << (int) Utils.LayerMasks.Mask.Enemies;
         EnemyAI? target = null;
         float distance = float.MaxValue;
@@ -830,6 +832,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
+            foundEnemiesInRangeInLastSearch = true;
+            
             if (requireLOS && !OptimizedCheckLineOfSightForPosition(startTransform.position, enemyInRange.transform.position, startTransform.forward, angle)) continue;
 
             float distanceTowardsEnemy = Vector3.Distance(startTransform.position, enemyInRange.transform.position);

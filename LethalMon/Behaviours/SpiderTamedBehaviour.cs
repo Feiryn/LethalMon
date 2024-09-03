@@ -73,10 +73,13 @@ namespace LethalMon.Behaviours
 
             shootWebCooldown = GetCooldownWithId(ShootWebCooldownID);
 
-            if(IsTamed)
+            if (IsTamed)
+            {
                 Spider.transform.localScale = Vector3.one * 0.7f;
+                Spider.footstepAudio.volume = 0.1f;
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
+            }
 
-            EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
