@@ -27,7 +27,7 @@ namespace LethalMon.Behaviours
 
         internal float localPlayerJumpFromWebTime = 0f;
 
-        public static readonly float SpiderBounceForce = 3f;
+        public static readonly float SpiderBounceForce = 1.5f;
 
         internal override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
         #endregion
@@ -38,39 +38,6 @@ namespace LethalMon.Behaviours
         internal override Cooldown[] Cooldowns => [new Cooldown(ShootWebCooldownID, "Shooting web", 5f)];
 
         private CooldownNetworkBehaviour? shootWebCooldown;
-        #endregion
-
-        #region Custom behaviours
-        internal enum CustomBehaviour
-        {
-            TestBehavior = 1
-        }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
-        [
-            new (CustomBehaviour.TestBehavior.ToString(), "Behaviour description text", OnTestBehavior)
-        ];
-
-        internal override void InitCustomBehaviour(int behaviour)
-        {
-            // ANY CLIENT
-            base.InitCustomBehaviour(behaviour);
-
-            switch ((CustomBehaviour)behaviour)
-            {
-                case CustomBehaviour.TestBehavior:
-                    break;
-
-                default:
-                    break;
-            }
-        }
-
-        internal void OnTestBehavior()
-        {
-            /* USE THIS SOMEWHERE TO ACTIVATE THE CUSTOM BEHAVIOR
-                *   SwitchToCustomBehaviour((int)CustomBehaviour.TestBehavior);
-            */
-        }
         #endregion
 
         #region Action Keys
@@ -213,10 +180,11 @@ namespace LethalMon.Behaviours
             var previousJumpForce = player.jumpForce;
             var modifiedJumpForce = previousJumpForce * SpiderBounceForce;
 
-            yield return new WaitUntil(() =>
+            const string Jumping = "Jumping";
+            yield return new WaitWhile(() =>
             {
                 player.jumpForce = modifiedJumpForce;
-                return player.thisController.isGrounded;
+                return (player.playerBodyAnimator.GetBool(Jumping));
             });
 
             player.jumpForce = previousJumpForce;
