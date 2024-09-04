@@ -305,7 +305,7 @@ namespace LethalMon.Behaviours
         {
             for (int i = 0; i < amount; i++)
             {
-                Vector3 direction = Vector3.Scale(UnityEngine.Random.onUnitSphere, new Vector3(1f, UnityEngine.Random.Range(0.5f, 3f), 1f)).normalized;
+                Vector3 direction = Vector3.Scale(UnityEngine.Random.onUnitSphere, new Vector3(1f, UnityEngine.Random.Range(0.2f, 1f), 1f));
                 direction.y = Mathf.Max(direction.y, 0f);
                 ShootWebInDirection(direction);
             }
