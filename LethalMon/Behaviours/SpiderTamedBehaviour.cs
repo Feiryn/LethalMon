@@ -7,8 +7,6 @@ using System.Linq;
 using Unity.Netcode;
 using System.Collections;
 using Vector3 = UnityEngine.Vector3;
-using LethalLib.Modules;
-using System.Numerics;
 
 namespace LethalMon.Behaviours
 {
@@ -32,6 +30,8 @@ namespace LethalMon.Behaviours
         internal float timeOfLastWebJump = 0f;
         private float? _defaultJumpForce = null;
         private Coroutine? _webJumpCoroutine = null;
+
+        private SandSpiderWebTrap? _previousWebTrap = null;
 
         internal override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
 
@@ -342,7 +342,10 @@ namespace LethalMon.Behaviours
 
             if (!Spider.IsOwner) return;
 
+            if (_previousWebTrap != null)
+                Spider.BreakWebServerRpc(_previousWebTrap.trapID, 0);
             Spider.SpawnWebTrapServerRpc(from, to);
+            _previousWebTrap = Spider.webTraps.Last();
             if (IsTamed)
             {
                 var webBehaviour = Spider.webTraps.Last().gameObject.AddComponent<TamedWebBehaviour>();
@@ -389,7 +392,8 @@ namespace LethalMon.Behaviours
             internal SpiderTamedBehaviour? spawnedBy = null;
             internal SandSpiderWebTrap? webTrap = null;
 
-            private Dictionary<int, EnemyInfo> _touchingEnemies = new Dictionary<int, EnemyInfo>();
+            private Dictionary<int, int> _touchingEnemyParts = new Dictionary<int, int>();          // collider InstanceID - enemy InstanceID
+            private Dictionary<int, EnemyInfo> _touchingEnemies = new Dictionary<int, EnemyInfo>(); // enemy InstanceID - info
 
             private HashSet<int> _nonEnemyCollider = new HashSet<int>();
 
@@ -407,29 +411,34 @@ namespace LethalMon.Behaviours
 
             void OnTriggerEnter(Collider other)
             {
-                if (_nonEnemyCollider.Contains(other.GetInstanceID())) return; // save performance
+                if (_nonEnemyCollider.Contains(other.GetInstanceID()) || _touchingEnemyParts.ContainsKey(other.GetInstanceID())) return; // save performance
 
                 var enemyAI = other.GetComponentInParent<EnemyAI>();
-                if (enemyAI == null)
+                if (enemyAI == null || enemyAI == spawnedBy?.Spider)
                 {
                     _nonEnemyCollider.Add(other.GetInstanceID());
                     return;
                 }
 
-                LethalMon.Log($"Enemy {enemyAI.name} entered the web.", LethalMon.LogType.Warning);
-                _touchingEnemies.Add(other.GetInstanceID(), new EnemyInfo(enemyAI, enemyAI.agent.speed, enemyAI.creatureAnimator.speed));
-                if (webTrap != null && spawnedBy?.Spider != null)
+                _touchingEnemyParts[other.GetInstanceID()] = enemyAI.GetInstanceID();
+
+                if (!_touchingEnemies.ContainsKey(enemyAI.GetInstanceID()))
                 {
-                    webTrap.webAudio.Play();
-                    webTrap.webAudio.PlayOneShot(spawnedBy.Spider.hitWebSFX);
+                    LethalMon.Log($"Enemy {enemyAI.name} entered the web. IDs: " + other.GetInstanceID() + " / " + enemyAI.GetInstanceID(), LethalMon.LogType.Warning);
+                    _touchingEnemies.Add(enemyAI.GetInstanceID(), new EnemyInfo(enemyAI, enemyAI.agent.speed, enemyAI.creatureAnimator.speed));
+                    if (webTrap != null && spawnedBy?.Spider != null)
+                    {
+                        webTrap.webAudio.Play();
+                        webTrap.webAudio.PlayOneShot(spawnedBy.Spider.hitWebSFX);
+                    }
                 }
             }
 
-            void OnTriggerStay(Collider other)
+            void LateUpdate()
             {
-                if (_touchingEnemies.TryGetValue(other.GetInstanceID(), out EnemyInfo enemyInfo))
+                foreach(var enemyInfo in _touchingEnemies.Values)
                 {
-                    //LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} is inside the web.");
+                    LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} is inside the web.");
                     enemyInfo.enemyAI.agent.speed = enemyInfo.enterAgentSpeed / SpeedDivider;
                     enemyInfo.enemyAI.creatureAnimator.speed = enemyInfo.enterAnimationSpeed / (SpeedDivider / 2f);
 
@@ -442,20 +451,31 @@ namespace LethalMon.Behaviours
 
             void OnTriggerExit(Collider other)
             {
-                if (_touchingEnemies.TryGetValue(other.GetInstanceID(), out EnemyInfo enemyInfo))
-                    LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} left the web.", LethalMon.LogType.Warning);
-                ResetEnemyValues(other.GetInstanceID());
-                _touchingEnemies.Remove(other.GetInstanceID());
+                int colliderInstanceID = other.GetInstanceID();
+                if (!_touchingEnemyParts.TryGetValue(colliderInstanceID, out int enemyInstanceID))
+                    return; // Enemy isn't in the web
 
-                if(_touchingEnemies.Count == 0 && webTrap != null && !webTrap.currentTrappedPlayer)
-                    webTrap.webAudio.Stop();
+                _touchingEnemyParts.Remove(colliderInstanceID);
+                if (_touchingEnemies.TryGetValue(enemyInstanceID, out EnemyInfo enemyInfo))
+                {
+                    // Enemy is touching the web
+                    if (!_touchingEnemyParts.ContainsValue(enemyInstanceID))
+                    {
+                        // Enemy left the web with every part
+                        LethalMon.Log($"Enemy {enemyInfo.enemyAI.name} left the web.", LethalMon.LogType.Warning);
+                        ResetEnemyValues(enemyInstanceID);
+                        _touchingEnemies.Remove(enemyInstanceID);
+
+                        if (_touchingEnemies.Count == 0 && webTrap != null && !webTrap.currentTrappedPlayer)
+                            webTrap.webAudio.Stop();
+                    }
+                }
             }
 
             void OnDestroy()
             {
                 foreach(var enemyInstanceID in _touchingEnemies.Keys)
                     ResetEnemyValues(enemyInstanceID);
-                _touchingEnemies.Clear();
             }
 
             void ResetEnemyValues(int instanceID)
