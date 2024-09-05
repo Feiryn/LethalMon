@@ -108,13 +108,21 @@ public abstract class PokeballItem : ThrowableItem
         LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
 
         EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
-        TamedEnemyBehaviour? behaviour = other.GetComponentInParent<TamedEnemyBehaviour>();
-        if (enemyToCapture == null || enemyToCapture.isEnemyDead || behaviour == null || behaviour.IsTamed) return;
+        if (enemyToCapture == null || enemyToCapture.isEnemyDead) return;
+
+        CollidedWithEnemy(enemyToCapture);
+    }
+
+    internal void CollidedWithEnemy(EnemyAI enemyToCapture)
+    {
+        if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
+
+        if (!enemyToCapture.TryGetComponent(out TamedEnemyBehaviour behaviour) || behaviour.IsTamed) return;
 
         if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
                 out CatchableEnemy.CatchableEnemy catchable))
         {
-            if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
+            if (catchable.CanBeCapturedBy(enemyToCapture, this.playerThrownBy))
             {
                 this.CaptureEnemy(enemyToCapture, catchable);
             }

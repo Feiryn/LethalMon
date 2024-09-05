@@ -1,7 +1,8 @@
-﻿using System.Linq;
+﻿using GameNetcodeStuff;
+using System.Collections;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace LethalMon.Behaviours
 {
@@ -13,12 +14,8 @@ namespace LethalMon.Behaviours
         internal GameObject? tentaclePrefab = null;
 
         // Components
-        internal BoxCollider? collider = null;
+        internal SphereCollider? collider = null;
         internal Animator? monsterAnimator = null;
-
-        internal bool enemyMeshEnabled = true;
-
-        internal DepositItemsDesk? deskInside = null;
         #endregion
 
         #region Initialization
@@ -65,7 +62,8 @@ namespace LethalMon.Behaviours
             }
 
             var tentacleAnim = depositItemsDesk.monsterAnimations.First();
-            companyMonsterAI.tentaclePrefab = Instantiate(tentacleAnim.monsterAnimator.gameObject, companyMonsterPrefab?.transform);
+            companyMonsterAI.tentaclePrefab = Instantiate(tentacleAnim.monsterAnimator.gameObject);
+            companyMonsterAI.tentaclePrefab.SetActive(false);
             if(companyMonsterAI.tentaclePrefab == null)
             {
                 LethalMon.Log("Unable to attach company monster tentacles. Failed to instantiate monster animation.", LethalMon.LogType.Error);
@@ -74,60 +72,44 @@ namespace LethalMon.Behaviours
 
             LethalMon.Log("Extracted tentacles from item desk.");
         }
-
-        internal static void AttachToItemsDesk(DepositItemsDesk __instance)
-        {
-            if(companyMonsterPrefab == null)
-            {
-                LethalMon.Log("Failed to attach CompanyMonsterAI to item desk. No prefab.", LethalMon.LogType.Error);
-                return;
-            }
-
-            var companyMonsterObject = Instantiate(companyMonsterPrefab, __instance.transform.position, Quaternion.Euler(Vector3.zero));
-            companyMonsterObject.gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-            companyMonsterObject.transform.localScale = Vector3.one * 1.5f;
-            var companyMonsterAI = companyMonsterObject.GetComponent<CompanyMonsterAI>();
-            if (companyMonsterAI != null)
-            {
-                companyMonsterAI.enemyMeshEnabled = true;
-                companyMonsterAI.deskInside = __instance;
-            }
-        }
         #endregion
 
         #region Base Methods
-        void Start()
+        public override void Start()
         {
             moveTowardsDestination = false;
             base.Start();
 
-            collider = GetComponent<BoxCollider>();
-            monsterAnimator = tentaclePrefab?.GetComponent<Animator>();
+            eye = transform.Find("Eye");
 
-            EnableEnemyMesh(enemyMeshEnabled);
+            collider = GetComponent<SphereCollider>();
+            if (collider == null)
+            {
+                LethalMon.Log("No collider for company monster");
+            }
 
+            if(tentaclePrefab != null)
+            {
+                monsterAnimator = tentaclePrefab.GetComponent<Animator>();
+                if (eye != null)
+                {
+                    tentaclePrefab.SetActive(true);
+                    tentaclePrefab.transform.position = eye.position;
+                    tentaclePrefab.transform.SetParent(eye, false);
+                }
+            }
+
+            transform.position += Vector3.up;
         }
 
-        void Update()
+        public override void Update()
         {
             base.Update();
-            if(deskInside != null)
-                transform.position = deskInside.deskObjectsContainer.transform.position;
         }
 
         public override void DoAIInterval()
         {
             base.DoAIInterval();
-        }
-
-        public override void EnableEnemyMesh(bool enable, bool overrideDoNotSet = false)
-        {
-            base.EnableEnemyMesh(enable, overrideDoNotSet);
-
-            if (collider != null)
-                collider.enabled = enable;
-
-            enemyMeshEnabled = enable;
         }
         #endregion
     }

@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &4425577666794950994
 Transform:
   m_ObjectHideFlags: 0
@@ -92,7 +92,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 632212198410222262}
-  m_Layer: 0
+  m_Layer: 19
   m_Name: Eye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -303,7 +303,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 7
+  m_Speed: 0
   m_Acceleration: 8
   avoidancePriority: 10
   m_AngularSpeed: 120
@@ -368,9 +368,9 @@ GameObject:
   - component: {fileID: 2899089439989328241}
   - component: {fileID: 7459428932786765976}
   - component: {fileID: 5580277258438471794}
-  m_Layer: 19
+  m_Layer: 22
   m_Name: ScanNode
-  m_TagString: Untagged
+  m_TagString: DoNotSet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

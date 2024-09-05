@@ -74,7 +74,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     private TextMeshProUGUI? _nameText = null;
     private float _nameCanvasYOffset = 2f;
 
-    private bool IsNameTagVisible => _nameText != null ? _nameText.alpha > 0f : false;
+    private bool IsNameTagVisible => _nameText != null && _nameText.alpha > 0f;
 
     private const float MinNameTagRange = 3f;
     private const float MaxNameTagRange = 6f;
@@ -92,7 +92,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public EnemyAI? targetEnemy = null;
     public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
     public float DistanceToTargetEnemy => HasTargetEnemy ? Vector3.Distance(Enemy.transform.position, targetEnemy!.transform.position) : 0f;
-    public bool IsCollidingWithTargetEnemy => HasTargetEnemy ? targetEnemy!.meshRenderers.Any(meshRendererTarget => Enemy.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))) : false;
+    public bool IsCollidingWithTargetEnemy => HasTargetEnemy && targetEnemy!.meshRenderers.Any(meshRendererTarget => Enemy.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds)));
 
     // Target player
     public PlayerControllerB? targetPlayer = null;

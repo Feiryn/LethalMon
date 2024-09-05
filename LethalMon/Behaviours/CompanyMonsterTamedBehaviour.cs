@@ -1,8 +1,6 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
-using System;
 using LethalMon.Items;
-using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -11,62 +9,29 @@ namespace LethalMon.Behaviours
     internal class CompanyMonsterTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        private TestEnemy? _testEnemy = null; // Replace with enemy class
-        internal TestEnemy TestEnemy
+        private CompanyMonsterAI? _companyMonster = null; // Replace with enemy class
+        internal CompanyMonsterAI CompanyMonster
         {
             get
             {
-                if (_testEnemy == null)
-                    _testEnemy = (Enemy as TestEnemy)!;
+                if (_companyMonster == null)
+                    _companyMonster = (Enemy as CompanyMonsterAI)!;
 
-                return _testEnemy;
+                return _companyMonster;
             }
         }
 
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
-        internal override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
+        internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
         #endregion
 
         #region Cooldowns
-        private const string CooldownId = "monstername_cooldownname";
+        private const string AttackCooldownId = "companymonster_attack";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
+        internal override Cooldown[] Cooldowns => [new Cooldown(AttackCooldownId, "Attack", 10f)];
 
-        private CooldownNetworkBehaviour? cooldown;
-        #endregion
-
-        #region Custom behaviours
-        internal enum CustomBehaviour
-        {
-            TestBehavior = 1
-        }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
-        [
-            new (CustomBehaviour.TestBehavior.ToString(), "Behaviour description text", OnTestBehavior)
-        ];
-
-        internal override void InitCustomBehaviour(int behaviour)
-        {
-            // ANY CLIENT
-            base.InitCustomBehaviour(behaviour);
-
-            switch ((CustomBehaviour)behaviour)
-            {
-                case CustomBehaviour.TestBehavior:
-                    break;
-
-                default:
-                    break;
-            }
-        }
-
-        internal void OnTestBehavior()
-        {
-            /* USE THIS SOMEWHERE TO ACTIVATE THE CUSTOM BEHAVIOR
-                *   SwitchToCustomBehaviour((int)CustomBehaviour.TestBehavior);
-            */
-        }
+        private CooldownNetworkBehaviour? attackCooldown;
         #endregion
 
         #region Action Keys
@@ -80,9 +45,11 @@ namespace LethalMon.Behaviours
         {
             base.ActionKey1Pressed();
 
-            /* USE THIS SOMEWHERE TO SHOW OR HIDE THE CONTROL TIP
-                *   EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, true/false);
-            */
+            if (CanDefend)
+            {
+                CompanyMonster.monsterAnimator?.SetBool("visible", value: true);
+                Invoke(nameof(HideMonsterAnimation), 3f);
+            }
         }
         #endregion
 
@@ -91,7 +58,7 @@ namespace LethalMon.Behaviours
         {
             base.Start();
 
-            cooldown = GetCooldownWithId(CooldownId);
+            attackCooldown = GetCooldownWithId(AttackCooldownId);
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -154,20 +121,8 @@ namespace LethalMon.Behaviours
         }
         #endregion
 
-        #region RPCs
-        [ServerRpc(RequireOwnership = false)]
-        public void TestServerRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // HOST ONLY
-            TestClientRpc(someParameter, anotherParameter);
-        }
-
-        [ClientRpc]
-        public void TestClientRpc(float someParameter, Vector3 anotherParameter)
-        {
-            // ANY CLIENT (HOST INCLUDED)
-        }
-        #endregion
+        private void HideMonsterAnimation() => SetMonsterAnimationVisible(false);
+        private void SetMonsterAnimationVisible(bool visible = true) => CompanyMonster.monsterAnimator?.SetBool("visible", value: visible);
     }
 #endif
 }
