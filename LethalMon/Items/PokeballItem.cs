@@ -21,7 +21,7 @@ public abstract class PokeballItem : ThrowableItem
     
     private EnemyType? enemyType = null;
 
-    private CatchableEnemy.CatchableEnemy? catchableEnemy = null;
+    internal CatchableEnemy.CatchableEnemy? catchableEnemy = null;
 
     private bool captureSuccess = false;
 

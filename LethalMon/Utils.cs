@@ -133,6 +133,8 @@ public class Utils
 
     #region Sounds
 
+    // todo: check if can be replaced with static method AudioSource.PlayClipAtPoint();
+
     internal static List<AudioSource> diageticAudios = [];
     internal static AudioSource CreateAudioSource(GameObject parent, float minDistance = 0f, float maxDistance = 25f)
     {
@@ -235,6 +237,7 @@ public class Utils
         CaveDweller,
         Centipede,
         ClaySurgeon,
+        CompanyMonster,
         Crawler,
         DocileLocustBees,
         Doublewing,

@@ -49,6 +49,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(MaskedPlayerEnemy), typeof(MaskedTamedBehaviour) },
         { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
         { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) }
+        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
+        { typeof(CompanyMonsterAI),  typeof(CompanyMonsterTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
