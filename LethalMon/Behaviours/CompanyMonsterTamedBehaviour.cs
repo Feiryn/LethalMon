@@ -21,6 +21,8 @@ namespace LethalMon.Behaviours
             }
         }
 
+        Vector3 _startPosition = Vector3.zero;
+
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
         internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
@@ -29,7 +31,7 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private const string AttackCooldownId = "companymonster_attack";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(AttackCooldownId, "Attack", 10f)];
+        internal override Cooldown[] Cooldowns => [new Cooldown(AttackCooldownId, "Attack", 1f)]; // todo: change back to 10
 
         private CooldownNetworkBehaviour? attackCooldown;
         #endregion
@@ -47,8 +49,17 @@ namespace LethalMon.Behaviours
 
             if (CanDefend)
             {
+                if (CompanyMonster.tentaclePrefab == null)
+                    LethalMon.Log("No tentacles..", LethalMon.LogType.Warning);
+
+                CompanyMonster.tentaclePrefab?.SetActive(true);
                 CompanyMonster.monsterAnimator?.SetBool("visible", value: true);
-                Invoke(nameof(HideMonsterAnimation), 3f);
+                //CompanyMonster.monsterAnimator?.Play("Base Layer.Tentacle1Explore");
+
+                if(CompanyMonster.wallAttackSFX != null && CompanyMonster.TryGetComponent(out AudioSource audioSource))
+                    audioSource.PlayOneShot(CompanyMonster.wallAttackSFX);
+
+                attackCooldown?.Reset();
             }
         }
         #endregion
@@ -59,70 +70,27 @@ namespace LethalMon.Behaviours
             base.Start();
 
             attackCooldown = GetCooldownWithId(AttackCooldownId);
+            _startPosition = CompanyMonster.transform.position;
+
+            if (IsTamed)
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1);
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            // ANY CLIENT
-            base.InitTamingBehaviour(behaviour);
-
-            switch(behaviour)
-            {
-                case TamingBehaviour.TamedFollowing:
-                    break;
-
-                case TamingBehaviour.TamedDefending:
-                    break;
-
-                default: break;
-            }
-        }
-
-        internal override void OnTamedFollowing()
-        {
-            // OWNER ONLY
-            base.OnTamedFollowing();
-        }
-
-        internal override void OnTamedDefending()
-        {
-            // OWNER ONLY
-            base.OnTamedDefending();
+            base.OnUpdate(update, doAIInterval);
+            
+            CompanyMonster.transform.position = _startPosition; // debug!
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
-        }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
-        {
-            // ANY CLIENT
-            base.OnUpdate(update, doAIInterval);
-        }
-
-        internal override void DoAIInterval()
-        {
-            // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
-            base.DoAIInterval();
-        }
-
-        public override PokeballItem? RetrieveInBall(Vector3 position)
-        {
-            // ANY CLIENT
-            return base.RetrieveInBall(position);
-        }
-
-        public override bool CanBeTeleported()
-        {
-            // HOST ONLY
-            return base.CanBeTeleported();
+            DestroyImmediate(gameObject); // remove CompanyMonsterAI after the event
         }
         #endregion
-
-        private void HideMonsterAnimation() => SetMonsterAnimationVisible(false);
-        private void SetMonsterAnimationVisible(bool visible = true) => CompanyMonster.monsterAnimator?.SetBool("visible", value: visible);
     }
 #endif
 }

@@ -12,6 +12,7 @@ namespace LethalMon.Behaviours
         // Prefabs
         internal static GameObject? companyMonsterPrefab = null;
         internal GameObject? tentaclePrefab = null;
+        internal AudioClip? wallAttackSFX = null;
 
         // Components
         internal SphereCollider? collider = null;
@@ -70,7 +71,11 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            LethalMon.Log("Extracted tentacles from item desk.");
+            companyMonsterAI.wallAttackSFX = Instantiate(depositItemsDesk.currentMood.wallAttackSFX);
+            if(companyMonsterAI.wallAttackSFX == null)
+                LethalMon.Log("Unable to instantiate company monsters attack sfx.", LethalMon.LogType.Error);
+
+            LethalMon.Log("Extracted company monster assets from item desk.");
         }
         #endregion
 
@@ -81,6 +86,7 @@ namespace LethalMon.Behaviours
             base.Start();
 
             eye = transform.Find("Eye");
+            creatureSFX = GetComponent<AudioSource>();
 
             collider = GetComponent<SphereCollider>();
             if (collider == null)
