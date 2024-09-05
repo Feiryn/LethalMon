@@ -1,13 +1,11 @@
 using System;
 using System.Collections;
-using System.Linq;
 using GameNetcodeStuff;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 
 namespace LethalMon.PC;
@@ -21,6 +19,24 @@ public class PC : NetworkBehaviour
     private static AudioClip _errorSound;
     
     private static AudioClip _successSound;
+    
+    private ParticleSystem _particleSystem;
+
+    private ParticleSystem ParticleSystem
+    {
+        get
+        {
+            if (_particleSystem == null)
+            {
+                _particleSystem = this.transform.Find("BeamParticle")?.GetComponent<ParticleSystem>()!;
+                
+                // Copy material from player's beam up particle system
+                _particleSystem.GetComponent<Renderer>().material = Utils.CurrentPlayer.beamUpParticle.GetComponent<Renderer>().material;
+            }
+
+            return _particleSystem;
+        }
+    }
 
     #region Constants
     private const float CursorSpeed = 0.001f;
@@ -351,6 +367,11 @@ public class PC : NetworkBehaviour
     public void PlaySuccessSound()
     {
         _audioSource.PlayOneShot(_successSound);
+    }
+    
+    public void PlayScanParticle()
+    {
+        ParticleSystem.Play();
     }
     
     internal static void LoadAssets(AssetBundle assetBundle)
