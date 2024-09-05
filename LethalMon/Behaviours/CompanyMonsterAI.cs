@@ -1,7 +1,4 @@
-﻿using GameNetcodeStuff;
-using System.Collections;
-using System.Linq;
-using Unity.Netcode;
+﻿using System.Linq;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
