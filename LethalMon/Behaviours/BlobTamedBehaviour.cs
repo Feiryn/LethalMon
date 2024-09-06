@@ -1,11 +1,11 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
-using System;
 using LethalMon.Items;
 using Unity.Netcode;
 using UnityEngine;
-using System.Numerics;
 using Vector3 = UnityEngine.Vector3;
+using System.Linq;
+using System;
 
 namespace LethalMon.Behaviours
 {
@@ -24,9 +24,12 @@ namespace LethalMon.Behaviours
             }
         }
 
+        internal const int ItemCarryCount = 4;
+
         internal const string PhysicsObjectName = "PhysicsRootObject";
         internal static bool PhysicsRegionAdded = false;
         private GameObject? _physicsRootObject = null;
+        private BoxCollider? _physicsCollider = null;
         private PlayerPhysicsRegion? _physicsRegion = null;
 
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
@@ -50,7 +53,8 @@ namespace LethalMon.Behaviours
                     _physicsRootObject.SetActive(true);
                     Blob.enabled = false;
 
-                    Physics.IgnoreCollision(_physicsRootObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
+                    _physicsCollider = _physicsRootObject.GetComponent<BoxCollider>();
+                    Physics.IgnoreCollision(_physicsCollider, Utils.CurrentPlayer.playerCollider);
                     _physicsRegion = _physicsRootObject.GetComponentInChildren<PlayerPhysicsRegion>();
                     if (_physicsRegion != null)
                     {
@@ -125,15 +129,8 @@ namespace LethalMon.Behaviours
             PhysicsRegionAdded = true;
         }
 
-        internal override void OnTamedFollowing()
-        {
-            // OWNER ONLY
-            base.OnTamedFollowing();
-        }
-
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
-            // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
 
             Blob.transform.localScale *= 1.5f;
@@ -141,7 +138,6 @@ namespace LethalMon.Behaviours
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
-            // ANY CLIENT
             base.OnUpdate(update, doAIInterval);
 
             Blob.Update();
@@ -152,6 +148,20 @@ namespace LethalMon.Behaviours
             Blob.timeSinceHittingLocalPlayer = 0f; // friendly
         }
 
+        internal override void DoAIInterval()
+        {
+            base.DoAIInterval();
+
+            var carriedItems = CarriedItems;
+            if (carriedItems.Count > ItemCarryCount)
+            {
+                for(int i = carriedItems.Count - 1; i >= ItemCarryCount; --i)
+                    DropItem(carriedItems[i]);
+            }
+        }
+        #endregion
+
+        #region Methods
         internal void AdjustPhysicsObjectScale()
         {
             if (_physicsRootObject == null) return;
@@ -163,42 +173,47 @@ namespace LethalMon.Behaviours
             _physicsRootObject.transform.SetParent(Blob.transform, true);
         }
 
+        internal void DropItem(GrabbableObject item)
+        {
+            item.parentObject = null;
+            item.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+
+            var colliderEnabled = _physicsCollider != null && _physicsCollider.enabled;
+            var targetFloorPosition = item.GetItemFloorPosition(colliderEnabled ? new Vector3(item.transform.position.x, _physicsCollider!.bounds.center.y - _physicsCollider.bounds.size.y / 2f, item.transform.position.z) : default);
+
+            item.EnablePhysics(enable: true);
+            item.fallTime = 0f;
+            item.startFallingPosition = item.transform.parent.InverseTransformPoint(item.transform.position);
+            item.targetFloorPosition = item.transform.parent.InverseTransformPoint(targetFloorPosition);
+            item.floorYRot = -1;
+        }
+
+        public List<GrabbableObject> CarriedItems
+        {
+            get
+            {
+                if (_physicsRootObject == null || !_physicsRootObject.activeSelf)
+                    return [];
+
+                var items = Blob.GetComponentsInChildren<GrabbableObject>().Where(item => !item.isHeld && !item.isHeldByEnemy);
+                return items.Any() ? items.ToList() : [];
+            }
+        }
+
         public override PokeballItem? RetrieveInBall(Vector3 position)
         {
-            // ANY CLIENT
+            var carriedItems = CarriedItems;
 
-            if (_physicsRootObject != null)
-            {
-                var items = Blob.GetComponentsInChildren<GrabbableObject>();
-                LethalMon.Log(items.Length + " items in the physics region.");
-                foreach (var item in items)
-                {
-                    item.transform.SetParent(null, true);
-                    item.parentObject = null;
-
-                    // Inspired by PlayerControllerB.SetObjectAsNoLongerHeld
-                    /*var dropPos = item.GetItemFloorPosition();
-                    var droppedInElevator = !StartOfRound.Instance.shipBounds.bounds.Contains(dropPos);
-                    if (droppedInElevator)
-                    {
-                        item.targetFloorPosition = StartOfRound.Instance.elevatorTransform.InverseTransformPoint(dropPos);
-                        item.transform.SetParent(StartOfRound.Instance.elevatorTransform, true);
-                    }
-                    else
-                    {
-                        item.targetFloorPosition = StartOfRound.Instance.propsContainer.InverseTransformPoint(dropPos);
-                        item.transform.SetParent(StartOfRound.Instance.propsContainer, true);
-                    }
-
-                    item.transform.localScale = item.originalScale;
-                    item.fallTime = 0f;
-                    item.startFallingPosition = item.transform.parent.InverseTransformPoint(item.transform.position);
-                    item.EnablePhysics(enable: true);
-                    item.EnableItemMeshes(enable: true);*/
-                }
-            }
+            LethalMon.Log(carriedItems.Count + " items in the physics region.");
+            foreach (var item in carriedItems)
+                DropItem(item);
 
             return base.RetrieveInBall(position);
+        }
+
+        public override bool CanBeTeleported()
+        {
+            return CarriedItems.Count == 0;
         }
         #endregion
     }

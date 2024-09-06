@@ -297,10 +297,12 @@ public class Utils
         var enemyAI = gameObject.GetComponent<EnemyAI>();
         RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
-        enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || position.y > -50f);
+        enemyAI.SetEnemyOutside(IsEnemyOutside(enemyAI));
 
         return enemyAI;
     }
+
+    public static bool IsEnemyOutside(EnemyAI enemyAI) => StartOfRound.Instance.testRoom != null || enemyAI.transform.position.y > -50f;
     #endregion
 
     #region LayerMasks

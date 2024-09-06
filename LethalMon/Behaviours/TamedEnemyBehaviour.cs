@@ -104,6 +104,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool hasBeenRetrieved = false;
 
+    // Following
+    internal const float TimeBeforeUsingEntrance = 4f;
+    private float _timeAtEntrance = 0f;
+    private bool _usingEntrance = false;
+    private bool _followingRequiresEntrance = false;
+
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
     internal int LastDefaultBehaviourIndex
@@ -295,7 +301,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedFollowing)
         {
-            return FollowingBehaviourDescription;
+            if (_usingEntrance)
+                return "Using entrance..";
+            else if (_followingRequiresEntrance)
+                return "Going to entrance..";
+            else
+                return FollowingBehaviourDescription;
         }
         
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedDefending)
@@ -520,6 +531,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsTamed)
         {
             Enemy.Start();
+            Enemy.SetEnemyOutside(Utils.IsEnemyOutside(Enemy));
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
             Utils.CallNextFrame(CreateNameTag);
@@ -719,7 +731,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             //LethalMon.Logger.LogInfo("Follow owner");
             var enemyPosition = Enemy.transform.position;
-            if (Vector3.Distance(enemyPosition, targetPosition) > MaxFollowDistance)
+            if (Vector3.Distance(enemyPosition, targetPosition) > MaxFollowDistance && CanBeTeleported())
             {
                 TeleportBehindOwner();
                 return;
@@ -763,17 +775,57 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public void FollowOwner()
     {
         if (ownerPlayer == null) return;
+
+        var entranceTeleportRequired = ownerPlayer.isInsideFactory == Enemy.isOutside;
+        if(entranceTeleportRequired != _followingRequiresEntrance)
+        {
+            _followingRequiresEntrance = entranceTeleportRequired;
+            HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
+        }
+
+        if(ownerPlayer.isInsideFactory == Enemy.isOutside)
+        {
+            if(CanBeTeleported() || !EntranceTeleportPatch.HasTeleported)
+            {
+                if (!EntranceTeleportPatch.HasTeleported)
+                    LethalMon.Log("Teleporting due to not having teleported ^^");
+
+                TeleportBehindOwner();
+                return;
+            }
+
+            Vector3 destination = EntranceTeleportPatch.lastEntranceTeleportFrom!.Value;
+            if(_timeAtEntrance > 0f || Vector3.Distance(Enemy.transform.position, destination) < 5f)
+            {
+                if(_timeAtEntrance == 0f)
+                {
+                    _usingEntrance = true;
+                    HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
+                }
+
+                _timeAtEntrance += Time.deltaTime;
+                if (_timeAtEntrance >= TimeBeforeUsingEntrance)
+                {
+                    _usingEntrance = false;
+                    _timeAtEntrance = 0f;
+                    Teleport(EntranceTeleportPatch.lastEntranceTeleportTo!.Value, true, true);
+                }
+            }
+            else
+            {
+                FollowPosition(destination);
+            }
+            return;
+        }
         
         FollowPosition(ownerPlayer.transform.position);
     }
 
     private void TeleportBehindOwner()
     {
-        if (ownerPlayer == null) return;
+        if (ownerPlayer == null || !CanBeTeleported()) return;
 
-        Enemy.agent.enabled = false;
-        Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
-        Enemy.agent.enabled = true;
+        Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
 
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
@@ -951,6 +1003,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);
+
+        enemyAI.SetEnemyOutside(Utils.IsEnemyOutside(enemyAI));
     }
 
     public virtual bool CanBeTeleported()

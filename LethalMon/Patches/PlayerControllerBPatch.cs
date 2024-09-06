@@ -172,6 +172,15 @@ public class PlayerControllerBPatch
         }
     }
 
+#if DEBUG
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
+    [HarmonyPrefix]
+    private static void TeleportPlayerPrefix(PlayerControllerB __instance, Vector3 pos)
+    {
+        LethalMon.Log(__instance.playerUsername + " is teleporting from " + __instance.transform.position + " to " + pos);
+    }
+#endif
+
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
     [HarmonyPostfix]
     private static void TeleportPlayer(PlayerControllerB __instance, Vector3 pos)
