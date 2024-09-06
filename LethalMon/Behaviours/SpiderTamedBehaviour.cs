@@ -79,7 +79,6 @@ namespace LethalMon.Behaviours
                 Spider.footstepAudio.volume = 0.1f;
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
             }
-
         }
 
         internal override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -118,12 +117,16 @@ namespace LethalMon.Behaviours
 
             if(CanDefend)
             {
-                if (ownerPlayer!.fallValueUncapped < -30f)
+                if (IsOwnerPlayer && ownerPlayer!.fallValueUncapped < -30f)
                 {
                     if (Physics.Raycast(new Ray(ownerPlayer.transform.position, Vector3.down), 3f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore))
                     {
-                        var baseWebPos = ownerPlayer.transform.position + Vector3.down * 2f;
-                        ShootWeb(baseWebPos + Vector3.left, baseWebPos + Vector3.right, 1); // Single-use web
+                        PerformWebJump();
+
+                        if (webBounceSFX.Length > 0)
+                            Utils.PlaySoundAtPosition(ownerPlayer.transform.position, webBounceSFX[UnityEngine.Random.RandomRangeInt(0, webBounceSFX.Length - 1)]);
+
+                        shootWebCooldown?.Reset();
                     }
                 }
                 else
@@ -204,11 +207,15 @@ namespace LethalMon.Behaviours
         #region WebJumping
         internal void JumpOnWebLocalClient(int webTrapID)
         {
+            PerformWebJump();
+            JumpedOnWebServerRpc(webTrapID, (int)Utils.CurrentPlayerID!);
+        }
+
+        internal void PerformWebJump()
+        {
             if (_webJumpCoroutine != null)
                 StopCoroutine(_webJumpCoroutine);
-            _webJumpCoroutine = StartCoroutine(PerformWebJump());
-
-            JumpedOnWebServerRpc(webTrapID, (int)Utils.CurrentPlayerID!);
+            _webJumpCoroutine = StartCoroutine(PerformWebJumpCoroutine());
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -237,7 +244,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal IEnumerator PerformWebJump()
+        internal IEnumerator PerformWebJumpCoroutine()
         {
             var player = Utils.CurrentPlayer;
 
