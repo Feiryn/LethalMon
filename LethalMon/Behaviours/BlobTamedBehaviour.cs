@@ -142,10 +142,10 @@ namespace LethalMon.Behaviours
 
             Blob.Update();
 
-            if(Blob.IsOwner)
+            if(Blob.agent != null)
                 Blob.agent.stoppingDistance = 0f;
 
-            Blob.timeSinceHittingLocalPlayer = 0f; // friendly
+            Blob.timeSinceHittingLocalPlayer = 0f; // keeps it friendly
         }
 
         internal override void DoAIInterval()
@@ -153,7 +153,7 @@ namespace LethalMon.Behaviours
             base.DoAIInterval();
 
             var carriedItems = CarriedItems;
-            if (carriedItems.Count > ItemCarryCount)
+            if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems)
             {
                 for(int i = carriedItems.Count - 1; i >= ItemCarryCount; --i)
                     DropItem(carriedItems[i]);
@@ -179,12 +179,13 @@ namespace LethalMon.Behaviours
             item.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
 
             var colliderEnabled = _physicsCollider != null && _physicsCollider.enabled;
-            var targetFloorPosition = item.GetItemFloorPosition(colliderEnabled ? new Vector3(item.transform.position.x, _physicsCollider!.bounds.center.y - _physicsCollider.bounds.size.y / 2f, item.transform.position.z) : default);
+            var targetFloorPosition = item.GetItemFloorPosition(colliderEnabled ? new Vector3(item.transform.position.x, _physicsCollider!.bounds.center.y - _physicsCollider.bounds.size.y / 2f - 0.1f, item.transform.position.z) : default);
 
             item.EnablePhysics(enable: true);
             item.fallTime = 0f;
             item.startFallingPosition = item.transform.parent.InverseTransformPoint(item.transform.position);
             item.targetFloorPosition = item.transform.parent.InverseTransformPoint(targetFloorPosition);
+            item.transform.localScale = item.originalScale;
             item.floorYRot = -1;
         }
 

@@ -813,7 +813,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             }
             else
             {
-                FollowPosition(destination);
+                PlaceOnNavMesh();
+                MoveTowards(destination);
             }
             return;
         }
