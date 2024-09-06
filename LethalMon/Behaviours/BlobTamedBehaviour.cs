@@ -5,14 +5,13 @@ using Unity.Netcode;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 using System.Linq;
-using System;
 
 namespace LethalMon.Behaviours
 {
     internal class BlobTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
-        private BlobAI? _blob = null; // Replace with enemy class
+        private BlobAI? _blob = null;
         internal BlobAI Blob
         {
             get
@@ -24,17 +23,14 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal const int ItemCarryCount = 4;
+        private Vector3? _previousLocalScale = Vector3.zero;
 
+        // PhysicsRegion
         internal const string PhysicsObjectName = "PhysicsRootObject";
         internal static bool PhysicsRegionAdded = false;
         private GameObject? _physicsRootObject = null;
         private BoxCollider? _physicsCollider = null;
         private PlayerPhysicsRegion? _physicsRegion = null;
-
-        internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
-
-        internal override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
         #endregion
 
         #region Base Methods
@@ -44,6 +40,8 @@ namespace LethalMon.Behaviours
 
             if (IsTamed)
             {
+                Blob.transform.localScale = new(1f, 0.5f, 1f);
+
                 Blob.timeSinceHittingLocalPlayer = 0f;
 
                 _physicsRootObject = Blob.transform.Find(PhysicsObjectName)?.gameObject;
@@ -64,6 +62,8 @@ namespace LethalMon.Behaviours
 
                     Invoke(nameof(AdjustPhysicsObjectScale), 2f); // Update scale when blob if fully sized
                 }
+
+                _previousLocalScale = Blob.transform.localScale;
             }
         }
 
@@ -153,20 +153,23 @@ namespace LethalMon.Behaviours
             base.DoAIInterval();
 
             var carriedItems = CarriedItems;
-            if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems)
+            if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems) // todo: find a way to only run this if someone drops an item
             {
                 for(int i = carriedItems.Count - 1; i >= ItemCarryCount; --i)
                     DropItem(carriedItems[i]);
             }
+
+            if (_previousLocalScale != Blob.transform.localScale)
+                AdjustPhysicsObjectScale();
         }
         #endregion
 
         #region Methods
-        internal void AdjustPhysicsObjectScale()
+        public void AdjustPhysicsObjectScale()
         {
             if (_physicsRootObject == null) return;
 
-            LethalMon.Log("Tamed Blob: Update physics object scale.");
+            //LethalMon.Log("Tamed Blob: Update physics object scale.");
             _physicsRootObject.transform.SetParent(null, true);
             _physicsRootObject.transform.localScale = Vector3.Scale(new(3f, 0.5f, 3f), Blob.transform.localScale);
             _physicsRootObject.transform.position = Blob.transform.position;
@@ -205,17 +208,14 @@ namespace LethalMon.Behaviours
         {
             var carriedItems = CarriedItems;
 
-            LethalMon.Log(carriedItems.Count + " items in the physics region.");
+            //LethalMon.Log(carriedItems.Count + " items in the physics region.");
             foreach (var item in carriedItems)
                 DropItem(item);
 
             return base.RetrieveInBall(position);
         }
 
-        public override bool CanBeTeleported()
-        {
-            return CarriedItems.Count == 0;
-        }
+        public override bool CanBeTeleported() => CarriedItems.Count == 0;
         #endregion
     }
 }
