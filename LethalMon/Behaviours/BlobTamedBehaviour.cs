@@ -129,27 +129,27 @@ namespace LethalMon.Behaviours
         {
             // OWNER ONLY
             base.OnTamedFollowing();
-#if DEBUG
-            Blob.agent.speed = 5f;
-#endif
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
+
+            Blob.transform.localScale *= 1.5f;
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
             base.OnUpdate(update, doAIInterval);
-        }
 
-        internal override void DoAIInterval()
-        {
-            // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
-            base.DoAIInterval();
+            Blob.Update();
+
+            if(Blob.IsOwner)
+                Blob.agent.stoppingDistance = 0f;
+
+            Blob.timeSinceHittingLocalPlayer = 0f; // friendly
         }
 
         internal void AdjustPhysicsObjectScale()
