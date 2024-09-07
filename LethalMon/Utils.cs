@@ -10,6 +10,7 @@ using Object = UnityEngine.Object;
 using Random = System.Random;
 using UnityEngine.AI;
 using System.Collections;
+using UnityEngine.Events;
 
 namespace LethalMon;
 
@@ -256,7 +257,7 @@ public class Utils
         SpringMan
     }
 
-    private static readonly List<string> NonEnemyRenderer = ["mapdot", "scannode"];
+    private static readonly List<string> NonEnemyRenderer = ["mapdot"];
 
     public static bool TryGetRealEnemyBounds(EnemyAI enemy, out Bounds bounds) // info: don't run this at Start(). wait at least one frame
     {
@@ -270,10 +271,10 @@ public class Utils
         for (var i = 1; i < renderers.Length; ++i)
         {
             var rendererName = renderers[i].name.ToLower();
-            //LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible);
+            //LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible + " / " + renderers[i].bounds);
             if (!NonEnemyRenderer.Where(rendererName.StartsWith).Any())
             {
-                L//ethalMon.Log("Encapsulated: " + (renderers[i].bounds.max.y - enemy.transform.position.y) + " / " + renderers[i].bounds.size);
+                LethalMon.Log("Encapsulated: " + (renderers[i].bounds.max.y - enemy.transform.position.y));
                 bounds.Encapsulate(renderers[i].bounds);
             }
         }
@@ -300,6 +301,51 @@ public class Utils
         enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || position.y > -50f);
 
         return enemyAI;
+    }
+
+    // Use after OnCallFromBall
+    // Don't forget to clean up objects!
+    public static void CreateInteractionForEnemy(EnemyAI enemyAI, string hoverTip, float timeToHold, UnityAction<PlayerControllerB> callback, out InteractTrigger? interactTrigger,
+        out GameObject? triggerObject)
+    {
+        interactTrigger = null;
+        triggerObject = null;
+        
+        if(!Utils.TryGetRealEnemyBounds(enemyAI, out Bounds bounds))
+        {
+            LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
+            return;
+        }
+
+        triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        triggerObject.transform.SetParent(enemyAI.transform, false);
+        triggerObject.transform.position = bounds.center;
+        triggerObject.transform.localScale = bounds.size;
+        Physics.IgnoreCollision(triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
+
+        triggerObject.tag = "InteractTrigger";
+        triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
+
+        interactTrigger = triggerObject.AddComponent<InteractTrigger>();
+        interactTrigger.interactable = true;
+        interactTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
+        interactTrigger.hoverTip = hoverTip;
+        interactTrigger.oneHandedItemAllowed = true;
+        interactTrigger.twoHandedItemAllowed = true;
+        interactTrigger.holdInteraction = timeToHold != 0f;
+        interactTrigger.touchTrigger = false;
+        interactTrigger.timeToHold = timeToHold;
+        interactTrigger.timeToHoldSpeedMultiplier = 1f;
+
+        interactTrigger.holdingInteractEvent = new InteractEventFloat();
+        interactTrigger.onInteract = new InteractEvent();
+        interactTrigger.onInteractEarly = new InteractEvent();
+        interactTrigger.onStopInteract = new InteractEvent();
+        interactTrigger.onCancelAnimation = new InteractEvent();
+
+        interactTrigger.onInteract.AddListener(callback);
+
+        interactTrigger.enabled = true;
     }
     #endregion
 
