@@ -793,7 +793,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
 
-    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         targetNearestEnemyInterval -= Time.deltaTime;
         if (targetNearestEnemyInterval > 0)
@@ -801,7 +801,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         targetNearestEnemyInterval = 1f;
         
-        var target = NearestEnemy(requireLOS, fromOwnerPerspective);
+        var target = NearestEnemy(requireLOS, fromOwnerPerspective, angle);
         if(target != null)
         {
             targetEnemy = target;
@@ -810,7 +810,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         const int layerMask = 1 << (int) Utils.LayerMasks.Mask.Enemies;
         EnemyAI? target = null;
@@ -818,8 +818,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (fromOwnerPerspective && ownerPlayer == null) return null;
 
-        var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
-        var enemiesInRange = Physics.OverlapSphere(startPosition, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
+        var startTransform = fromOwnerPerspective ? ownerPlayer!.playerEye.transform : Enemy.transform;
+        var enemiesInRange = Physics.OverlapSphere(startTransform.position, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
@@ -828,9 +828,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
-            if (requireLOS && !enemyInRange.CheckLineOfSightForPosition(startPosition, 180f, 10)) continue;
+            if (requireLOS && !OptimizedCheckLineOfSightForPosition(startTransform.position, enemyInRange.transform.position, startTransform.forward, angle)) continue;
 
-            float distanceTowardsEnemy = Vector3.Distance(startPosition, enemyInRange.transform.position);
+            float distanceTowardsEnemy = Vector3.Distance(startTransform.position, enemyInRange.transform.position);
             if (distanceTowardsEnemy < distance)
             {
                 distance = distanceTowardsEnemy;
@@ -839,6 +839,20 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         return target;
+    }
+    
+    internal static bool OptimizedCheckLineOfSightForPosition(Vector3 startPosition, Vector3 targetPosition, Vector3 forward, float angle)
+    {
+        if (!Physics.Linecast(startPosition, targetPosition, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+        {
+            Vector3 to = targetPosition - startPosition;
+            if (Vector3.Angle(forward, to) < angle)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)

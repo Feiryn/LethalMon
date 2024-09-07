@@ -60,7 +60,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         base.OnTamedFollowing();
 
         if (_stunCooldown != null && _stunCooldown.IsFinished())
-            TargetNearestEnemy();
+            TargetNearestEnemy(true, false, 360f);
     }
 
     internal override void OnTamedDefending()
