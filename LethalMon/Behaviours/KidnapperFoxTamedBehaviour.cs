@@ -73,7 +73,6 @@ namespace LethalMon.Behaviours
         {
             base.Start();
 
-            LethalMon.Log("bushwolf behaviour start");
             tongueCooldown = GetCooldownWithId(TongueCooldownId);
 
             if (IsTamed)
@@ -524,7 +523,6 @@ namespace LethalMon.Behaviours
 
             private void OnDestroy()
             {
-                LethalMon.Log("Destroying bushwolf behaviour");
                 if (localPlayerHiding)
                     UnhideLocalPlayer();
             }

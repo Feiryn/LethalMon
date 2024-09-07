@@ -256,7 +256,7 @@ public class Utils
         SpringMan
     }
 
-    private static readonly List<string> NonEnemyRenderer = ["mapdot"];
+    private static readonly List<string> NonEnemyRenderer = ["mapdot", "scannode"];
 
     public static bool TryGetRealEnemyBounds(EnemyAI enemy, out Bounds bounds) // info: don't run this at Start(). wait at least one frame
     {
@@ -270,10 +270,10 @@ public class Utils
         for (var i = 1; i < renderers.Length; ++i)
         {
             var rendererName = renderers[i].name.ToLower();
-            LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible);
+            //LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible);
             if (!NonEnemyRenderer.Where(rendererName.StartsWith).Any())
             {
-                LethalMon.Log("Encapsulated: " + (renderers[i].bounds.max.y - enemy.transform.position.y));
+                L//ethalMon.Log("Encapsulated: " + (renderers[i].bounds.max.y - enemy.transform.position.y) + " / " + renderers[i].bounds.size);
                 bounds.Encapsulate(renderers[i].bounds);
             }
         }
