@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -9,7 +10,9 @@ namespace LethalMon.Behaviours
         // Prefabs
         internal static GameObject? companyMonsterPrefab = null;
         internal GameObject? tentaclePrefab = null;
-        internal AudioClip? wallAttackSFX = null;
+
+        // Audio
+        internal CompanyMood? mood = null;
 
         // Components
         internal SphereCollider? collider = null;
@@ -68,10 +71,6 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            companyMonsterAI.wallAttackSFX = Instantiate(depositItemsDesk.currentMood.wallAttackSFX);
-            if(companyMonsterAI.wallAttackSFX == null)
-                LethalMon.Log("Unable to instantiate company monsters attack sfx.", LethalMon.LogType.Error);
-
             LethalMon.Log("Extracted company monster assets from item desk.");
         }
         #endregion
@@ -83,7 +82,13 @@ namespace LethalMon.Behaviours
             base.Start();
 
             eye = transform.Find("Eye");
-            creatureSFX = GetComponent<AudioSource>();
+
+            if (!TryGetComponent(out creatureSFX))
+            {
+                LethalMon.Log("Failed to load audio source of company monster. Creating new one.", LethalMon.LogType.Warning);
+                creatureSFX = Utils.CreateAudioSource(gameObject);
+            }
+            creatureSFX.volume = 0f;
 
             collider = GetComponent<SphereCollider>();
             if (collider == null)
@@ -102,17 +107,51 @@ namespace LethalMon.Behaviours
                 }
             }
 
-            transform.position += Vector3.up;
+            if (agent == null)
+                LethalMon.Log("AGENT NULL", LethalMon.LogType.Warning);
+
+            transform.localPosition += Vector3.up;
         }
 
         public override void Update()
         {
             base.Update();
+
+            if (IsOwner && mood == null && TimeOfDay.Instance != null)
+            {
+                LethalMon.Log("Update mood");
+                UpdateMoodServerRpc();
+            }
+
+            if (creatureSFX.isPlaying && creatureSFX.volume < 1f)
+                creatureSFX.volume = Mathf.Lerp(creatureSFX.volume, 1f, Time.deltaTime);
         }
 
         public override void DoAIInterval()
         {
             base.DoAIInterval();
+        }
+        #endregion
+
+        #region Methods
+        [ServerRpc]
+        public void UpdateMoodServerRpc()
+        {
+            if (TimeOfDay.Instance.CommonCompanyMoods.Length > 0)
+                UpdateMoodClientRpc(Random.RandomRangeInt(0, TimeOfDay.Instance.CommonCompanyMoods.Length - 1));
+        }
+
+        [ClientRpc]
+        public void UpdateMoodClientRpc(int moodID)
+        {
+            LethalMon.Log("UpdateMoodClientRpc");
+            if (TimeOfDay.Instance == null || TimeOfDay.Instance.CommonCompanyMoods.Length == 0) return;
+
+            LethalMon.Log("UpdateMoodClientRpc 2");
+            mood = TimeOfDay.Instance.CommonCompanyMoods[Mathf.Max(moodID, TimeOfDay.Instance.CommonCompanyMoods.Length - 1)];
+
+            creatureSFX.clip = mood.behindWallSFX;
+            creatureSFX.Play();
         }
         #endregion
     }

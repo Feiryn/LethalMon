@@ -1,6 +1,5 @@
 ﻿using GameNetcodeStuff;
 using System.Collections.Generic;
-using LethalMon.Items;
 using UnityEngine;
 
 namespace LethalMon.Behaviours
@@ -56,8 +55,8 @@ namespace LethalMon.Behaviours
                 CompanyMonster.monsterAnimator?.SetBool("visible", value: true);
                 //CompanyMonster.monsterAnimator?.Play("Base Layer.Tentacle1Explore");
 
-                if(CompanyMonster.wallAttackSFX != null && CompanyMonster.TryGetComponent(out AudioSource audioSource))
-                    audioSource.PlayOneShot(CompanyMonster.wallAttackSFX);
+                if(CompanyMonster.mood?.wallAttackSFX != null && CompanyMonster.TryGetComponent(out AudioSource audioSource))
+                    audioSource.PlayOneShot(CompanyMonster.mood.wallAttackSFX);
 
                 attackCooldown?.Reset();
             }
@@ -73,12 +72,16 @@ namespace LethalMon.Behaviours
             _startPosition = CompanyMonster.transform.position;
 
             if (IsTamed)
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1);
+            {
+                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
+            }
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);
+
+            CompanyMonster.Update();
             
             CompanyMonster.transform.position = _startPosition; // debug!
         }
