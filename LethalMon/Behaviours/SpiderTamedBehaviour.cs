@@ -114,23 +114,10 @@ namespace LethalMon.Behaviours
         internal override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
-
-            if(CanDefend)
+            
+            if (CanDefend)
             {
-                if (IsOwnerPlayer && ownerPlayer!.fallValueUncapped < -30f)
-                {
-                    if (Physics.Raycast(new Ray(ownerPlayer.transform.position, Vector3.down), 3f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore))
-                    {
-                        PerformWebJump();
-
-                        if (webBounceSFX.Length > 0)
-                            Utils.PlaySoundAtPosition(ownerPlayer.transform.position, webBounceSFX[UnityEngine.Random.RandomRangeInt(0, webBounceSFX.Length - 1)]);
-
-                        shootWebCooldown?.Reset();
-                    }
-                }
-                else
-                    TargetNearestEnemy();
+                TargetNearestEnemy();
             }
         }
 
@@ -161,6 +148,17 @@ namespace LethalMon.Behaviours
             // ANY CLIENT
             base.OnUpdate(update, doAIInterval);
 
+            // Negate fall damages for the owner
+            if (IsOwnerPlayer && ownerPlayer!.fallValueUncapped < -30f && !IsWebJumping && IsCurrentBehaviourTaming(TamingBehaviour.TamedFollowing))
+            {
+                if (Physics.Raycast(new Ray(ownerPlayer.transform.position, Vector3.down), 3f, StartOfRound.Instance.allPlayersCollideWithMask, QueryTriggerInteraction.Ignore))
+                {
+                    PerformWebJump();
+
+                    NegateFallDamageJumpServerRpc(ownerPlayer.transform.position);
+                }
+            }
+            
             Spider.Update();
         }
 
@@ -241,6 +239,21 @@ namespace LethalMon.Behaviours
                 webBehaviour.playerUses--;
                 if (webBehaviour.playerUses == 0)
                     Spider.BreakWebServerRpc(webTrapID, playerID);
+            }
+        }
+        
+        [ServerRpc(RequireOwnership = false)]
+        internal void NegateFallDamageJumpServerRpc(Vector3 position) => NegateFallDamageJumpClientRpc(position);
+        
+        [ClientRpc]
+        internal void NegateFallDamageJumpClientRpc(Vector3 position)
+        {
+            if (webBounceSFX.Length > 0)
+                Utils.PlaySoundAtPosition(position, webBounceSFX[UnityEngine.Random.RandomRangeInt(0, webBounceSFX.Length - 1)]);
+
+            if (Utils.IsHost)
+            {
+                shootWebCooldown?.Reset();
             }
         }
 
