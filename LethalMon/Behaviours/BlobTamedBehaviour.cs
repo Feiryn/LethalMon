@@ -155,12 +155,15 @@ namespace LethalMon.Behaviours
             var carriedItems = CarriedItems;
             if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems) // todo: find a way to only run this if someone drops an item
             {
-                for(int i = carriedItems.Count - 1; i >= ItemCarryCount; --i)
+                for(int i = carriedItems.Count - 1; i >= ModConfig.Instance.values.BlobMaxItems; --i)
                     DropItem(carriedItems[i]);
             }
 
             if (_previousLocalScale != Blob.transform.localScale)
+            {
+                _previousLocalScale = Blob.transform.localScale;
                 AdjustPhysicsObjectScale();
+            }
         }
         #endregion
 
