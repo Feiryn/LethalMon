@@ -146,11 +146,12 @@ namespace LethalMon.Behaviours
                 Blob.agent.stoppingDistance = 0f;
 
             Blob.timeSinceHittingLocalPlayer = 0f; // keeps it friendly
+            Blob.movingTowardsTargetPlayer = false;
         }
 
         internal override void DoAIInterval()
         {
-            base.DoAIInterval();
+            //base.DoAIInterval();
 
             var carriedItems = CarriedItems;
             if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems) // todo: find a way to only run this if someone drops an item
@@ -164,6 +165,12 @@ namespace LethalMon.Behaviours
                 _previousLocalScale = Blob.transform.localScale;
                 AdjustPhysicsObjectScale();
             }
+
+            if (Enemy.moveTowardsDestination)
+            {
+                Enemy.agent.SetDestination(Enemy.destination);
+            }
+            Enemy.SyncPositionToClients();
         }
         #endregion
 

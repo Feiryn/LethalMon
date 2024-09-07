@@ -295,7 +295,6 @@ public class Utils
         GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, position, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
         gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
         var enemyAI = gameObject.GetComponent<EnemyAI>();
-        RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
         enemyAI.SetEnemyOutside(IsEnemyOutside(enemyAI));
 

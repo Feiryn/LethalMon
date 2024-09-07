@@ -569,6 +569,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsOwnerPlayer)
             HUDManagerPatch.EnableHUD(false);
 
+        if (IsTamed && !base.IsServer) // Counter to EnemyAI.Start()
+            RoundManager.Instance.SpawnedEnemies.Remove(Enemy);
+
         HideNameTag();
     }
 
