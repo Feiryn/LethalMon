@@ -30,18 +30,25 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     internal static AudioClip? FlySFX = null;
 
+    internal InteractTrigger? _giveItemInteractTrigger = null;
+    
+    internal GameObject? _triggerObject = null;
+    
+    private HashSet<int> _alreadyGrabbedItems = new();
     #endregion
 
     #region Custom behaviours
     private enum CustomBehaviour
     {
         GettingItem = 1,
-        BringBackItem
+        BringBackItem,
+        HoldItem
     }
     internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new (CustomBehaviour.GettingItem.ToString(), "Saw an interesting item!", OnGettingItem),
-        new (CustomBehaviour.BringBackItem.ToString(), "Brings an item to you!", OnBringBackItem)
+        new (CustomBehaviour.BringBackItem.ToString(), "Brings an item to you!", OnBringBackItem),
+        new (CustomBehaviour.HoldItem.ToString(), "Holds an item!", OnHoldItem)
     ];
 
     public void OnGettingItem()
@@ -88,6 +95,11 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             HoarderBug.SetDestinationToPosition(ownerPlayer.transform.position);
         }
     }
+
+    public void OnHoldItem()
+    {
+        base.OnTamedFollowing();
+    }
     #endregion
     
     #region Cooldowns
@@ -108,8 +120,9 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         bringItemCooldown = GetCooldownWithId(BringItemCooldownId);
 
         if (IsTamed)
+        {
             HoarderBug.creatureAnimator.Play("Base Layer.Walking");
-        
+        }
     }
 
     internal override void OnTamedFollowing()
@@ -121,14 +134,13 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         _currentTimer += Time.deltaTime;
         if (_currentTimer > SearchTimer)
         {
-            //LethalMon.Log("HoarderBugAI searches for items");
             _currentTimer = 0f;
-            var colliders = Physics.OverlapSphere(HoarderBug.transform.position, 15f);
+            var colliders = Physics.OverlapSphere(HoarderBug.transform.position, 30f);
 
             foreach (Collider collider in colliders)
             {
                 GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
-                if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer!.transform.position) < 8f) continue;
+                if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer!.transform.position) < 8f || _alreadyGrabbedItems.Contains(grabbable.GetInstanceID())) continue;
 
                 // Check LOS
                 if (!Physics.Linecast(HoarderBug.transform.position, grabbable.transform.position, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
@@ -168,6 +180,51 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         
         return base.RetrieveInBall(position);
     }
+
+    public override void OnDestroy()
+    {
+        if (_giveItemInteractTrigger != null)
+            Destroy(_giveItemInteractTrigger);
+        
+        if (_triggerObject != null)
+            Destroy(_triggerObject);
+        
+        base.OnDestroy();
+    }
+
+    internal override void OnCallFromBall()
+    {
+        base.OnCallFromBall();
+        
+        if (IsOwnerPlayer)
+        {
+            Utils.CreateInteractionForEnemy(HoarderBug, "Give item", 1f, (player) =>
+            {
+                if (HoarderBug.heldItem == null && IsCurrentBehaviourTaming(TamingBehaviour.TamedFollowing))
+                {
+                    GrabbableObject heldItem = player.ItemSlots[player.currentItemSlot];
+                    if (heldItem != null)
+                    {
+                        NetworkObject itemNetworkObject = heldItem.GetComponent<NetworkObject>();
+                        GrabItem(itemNetworkObject, true);
+                        HoarderBug.sendingGrabOrDropRPC = true;
+                        GrabItemServerRpc(itemNetworkObject, true);
+                        _giveItemInteractTrigger!.hoverTip = "Drop held item";
+                        SwitchToCustomBehaviour((int) CustomBehaviour.HoldItem);
+                    }
+                }
+                else if (CurrentCustomBehaviour == (int) CustomBehaviour.HoldItem)
+                {
+                    DropHeldItem(HoarderBug.transform.position);
+                    HoarderBug.sendingGrabOrDropRPC = true;
+                    DropHeldItemServerRpc(HoarderBug.transform.position);
+                    _giveItemInteractTrigger!.hoverTip = "Give item";
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                }
+            }, out _giveItemInteractTrigger, out _triggerObject);
+        }
+    }
+
     #endregion
 
     #region Methods
@@ -184,13 +241,13 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         if (!HoarderBug.targetItem.TryGetComponent(out NetworkObject networkObject))
             return false;
 
-        GrabItem(networkObject);
+        GrabItem(networkObject, false);
         HoarderBug.sendingGrabOrDropRPC = true;
-        GrabItemServerRpc(networkObject);
+        GrabItemServerRpc(networkObject, false);
         return true;
     }
     
-    private void GrabItem(NetworkObject item)
+    private void GrabItem(NetworkObject item, bool itemGaveByOwner)
     {
         if (HoarderBug.sendingGrabOrDropRPC)
         {
@@ -207,19 +264,31 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         HoarderBug.targetItem = null;
         if (item.gameObject.TryGetComponent(out GrabbableObject grabbableObject))
         {
+            if (grabbableObject == ownerPlayer!.ItemSlots[ownerPlayer.currentItemSlot])
+            {
+                ownerPlayer.DiscardHeldObject();
+            }
+
             HoarderBug.heldItem = new HoarderBugItem(grabbableObject, HoarderBugItemStatus.Owned, new Vector3());
             grabbableObject.parentObject = HoarderBug.grabTarget;
             grabbableObject.hasHitGround = false;
             grabbableObject.GrabItemFromEnemy(Enemy);
             grabbableObject.EnablePhysics(enable: false);
+
+            _alreadyGrabbedItems.Add(grabbableObject.GetInstanceID());
         }
 
-        // todo: maybe original one is re-useable till here
-        
-        HoarderBug.creatureAnimator.SetBool("Chase", true);
-        HoarderBug.creatureSFX.clip = FlySFX;
-        HoarderBug.creatureSFX.Play();
-        RoundManager.PlayRandomClip(HoarderBug.creatureVoice, HoarderBug.chitterSFX);
+        if (!itemGaveByOwner)
+        {
+            HoarderBug.creatureAnimator.SetBool("Chase", true);
+            HoarderBug.creatureSFX.clip = FlySFX;
+            HoarderBug.creatureSFX.Play();
+            RoundManager.PlayRandomClip(HoarderBug.creatureVoice, HoarderBug.chitterSFX);
+        }
+        else
+        {
+            RoundManager.PlayRandomClip(HoarderBug.creatureVoice, HoarderBug.chitterSFX);
+        }
     }
     
     private void DropHeldItem(Vector3 targetFloorPosition)
@@ -280,16 +349,16 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
     }
     
     [ServerRpc(RequireOwnership = false)]
-    public void GrabItemServerRpc(NetworkObjectReference objectRef)
+    public void GrabItemServerRpc(NetworkObjectReference objectRef, bool itemGaveByOwner)
     {
         bringItemCooldown?.Reset();
         bringItemCooldown?.Pause();
-        GrabItemClientRpc(objectRef);
+        GrabItemClientRpc(objectRef, itemGaveByOwner);
         SwitchToCustomBehaviour((int)CustomBehaviour.BringBackItem);
     }
     
     [ClientRpc]
-    public void GrabItemClientRpc(NetworkObjectReference objectRef)
+    public void GrabItemClientRpc(NetworkObjectReference objectRef, bool itemGaveByOwner)
     {
         // SwitchToBehaviourStateOnLocalClient(1);
         if (!objectRef.TryGet(out var networkObject))
@@ -298,7 +367,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
             return;
         }
 
-        GrabItem(networkObject);
+        GrabItem(networkObject, itemGaveByOwner);
     }
     #endregion
 }
