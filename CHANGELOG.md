@@ -6,6 +6,7 @@
 - Bees are working way better now
 - Hoarder bug no longer brings the same item multiple times
 - Fixed a bug that prevented the player from dying from some monsters while on a puffer
+- Fox is now disabled
 
 # 0.5.2
 
