@@ -35,6 +35,13 @@ namespace LethalMon.Patches
 
             return false;
         }
+        
+        [HarmonyPatch(typeof(SandSpiderAI), nameof(SandSpiderAI.TriggerChaseWithPlayer))]
+        [HarmonyPrefix]
+        public static bool TriggerChaseWithPlayerPrefix(SandSpiderAI __instance/*, PlayerControllerB playerScript*/)
+        {
+            return !TryGetTamedBehaviour(__instance, out SpiderTamedBehaviour? spiderEnemyBehaviour) || spiderEnemyBehaviour == null || !spiderEnemyBehaviour.IsTamed;
+        }
 
         private static bool TryGetTamedBehaviour(SandSpiderAI spider, out SpiderTamedBehaviour? behaviour)
         {
