@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using Object = UnityEngine.Object;
@@ -111,4 +112,20 @@ public class EnemyAIPatch
         TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
         return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
     }
+    
+    #if DEBUG
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.SwitchToBehaviourState))]
+    [HarmonyPrefix]
+    private static void SwitchToBehaviourStatePrefix(EnemyAI __instance, int stateIndex)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
+        {
+            LethalMon.Log(__instance.enemyType.name + " switches from behaviour state (" +
+                          __instance.currentBehaviourStateIndex + ") to behaviour state (" + stateIndex +
+                          "), called by:\n" + new StackTrace());
+        }
+    }
+    #endif
 }
