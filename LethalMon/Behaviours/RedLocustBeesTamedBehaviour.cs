@@ -21,7 +21,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override float TargetingRange => 3f;
+    internal override float TargetingRange => 10f;
     #endregion
 
     #region Cooldowns
@@ -105,7 +105,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
                 LethalMon.Log("Target enemy collided");
 
                 _stunCooldown?.Reset();
-                targetEnemy.SetEnemyStunned(true, 10f);
+                targetEnemy.SetEnemyStunned(true, 7f);
                 
                 targetEnemy = null;
             }
