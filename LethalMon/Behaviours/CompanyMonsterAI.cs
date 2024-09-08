@@ -107,9 +107,6 @@ namespace LethalMon.Behaviours
                 }
             }
 
-            if (agent == null)
-                LethalMon.Log("AGENT NULL", LethalMon.LogType.Warning);
-
             transform.localPosition += Vector3.up;
         }
 
