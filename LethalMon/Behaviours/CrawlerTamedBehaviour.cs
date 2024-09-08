@@ -379,9 +379,10 @@ namespace LethalMon.Behaviours
                 if (!door.isDoorOpened)
                 {
                     var distance = Vector3.Distance(doorPosition, Crawler.transform.position);
-                    if (distance <= MaxDoorAndTurretDistance &&
+                    if (distance <= 0.5f ||
+                        (distance <= MaxDoorAndTurretDistance &&
                         distance <= closestDistance &&
-                        !Physics.Linecast(Crawler.transform.position, doorPosition, out _, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+                        !Physics.Raycast(Crawler.transform.position, (doorPosition - Crawler.transform.position).normalized, out _, distance - 0.5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault)))
                     {
                         closestDistance = distance;
                         closestSmallDoor = door;

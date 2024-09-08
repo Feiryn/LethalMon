@@ -13,6 +13,8 @@ namespace LethalMon.Patches
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.OnCollideWithPlayer))]
         public static void OnCollideWithPlayerPrefix(MaskedPlayerEnemy __instance, Collider other)
         {
+            if(!__instance.IsSpawned) return;
+
             if (lastColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return; // Don't re-run this patch every frame
             lastColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
 
@@ -21,7 +23,7 @@ namespace LethalMon.Patches
 
             if (!__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour) || tamedBehaviour.targetPlayer == null) return;
 
-            if (tamedBehaviour.CurrentCustomBehaviour.GetValueOrDefault(-1) == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
+            if (tamedBehaviour.CurrentCustomBehaviour == (int)MaskedTamedBehaviour.CustomBehaviour.Ghostified)
             {
                 LethalMon.Log("Ghost hitting player " + player.playerClientId);
                 tamedBehaviour.Masked.startingKillAnimationLocalClient = true; // Make player unkillable by this ghost

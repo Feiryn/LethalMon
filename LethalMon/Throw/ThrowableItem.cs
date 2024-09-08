@@ -157,6 +157,12 @@ namespace LethalMon.Throw
                 playerThrownBy = player;
                 lastThrower = playerThrownBy;
             }
+
+            if (itemProperties.throwSFX != null && base.gameObject.TryGetComponent(out AudioSource audioSource))
+            {
+                audioSource.PlayOneShot(itemProperties.throwSFX);
+                WalkieTalkie.TransmitOneShotAudio(audioSource, itemProperties.throwSFX);
+            }
         }
         
         [ServerRpc(RequireOwnership = false)]
@@ -209,6 +215,11 @@ namespace LethalMon.Throw
             }
             
             _throwTime += Time.deltaTime;
+            if (_throwTime > _totalFallTime)
+            {
+                _throwTime = _totalFallTime;
+            }
+            
             Vector3 previousPosition = this.transform.localPosition;
             this.transform.localPosition = this.startFallingPosition + _initialVelocity * _throwTime + 0.5f * Gravity * _throwTime * _throwTime;
             this.fallTime = _throwTime / _totalFallTime;

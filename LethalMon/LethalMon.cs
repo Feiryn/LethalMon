@@ -84,8 +84,10 @@ public class LethalMon : BaseUnityPlugin
         MaskedTamedBehaviour.LoadGhostAudio(assetBundle);
         BaboonHawkTamedBehaviour.LoadAudio(assetBundle);
         HoarderBugTamedBehaviour.LoadAudio(assetBundle);
+        SpiderTamedBehaviour.LoadAudio(assetBundle);
         
         PC.PC.LoadAssets(assetBundle);
+        PokeballItem.LoadAudio(assetBundle);
 
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
 
@@ -121,6 +123,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(BushWolfEnemyPatch));
         Harmony.PatchAll(typeof(MaskedPlayerEnemyPatch));
         Harmony.PatchAll(typeof(BaboonBirdAIPatch));
+        Harmony.PatchAll(typeof(SandSpiderAIPatch));
 
         // Enemy behaviours
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));

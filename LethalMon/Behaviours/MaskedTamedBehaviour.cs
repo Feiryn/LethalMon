@@ -469,7 +469,7 @@ namespace LethalMon.Behaviours
             escapeFromBallEventRunning = true;
 
             Masked.enabled = false;
-            if (IsOwner)
+            if (IsOwner && Masked.agent != null)
                 Masked.agent.enabled = false;
 
             if (targetPlayer != null)
@@ -645,6 +645,8 @@ namespace LethalMon.Behaviours
 
             Masked.SetMovingTowardsTargetPlayer(targetPlayer);
             Masked.addPlayerVelocityToDestination = 0f;
+
+            Masked.inSpecialAnimationWithPlayer = targetPlayer;
         }
 
         [ServerRpc]
@@ -732,19 +734,10 @@ namespace LethalMon.Behaviours
 
             // Add farAudio
             if (_farAudio == null)
-            {
-                _farAudio = Masked.gameObject.AddComponent<AudioSource>();
-                _farAudio.maxDistance = GhostAudioToggleDistance * 5f;
-                _farAudio.minDistance = GhostAudioToggleDistance;
-                _farAudio.rolloffMode = AudioRolloffMode.Linear;
-                _farAudio.spatialBlend = 1f; // default 0
-                _farAudio.priority = 127; // default 128
-            }
+                _farAudio = Utils.CreateAudioSource(Masked.gameObject, GhostAudioToggleDistance, GhostAudioToggleDistance * 5f);
 
             Masked.movementAudio.maxDistance = GhostAudioToggleDistance * 1.5f;
             Masked.movementAudio.rolloffMode = AudioRolloffMode.Linear;
-
-            Utilities.FixMixerGroups(Masked.gameObject);
 
             isGhostified = true;
         }

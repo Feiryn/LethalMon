@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
@@ -27,6 +26,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual TargetType Targets => TargetType.Alive;
     internal virtual float TargetingRange => 10f;
+    internal virtual bool TargetOnlyKillableEnemies => false;
+
+    internal virtual bool CanBlockOtherEnemies => false;
 
     internal virtual Cooldown[] Cooldowns => [];
 
@@ -42,10 +44,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
         { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
         { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) },
-        { typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) },
+        //{ typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) },
         { typeof(CrawlerAI),         typeof(CrawlerTamedBehaviour) },
         { typeof(MaskedPlayerEnemy), typeof(MaskedTamedBehaviour) },
-        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) }
+        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
+        { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -119,6 +122,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     internal float targetNearestEnemyInterval = 0f;
+    internal bool foundEnemiesInRangeInLastSearch = false;
 
     #region Behaviours
     public enum TamingBehaviour
@@ -149,7 +153,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
-    public int? CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
+    public int CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -524,6 +528,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             Enemy.Start();
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
+            if (!CanBlockOtherEnemies && Enemy.agent != null)
+            {
+                Enemy.agent.radius = 0.1f;                    // Enemy goes "mostly" through this one
+                Enemy.agent.avoidancePriority = int.MaxValue; // Lower priority pushes the higher one
+            }
+
             Utils.CallNextFrame(CreateNameTag);
         }
         else if (Enum.TryParse(Enemy.enemyType.name, out Utils.Enemy _))
@@ -737,13 +747,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
                 if (distance1 > 4f && distance2 > 4f)
                 {
-                    if (Enemy.agent != null && !Enemy.agent.isOnNavMesh)
-                    {
-                        LethalMon.Log("Enemy not on valid navMesh. Recalculating.");
-                        Enemy.agent.enabled = false;
-                        Enemy.agent.enabled = true;
-                    }
-
+                    PlaceOnNavMesh();
                     MoveTowards(distance1 < distance2 ? potentialPosition1 : potentialPosition2);
                 }
             }
@@ -752,7 +756,22 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         // Turn in the direction of the owner gradually
         TurnTowardsPosition(targetPosition);
     }
-    
+
+    internal void PlaceOnNavMesh() => PlaceEnemyOnNavMesh(Enemy);
+
+    internal static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
+    {
+        if (enemyAI.agent != null && enemyAI.agent.enabled && !enemyAI.agent.isOnNavMesh)
+        {
+            LethalMon.Log("Enemy not on a valid navMesh. Repositioning.", LethalMon.LogType.Warning);
+            var location = RoundManager.Instance.GetNavMeshPosition(enemyAI.transform.position);
+            enemyAI.agent.Warp(location);
+
+            enemyAI.agent.enabled = false;
+            enemyAI.agent.enabled = true;
+        }
+    }
+
     public void FollowOwner()
     {
         if (ownerPlayer == null) return;
@@ -764,14 +783,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (ownerPlayer == null) return;
 
-        Enemy.agent.enabled = false;
-        Enemy.transform.position = Utils.GetPositionBehindPlayer(ownerPlayer);
-        Enemy.agent.enabled = true;
+        Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
 
     internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
         if (Targets == TargetType.Dead && !enemyAI.isEnemyDead || Targets == TargetType.Alive && enemyAI.isEnemyDead) return false;
+
+        if(TargetOnlyKillableEnemies && !enemyAI.enemyType.canDie) return false;
 
         return enemyAI.gameObject.activeSelf && enemyAI.gameObject.layer != (int)Utils.LayerMasks.Mask.EnemiesNotRendered &&
             !(enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour) && tamedBehaviour.IsOwnedByAPlayer());
@@ -779,15 +798,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
 
-    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         targetNearestEnemyInterval -= Time.deltaTime;
         if (targetNearestEnemyInterval > 0)
             return;
 
-        targetNearestEnemyInterval = 1f;
+        targetNearestEnemyInterval = foundEnemiesInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
         
-        var target = NearestEnemy(requireLOS, fromOwnerPerspective);
+        var target = NearestEnemy(requireLOS, fromOwnerPerspective, angle);
         if(target != null)
         {
             targetEnemy = target;
@@ -796,16 +815,17 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true)
+    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
+        foundEnemiesInRangeInLastSearch = false;
         const int layerMask = 1 << (int) Utils.LayerMasks.Mask.Enemies;
         EnemyAI? target = null;
         float distance = float.MaxValue;
 
         if (fromOwnerPerspective && ownerPlayer == null) return null;
 
-        var startPosition = fromOwnerPerspective ? ownerPlayer!.transform.position : Enemy.transform.position;
-        var enemiesInRange = Physics.OverlapSphere(startPosition, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
+        var startTransform = fromOwnerPerspective ? ownerPlayer!.playerEye.transform : Enemy.transform;
+        var enemiesInRange = Physics.OverlapSphere(startTransform.position, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
         foreach (var enemyHit in enemiesInRange)
         {
             var enemyInRange = enemyHit?.GetComponentInParent<EnemyAI>();
@@ -814,9 +834,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
-            if (requireLOS && !enemyInRange.CheckLineOfSightForPosition(startPosition, 180f, 10)) continue;
+            foundEnemiesInRangeInLastSearch = true;
+            
+            if (requireLOS && !OptimizedCheckLineOfSightForPosition(startTransform.position, enemyInRange.transform.position, startTransform.forward, angle)) continue;
 
-            float distanceTowardsEnemy = Vector3.Distance(startPosition, enemyInRange.transform.position);
+            float distanceTowardsEnemy = Vector3.Distance(startTransform.position, enemyInRange.transform.position);
             if (distanceTowardsEnemy < distance)
             {
                 distance = distanceTowardsEnemy;
@@ -825,6 +847,20 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         return target;
+    }
+    
+    internal static bool OptimizedCheckLineOfSightForPosition(Vector3 startPosition, Vector3 targetPosition, Vector3 forward, float angle)
+    {
+        if (!Physics.Linecast(startPosition, targetPosition, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
+        {
+            Vector3 to = targetPosition - startPosition;
+            if (Vector3.Angle(forward, to) < angle)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
@@ -923,17 +959,24 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     };
 
-    public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position)
+    public void Teleport(Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false) => TeleportEnemy(Enemy, position, placeOnNavMesh, syncPosition);
+
+    public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false)
     {
-        if (!Utils.IsHost || enemyAI?.agent == null) return;
+        if (!(Utils.IsHost || enemyAI.IsOwner) || enemyAI?.agent == null) return;
 
         if (enemyAI.agent.enabled)
             enemyAI.agent.Warp(position);
         else
             enemyAI.transform.position = position;
-        enemyAI.serverPosition = position;
 
-        //enemyAI.SyncPositionToClients();
+        if (placeOnNavMesh)
+            PlaceEnemyOnNavMesh(enemyAI);
+
+        if (syncPosition)
+            enemyAI.SyncPositionToClients();
+        else
+            enemyAI.serverPosition = position;
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);

@@ -72,6 +72,8 @@ namespace LethalMon
             public float BeesStunCooldown { get; set; }
 
             public float MaskedEffectDistance { get; set; }
+
+            public float SpiderWebCooldown { get; set; }
         }
 
         public ConfigValues values = new();
@@ -124,6 +126,7 @@ namespace LethalMon
             values.EyelessDogHowlCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "EyelessDogHowlCooldown", 5f, "Howl cooldown time in seconds for the eyeless dog").Value;
             values.MaskedLendCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "MaskedLendCooldown", 7f, "Mask lending cooldown time in seconds for the masked").Value;
             values.BeesStunCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BeesStunCooldown", 10f, "Stunning cooldown time in seconds for the bees").Value;
+            values.SpiderWebCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "SpiderWebCooldown", 8f, "Web shooting cooldown time in seconds for the spider").Value;
 
             // Behaviours
             values.MaskedEffectDistance = LethalMon.Instance.Config.Bind("Behaviours", "MaskedEffectDistance", 20f, "Distance till which enemies can be seen through walls.").Value;

@@ -4,6 +4,17 @@ LethalMon is a Lethal Company mod that includes the possibility to catch monster
 
 This mod is still in alpha so expect bugs or not a lot of features.
 
+## We are recruiting!
+
+We are looking for people to help us with mod.
+
+We need people to help us with:
+- Coding
+- Modeling
+- Animating
+- Testing
+
+If you are interested, please contact us on the LC discord modding server https://discord.com/invite/lcmod (thread in #mod-releases).
 
 ## How to catch monsters?
 
@@ -29,34 +40,34 @@ If a player dies or disconnects, the monster will be called in the ball at its l
 
 Here are the implementation status of monsters:
 
-|     Monster     | Implemented |                               Behaviour                                |                   Capture failure                    |
-|:---------------:|:-----------:|:----------------------------------------------------------------------:|:----------------------------------------------------:|
-|     Bracken     |     Yes     |                           Drags enemies away                           |                   Chasing thrower                    |
-|     Spider      |     No      |                                  TBD                                   |                         TBD                          |
-|     Butler      |     Yes     |                 Clean up dead enemies and spawn scraps                 |                    Stabs thrower                     |
-|    Coil-head    |     No      |                                  TBD                                   |                         TBD                          |
-|   Ghost Girl    |     Yes     |                   Teleports enemies and damages them                   |     Scaring thrower 3 times, followed by a hunt      |
-|  Hoarding Bug   |     Yes     |              Brings items in a line of sight to the owner              |                   Angry at thrower                   |
-|    Hygrodere    |     No      |                                  TBD                                   |                         TBD                          |
-|     Jester      |     No      |                                  TBD                                   |                         TBD                          |
-|     Masked      |     Yes     |      Can lend you its mask to make you see enemies through walls       |          Spawning 2 ghosts that deal damage          |
-|   Nutcracker    |     Yes     |                 Shoots at any enemy in a line of sight                 |     Shooting while rotating, similar to a turret     |
-|   Snare Flea    |     No      |                                  TBD                                   |                         TBD                          |
-|  Spore Lizard   |     Yes     |                          Can be used as mount                          |                    Spawns a cloud                    |
-|     Thumper     |     Yes     |   Can open all doors and disable turrets, but is not really obedient   |                    Target thrower                    |
-|      Bees       |     Yes     |          Stun monsters and damage players that hurt the owner          |              Attacking thrower for 10s               |
-|    Manticoil    |     No      |                                  TBD                                   |                         TBD                          |
-| Roaming Locusts | Will not be |                                   -                                    |                          -                           |
-|   Tulip Snake   |     Yes     |                        Allows the player to fly                        |  Clinging to player, during which it is uncatchable  |
-|   Baboon Hawk   |     Yes     |                  Echo-localize items and defends you                   | Spawns a tiny baboon hawk that attract other baboons |
-| Earth Leviathan |     No      |                                  TBD                                   |                         TBD                          |
-|   Eyeless Dog   |     Yes     | Run far from the owner and howls in order to draw other dogs attention |           Chasing player more aggressively           |
-|  Forest Keeper  |     No      |                                  TBD                                   |                         TBD                          |
-|    Old Bird     |     No      |                                  TBD                                   |                         TBD                          |
-|  Mask Hornets   |     No      |                                  TBD                                   |                         TBD                          |
-|     Barber      |     No      |                                  TBD                                   |                         TBD                          |
-|  Kidnapper Fox  |     Yes     |             Shoots its tongue at enemies and can kill them             |     Chase player or shoot tongue if close enough     |
-|    Maneater     |     No      |                                  TBD                                   |                         TBD                          |
+|     Monster     | Implemented |                                              Behaviour                                               |                   Capture failure                    |
+|:---------------:|:-----------:|:----------------------------------------------------------------------------------------------------:|:----------------------------------------------------:|
+|   Baboon Hawk   |     Yes     |                                 Echo-localize items and defends you                                  | Spawns a tiny baboon hawk that attract other baboons |
+|     Barber      |     No      |                                                 TBD                                                  |                         TBD                          |
+|      Bees       |     Yes     |                         Stun monsters and damage players that hurt the owner                         |              Attacking thrower for 10s               |
+|     Bracken     |     Yes     |                                          Drags enemies away                                          |                   Chasing thrower                    |
+|     Butler      |     Yes     |                                Clean up dead enemies and spawn scraps                                |                    Stabs thrower                     |
+|    Coil-head    |     No      |                                                 TBD                                                  |                         TBD                          |
+| Earth Leviathan |     No      |                                                 TBD                                                  |                         TBD                          |
+|   Eyeless Dog   |     Yes     |                Run far from the owner and howls in order to draw other dogs attention                |           Chasing player more aggressively           |
+|  Forest Keeper  |     No      |                                                 TBD                                                  |                         TBD                          |
+|   Ghost Girl    |     Yes     |                                  Teleports enemies and damages them                                  |     Scaring thrower 3 times, followed by a hunt      |
+|  Hoarding Bug   |     Yes     |                             Brings items in a line of sight to the owner                             |                   Angry at thrower                   |
+|    Hygrodere    |     No      |                                                 TBD                                                  |                         TBD                          |
+|     Jester      |     No      |                                                 TBD                                                  |                         TBD                          |
+|  Kidnapper Fox  |  Disabled   |                            Shoots its tongue at enemies and can kill them                            |     Chase player or shoot tongue if close enough     |
+|    Maneater     |     No      |                                                 TBD                                                  |                         TBD                          |
+|    Manticoil    |     No      |                                                 TBD                                                  |                         TBD                          |
+|  Mask Hornets   |     No      |                                                 TBD                                                  |                         TBD                          |
+|     Masked      |     Yes     |                     Can lend you its mask to make you see enemies through walls                      |          Spawning 2 ghosts that deal damage          |
+|   Nutcracker    |     Yes     |                                Shoots at any enemy in a line of sight                                |     Shooting while rotating, similar to a turret     |
+|    Old Bird     |     No      |                                                 TBD                                                  |                         TBD                          |
+| Roaming Locusts | Will not be |                                                  -                                                   |                          -                           |
+|   Snare Flea    |     No      |                                                 TBD                                                  |                         TBD                          |
+|     Spider      |     Yes     | Shoots webs that players can jump on, slows down enemies and prevents owner from taking fall damages |                         TBD                          |
+|  Spore Lizard   |     Yes     |                                         Can be used as mount                                         |                    Spawns a cloud                    |
+|     Thumper     |     Yes     |                  Can open all doors and disable turrets, but is not really obedient                  |                    Target thrower                    |
+|   Tulip Snake   |     Yes     |                                       Allows the player to fly                                       |  Clinging to player, during which it is uncatchable  |
 
 
 ## Capture probabilities
@@ -69,6 +80,11 @@ To get capture probabilities, use the command `lethaldex` in the terminal (the i
 
 By default, there are no path in the company building for the monsters to move.
 You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.io/c/lethal-company/p/Kittenji/NavMeshInCompany/)
+
+## Addons
+
+We also got you covered with additional mods that add up on this one:
+- [LethalMonReservedSlot](https://thunderstore.io/c/lethal-company/p/Niro/LethalMonReservedSlot/) - A reserved slot for the first pokeball you pick up!
 
 ## Bug reports
 

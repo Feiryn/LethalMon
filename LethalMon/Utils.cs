@@ -10,6 +10,7 @@ using Object = UnityEngine.Object;
 using Random = System.Random;
 using UnityEngine.AI;
 using System.Collections;
+using UnityEngine.Events;
 
 namespace LethalMon;
 
@@ -105,19 +106,6 @@ public class Utils
 
             return pos;
     }
-
-    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip, float volume = 1f)
-    {
-        var audioSource = SoundManager.Instance.tempAudio1.isPlaying ? SoundManager.Instance.tempAudio2 : SoundManager.Instance.tempAudio1;
-        audioSource.transform.position = position;
-        audioSource.PlayOneShot(clip, volume);
-    }
-
-    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip)
-    {
-        SoundManager.Instance.tempAudio1.transform.position = position;
-        SoundManager.Instance.tempAudio1.PlayOneShot(clip);
-    }
     
     public static void EnableShotgunHeldByEnemyAi(EnemyAI enemyAI, bool enable)
     {
@@ -142,6 +130,40 @@ public class Utils
             }
         }
     }
+
+    #region Sounds
+
+    internal static List<AudioSource> diageticAudios = [];
+    internal static AudioSource CreateAudioSource(GameObject parent, float minDistance = 0f, float maxDistance = 25f)
+    {
+        var audioSource = parent.AddComponent<AudioSource>();
+        audioSource.minDistance = minDistance;
+        audioSource.maxDistance = maxDistance;
+        audioSource.rolloffMode = AudioRolloffMode.Linear;
+        audioSource.spatialBlend = 1f; // default 0
+        audioSource.priority = 127; // default 128
+        audioSource.outputAudioMixerGroup = SoundManager.Instance.tempAudio1.outputAudioMixerGroup;
+        return audioSource;
+    }
+
+    public static void PlaySoundAtPosition(Vector3 position, AudioClip clip, float volume = 1f)
+    {
+        foreach(var audioSource in diageticAudios)
+        {
+            if (audioSource == null || audioSource.isPlaying) continue;
+
+            audioSource.transform.position = position;
+            audioSource.PlayOneShot(clip, volume);
+            return;
+        }
+
+        var newAudioSource = CreateAudioSource(SoundManager.Instance.gameObject);
+        diageticAudios.Add(newAudioSource);
+
+        newAudioSource.transform.position = position;
+        newAudioSource.PlayOneShot(clip, volume);
+    }
+    #endregion
 
     #region Player
     public static List<PlayerControllerB>? AllPlayers => StartOfRound.Instance?.allPlayerScripts?.Where(pcb => pcb != null && (pcb.isPlayerControlled || pcb.isPlayerDead)).ToList();
@@ -249,7 +271,7 @@ public class Utils
         for (var i = 1; i < renderers.Length; ++i)
         {
             var rendererName = renderers[i].name.ToLower();
-            LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible);
+            //LethalMon.Log("Found renderer: " + renderers[i].name + " / " + renderers[i].enabled + " / " + renderers[i].isVisible + " / " + renderers[i].bounds);
             if (!NonEnemyRenderer.Where(rendererName.StartsWith).Any())
             {
                 LethalMon.Log("Encapsulated: " + (renderers[i].bounds.max.y - enemy.transform.position.y));
@@ -279,6 +301,51 @@ public class Utils
         enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || position.y > -50f);
 
         return enemyAI;
+    }
+
+    // Use after OnCallFromBall
+    // Don't forget to clean up objects!
+    public static void CreateInteractionForEnemy(EnemyAI enemyAI, string hoverTip, float timeToHold, UnityAction<PlayerControllerB> callback, out InteractTrigger? interactTrigger,
+        out GameObject? triggerObject)
+    {
+        interactTrigger = null;
+        triggerObject = null;
+        
+        if(!Utils.TryGetRealEnemyBounds(enemyAI, out Bounds bounds))
+        {
+            LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
+            return;
+        }
+
+        triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        triggerObject.transform.SetParent(enemyAI.transform, false);
+        triggerObject.transform.position = bounds.center;
+        triggerObject.transform.localScale = bounds.size;
+        Physics.IgnoreCollision(triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
+
+        triggerObject.tag = "InteractTrigger";
+        triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
+
+        interactTrigger = triggerObject.AddComponent<InteractTrigger>();
+        interactTrigger.interactable = true;
+        interactTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
+        interactTrigger.hoverTip = hoverTip;
+        interactTrigger.oneHandedItemAllowed = true;
+        interactTrigger.twoHandedItemAllowed = true;
+        interactTrigger.holdInteraction = timeToHold != 0f;
+        interactTrigger.touchTrigger = false;
+        interactTrigger.timeToHold = timeToHold;
+        interactTrigger.timeToHoldSpeedMultiplier = 1f;
+
+        interactTrigger.holdingInteractEvent = new InteractEventFloat();
+        interactTrigger.onInteract = new InteractEvent();
+        interactTrigger.onInteractEarly = new InteractEvent();
+        interactTrigger.onStopInteract = new InteractEvent();
+        interactTrigger.onCancelAnimation = new InteractEvent();
+
+        interactTrigger.onInteract.AddListener(callback);
+
+        interactTrigger.enabled = true;
     }
     #endregion
 

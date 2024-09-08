@@ -47,7 +47,6 @@ namespace LethalMon.Behaviours
         internal virtual float ControlTriggerHoldTime => 1f;
 
         private InteractTrigger? _controlTrigger = null;
-        private Vector3 _triggerCenterDistance = Vector3.zero; // TODO: transform parenting
         private GameObject? _triggerObject = null;
         #endregion
 
@@ -81,43 +80,8 @@ namespace LethalMon.Behaviours
         {
             if (_enemy?.transform == null || _controlTrigger != null) return;
             LethalMon.Log("Adding riding trigger.");
-
-            if(!Utils.TryGetRealEnemyBounds(_enemy, out Bounds bounds))
-            {
-                LethalMon.Log("Unable to get enemy bounds. No MeshRenderer found.", LethalMon.LogType.Error);
-                return;
-            }
-
-            _triggerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            _triggerObject.transform.position = bounds.center;
-            _triggerCenterDistance = _enemy!.transform.position - bounds.center;
-            _triggerObject.transform.localScale = bounds.size;
-            Physics.IgnoreCollision(_triggerObject.GetComponent<BoxCollider>(), Utils.CurrentPlayer.playerCollider);
-            //triggerObject.transform.SetParent(enemy.gameObject.transform, false); // damn parenting not working...
-
-            _triggerObject.tag = "InteractTrigger";
-            _triggerObject.layer = LayerMask.NameToLayer("InteractableObject");
-
-            _controlTrigger = _triggerObject.AddComponent<InteractTrigger>();
-            _controlTrigger.interactable = true;
-            _controlTrigger.hoverIcon = GameObject.Find("StartGameLever")?.GetComponent<InteractTrigger>()?.hoverIcon;
-            _controlTrigger.hoverTip = hoverTip;
-            _controlTrigger.oneHandedItemAllowed = true;
-            _controlTrigger.twoHandedItemAllowed = true;
-            _controlTrigger.holdInteraction = true;
-            _controlTrigger.touchTrigger = false;
-            _controlTrigger.timeToHold = ControlTriggerHoldTime;
-            _controlTrigger.timeToHoldSpeedMultiplier = 1f;
-
-            _controlTrigger.holdingInteractEvent = new InteractEventFloat();
-            _controlTrigger.onInteract = new InteractEvent();
-            _controlTrigger.onInteractEarly = new InteractEvent();
-            _controlTrigger.onStopInteract = new InteractEvent();
-            _controlTrigger.onCancelAnimation = new InteractEvent();
-
-            _controlTrigger.onInteract.AddListener((player) => StartControllingServerRpc(player.NetworkObject));
-
-            _controlTrigger.enabled = true;
+            
+            Utils.CreateInteractionForEnemy(_enemy!, hoverTip, ControlTriggerHoldTime, (player) => StartControllingServerRpc(player.NetworkObject), out _controlTrigger, out _triggerObject);
         }
 
         public void SetControlTriggerVisible(bool visible = true)
@@ -272,9 +236,6 @@ namespace LethalMon.Behaviours
 
         void Update()
         {
-            if (_controlTrigger != null)
-                _controlTrigger.gameObject.transform.position = _enemy!.transform.position + _triggerCenterDistance;
-
             if (playerControlledBy != null && _enemy != null)
             {
                 if (_inputsBinded)
