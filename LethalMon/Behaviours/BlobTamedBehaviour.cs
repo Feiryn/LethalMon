@@ -47,7 +47,7 @@ namespace LethalMon.Behaviours
                 _physicsRootObject = Blob.transform.Find(PhysicsObjectName)?.gameObject;
                 if (_physicsRootObject != null)
                 {
-                    LethalMon.Log("Found root object.");
+                    //LethalMon.Log("Found root object.");
                     _physicsRootObject.SetActive(true);
                     Blob.enabled = false;
 
@@ -56,7 +56,7 @@ namespace LethalMon.Behaviours
                     _physicsRegion = _physicsRootObject.GetComponentInChildren<PlayerPhysicsRegion>();
                     if (_physicsRegion != null)
                     {
-                        LethalMon.Log("Found physics region.");
+                        //LethalMon.Log("Found physics region.");
                         _physicsRegion.disablePhysicsRegion = IsOwnerPlayer; // don't transport owner
                     }
 
@@ -157,7 +157,7 @@ namespace LethalMon.Behaviours
             if (carriedItems.Count > ModConfig.Instance.values.BlobMaxItems) // todo: find a way to only run this if someone drops an item
             {
                 for(int i = carriedItems.Count - 1; i >= ModConfig.Instance.values.BlobMaxItems; --i)
-                    DropItem(carriedItems[i]);
+                    DropItemServerRpc(carriedItems[i].NetworkObject);
             }
 
             if (_previousLocalScale != Blob.transform.localScale)
@@ -186,8 +186,20 @@ namespace LethalMon.Behaviours
             _physicsRootObject.transform.SetParent(Blob.transform, true);
         }
 
-        internal void DropItem(GrabbableObject item)
+        [ServerRpc]
+        internal void DropItemServerRpc(NetworkObjectReference itemRef) => DropItemClientRpc(itemRef);
+
+        [ClientRpc]
+        internal void DropItemClientRpc(NetworkObjectReference itemRef)
         {
+            if(!itemRef.TryGet(out NetworkObject networkObject) || !networkObject.TryGetComponent(out GrabbableObject item))
+            {
+                LethalMon.Log("Blob.DropItemClientRpc: Failed to drop item. Reference not found", LethalMon.LogType.Error);
+                return;
+            }
+
+            //LethalMon.Log("DropItem: " + item.itemProperties.itemName);
+
             item.parentObject = null;
             item.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
 
@@ -216,11 +228,14 @@ namespace LethalMon.Behaviours
 
         public override PokeballItem? RetrieveInBall(Vector3 position)
         {
-            var carriedItems = CarriedItems;
+            if (Blob.IsOwner)
+            {
+                var carriedItems = CarriedItems;
 
-            //LethalMon.Log(carriedItems.Count + " items in the physics region.");
-            foreach (var item in carriedItems)
-                DropItem(item);
+                //LethalMon.Log(carriedItems.Count + " items in the physics region.");
+                foreach (var item in carriedItems)
+                    DropItemServerRpc(item.NetworkObject);
+            }
 
             return base.RetrieveInBall(position);
         }
