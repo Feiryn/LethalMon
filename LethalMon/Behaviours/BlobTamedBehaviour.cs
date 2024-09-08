@@ -192,7 +192,7 @@ namespace LethalMon.Behaviours
             item.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
 
             var colliderEnabled = _physicsCollider != null && _physicsCollider.enabled;
-            var targetFloorPosition = item.GetItemFloorPosition(colliderEnabled ? new Vector3(item.transform.position.x, _physicsCollider!.bounds.center.y - _physicsCollider.bounds.size.y / 2f - 0.1f, item.transform.position.z) : default);
+            var targetFloorPosition = item.GetItemFloorPosition(colliderEnabled ? new Vector3(item.transform.position.x, _physicsCollider!.bounds.center.y - _physicsCollider.bounds.size.y / 2f + item.itemProperties.verticalOffset, item.transform.position.z) : default);
 
             item.EnablePhysics(enable: true);
             item.fallTime = 0f;

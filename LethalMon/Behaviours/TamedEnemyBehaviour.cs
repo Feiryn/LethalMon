@@ -109,6 +109,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     private float _timeAtEntrance = 0f;
     private bool _usingEntrance = false;
     private bool _followingRequiresEntrance = false;
+    internal bool isOutside = false; // We use our own isOutside because we don't want other mods that messes up with the original isOutside to affect our mod
 
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
@@ -302,9 +303,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedFollowing)
         {
             if (_usingEntrance)
-                return "Using entrance..";
+                return "Using entrance...";
             else if (_followingRequiresEntrance)
-                return "Going to entrance..";
+                return "Going to entrance...";
             else
                 return FollowingBehaviourDescription;
         }
@@ -531,7 +532,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsTamed)
         {
             Enemy.Start();
-            Enemy.SetEnemyOutside(Utils.IsEnemyOutside(Enemy));
+            isOutside = Utils.IsEnemyOutside(Enemy);
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
             Utils.CallNextFrame(CreateNameTag);
@@ -778,15 +779,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public void FollowOwner()
     {
         if (ownerPlayer == null) return;
-
-        var entranceTeleportRequired = ownerPlayer.isInsideFactory == Enemy.isOutside;
+        
+        var entranceTeleportRequired = ownerPlayer.isInsideFactory == isOutside;
         if(entranceTeleportRequired != _followingRequiresEntrance)
         {
             _followingRequiresEntrance = entranceTeleportRequired;
             HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
         }
 
-        if(ownerPlayer.isInsideFactory == Enemy.isOutside)
+        if(ownerPlayer.isInsideFactory == isOutside)
         {
             if(CanBeTeleported() || !EntranceTeleportPatch.HasTeleported)
             {
@@ -1007,8 +1008,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);
-
-        enemyAI.SetEnemyOutside(Utils.IsEnemyOutside(enemyAI));
+        
+        if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+        {
+            tamedBehaviour.isOutside = Utils.IsEnemyOutside(enemyAI);
+        }
     }
 
     public virtual bool CanBeTeleported()

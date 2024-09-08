@@ -296,12 +296,13 @@ public class Utils
         gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
         var enemyAI = gameObject.GetComponent<EnemyAI>();
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
-        enemyAI.SetEnemyOutside(IsEnemyOutside(enemyAI));
+        if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
+            tamedEnemyBehaviour.isOutside = IsEnemyOutside(enemyAI);
 
         return enemyAI;
     }
 
-    public static bool IsEnemyOutside(EnemyAI enemyAI) => StartOfRound.Instance.testRoom != null || enemyAI.transform.position.y > -50f;
+    public static bool IsEnemyOutside(EnemyAI enemyAI) => enemyAI.transform.position.y > -50f;
     #endregion
 
     #region LayerMasks
