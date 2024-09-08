@@ -364,6 +364,7 @@ public class PC : NetworkBehaviour
         if (_currentOperationCoroutine != null)
         {
             StopScanSoundLoop();
+            StopScanParticle();
             StopCoroutine(_currentOperationCoroutine);
             _currentOperationCoroutine = null;
         }
@@ -393,7 +394,7 @@ public class PC : NetworkBehaviour
     {
         _audioSource.loop = true;
         _audioSource.clip = _scanSound;
-        // todo _audioSource.Play();
+        _audioSource.Play();
     }
     
     public void StopScanSoundLoop()
