@@ -74,7 +74,6 @@ public class ScanApp : PCApp
 
         CleanUp();
         pc.ProcessOperation(ScanCallback, ScanTime, ProgressBarStep);
-        pc.PlayScanParticle();
     }
 
     private void ScanError(string errorText)

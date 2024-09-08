@@ -19,6 +19,8 @@ public class PC : NetworkBehaviour
     private static AudioClip _errorSound;
     
     private static AudioClip _successSound;
+
+    private static AudioClip _scanSound;
     
     private ParticleSystem _particleSystem;
 
@@ -137,6 +139,9 @@ public class PC : NetworkBehaviour
         _dexApp.Hide();
         _scanApp = new ScanApp(_screen);
         _scanApp.Hide();
+        
+        // Stop particles
+        StopScanParticle();
     }
 
     private static Button.ButtonClickedEvent FunctionToButtonClickEvent(UnityAction action)
@@ -332,6 +337,8 @@ public class PC : NetworkBehaviour
     
     private IEnumerator ProcessOperationCoroutine(Action<float> callback, float duration, float callbackInterval)
     {
+        PlayScanSoundLoop();
+        PlayScanParticle();
         float time = 0;
         float timeBetweenCallbacks = duration * callbackInterval;
         while (time < duration)
@@ -342,6 +349,8 @@ public class PC : NetworkBehaviour
         }
 
         _currentOperationCoroutine = null;
+        StopScanSoundLoop();
+        StopScanParticle();
         callback(1);
     }
 
@@ -354,6 +363,7 @@ public class PC : NetworkBehaviour
     {
         if (_currentOperationCoroutine != null)
         {
+            StopScanSoundLoop();
             StopCoroutine(_currentOperationCoroutine);
             _currentOperationCoroutine = null;
         }
@@ -371,7 +381,25 @@ public class PC : NetworkBehaviour
     
     public void PlayScanParticle()
     {
-        ParticleSystem.Play();
+        ParticleSystem.gameObject.SetActive(true);
+    }
+    
+    public void StopScanParticle()
+    {
+        ParticleSystem.gameObject.SetActive(false);
+    }
+
+    public void PlayScanSoundLoop()
+    {
+        _audioSource.loop = true;
+        _audioSource.clip = _scanSound;
+        // todo _audioSource.Play();
+    }
+    
+    public void StopScanSoundLoop()
+    {
+        _audioSource.loop = false;
+        _audioSource.Stop();
     }
     
     internal static void LoadAssets(AssetBundle assetBundle)
@@ -381,6 +409,7 @@ public class PC : NetworkBehaviour
         
         _errorSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/error.mp3");
         _successSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/success.mp3");
+        _scanSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/scan.mp3");
         
         LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(pcPrefab);
     }
