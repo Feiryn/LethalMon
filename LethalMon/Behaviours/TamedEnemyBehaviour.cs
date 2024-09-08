@@ -792,7 +792,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             if(CanBeTeleported() || !EntranceTeleportPatch.HasTeleported)
             {
                 if (!EntranceTeleportPatch.HasTeleported)
-                    LethalMon.Log("Teleporting due to not having teleported ^^");
+                    LethalMon.Log("Teleporting behind owner because the monster hasn't been teleported yet");
 
                 TeleportBehindOwner();
                 return;
