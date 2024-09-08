@@ -47,4 +47,12 @@ public class StartOfRoundPatch
             }
         }
     }
+
+    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.LoadUnlockables))]
+    [HarmonyPostfix]
+    private static void OnLoadUnlockablesPostfix(StartOfRound __instance)
+    {
+        PC.PC.AddToShip();
+        StartOfRound.Instance.SpawnUnlockable(StartOfRound.Instance.unlockablesList.unlockables.FindIndex(u => u.unlockableName == PC.PC.UnlockableName));
+    }
 }

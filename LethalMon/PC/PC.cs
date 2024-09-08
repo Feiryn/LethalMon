@@ -41,6 +41,8 @@ public class PC : NetworkBehaviour
     }
 
     #region Constants
+    public static readonly string UnlockableName = "LethalMon PC";
+        
     private const float CursorSpeed = 0.001f;
     
     private const float CursorMinX = -0.795f;
@@ -68,6 +70,8 @@ public class PC : NetworkBehaviour
     private Button[] _desktopButtons;
     
     private AudioSource _audioSource;
+
+    private PlaceableShipObject _placeableShipObject;
     #endregion
     
     #region PCApp
@@ -140,8 +144,18 @@ public class PC : NetworkBehaviour
         _scanApp = new ScanApp(_screen);
         _scanApp.Hide();
         
+        // Load the placeable ship object
+        _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
+        Terminal terminal = FindObjectOfType<Terminal>();
+        if (terminal != null)
+        {
+            transform.position = terminal.transform.position + new Vector3(-2, 0, 0);
+            transform.parent = terminal.transform.parent;
+            _placeableShipObject.placeObjectSFX = terminal.placeableObject.placeObjectSFX;
+        }
+
         // Stop particles
-        StopScanParticle();
+        transform.Find("BeamParticle")?.GetComponent<ParticleSystem>()!.gameObject.SetActive(false);
     }
 
     private static Button.ButtonClickedEvent FunctionToButtonClickEvent(UnityAction action)
@@ -413,5 +427,32 @@ public class PC : NetworkBehaviour
         _scanSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/scan.mp3");
         
         LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(pcPrefab);
+    }
+
+    internal static void AddToShip()
+    {
+        StartOfRound.Instance.unlockablesList.unlockables.Add(new UnlockableItem
+        {
+            alreadyUnlocked = true,
+            alwaysInStock = false,
+            canBeStored = false,
+            hasBeenMoved = false,
+            hasBeenUnlockedByPlayer = false,
+            headCostumeObject = null,
+            inStorage = false,
+            jumpAudio = null,
+            maxNumber = 1,
+            placedPosition = Vector3.zero,
+            placedRotation = Vector3.zero,
+            prefabObject = pcPrefab,
+            spawnPrefab = true,
+            suitMaterial = null,
+            unlockableName = UnlockableName,
+            unlockableType = 1,
+            IsPlaceable = true,
+            shopSelectionNode = null,
+            lowerTorsoCostumeObject = null,
+            unlockedInChallengeFile = true
+        });
     }
 }
