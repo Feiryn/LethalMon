@@ -146,11 +146,11 @@ public class PC : NetworkBehaviour
         
         // Load the placeable ship object
         _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
+        _placeableShipObject.unlockableID =
+            StartOfRound.Instance.unlockablesList.unlockables.FindIndex(u => u.unlockableName == UnlockableName);
         Terminal terminal = FindObjectOfType<Terminal>();
         if (terminal != null)
         {
-            transform.position = terminal.transform.position + new Vector3(-2, 0, 0);
-            transform.parent = terminal.transform.parent;
             _placeableShipObject.placeObjectSFX = terminal.placeableObject.placeObjectSFX;
         }
 
@@ -167,7 +167,6 @@ public class PC : NetworkBehaviour
 
     private static void HighQualityCamera()
     {
-        // todo do not do anything if not default settings or too high already
         // todo small render distance so low end computers won't burn
 
         Camera camera = Utils.CurrentPlayer.gameplayCamera;
