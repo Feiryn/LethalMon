@@ -2,7 +2,7 @@
 
 public class CatchableBlob : CatchableEnemy
 {
-    public CatchableBlob() : base(15, "Blob", 9)
+    public CatchableBlob() : base(15, "Hygrodere", 9)
     {
     }
 }
