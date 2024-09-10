@@ -2,7 +2,7 @@
 
 public class CatchableCompanyMonster : CatchableEnemy
 {
-    public CatchableCompanyMonster() : base(14, "Jeb (Company Monster)", 4)
+    public CatchableCompanyMonster() : base(16, "Company Monster", 10)
     {
     }
 }

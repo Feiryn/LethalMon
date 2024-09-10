@@ -20,7 +20,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        Vector3 _startPosition = Vector3.zero;
+        Vector3 _lastPosition = Vector3.zero;
 
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
@@ -48,12 +48,7 @@ namespace LethalMon.Behaviours
 
             if (CanDefend)
             {
-                if (CompanyMonster.tentaclePrefab == null)
-                    LethalMon.Log("No tentacles..", LethalMon.LogType.Warning);
-
-                CompanyMonster.tentaclePrefab?.SetActive(true);
-                CompanyMonster.monsterAnimator?.SetBool("visible", value: true);
-                //CompanyMonster.monsterAnimator?.Play("Base Layer.Tentacle1Explore");
+                CompanyMonster.AttackServerRpc();
 
                 if(CompanyMonster.mood?.wallAttackSFX != null && CompanyMonster.TryGetComponent(out AudioSource audioSource))
                     audioSource.PlayOneShot(CompanyMonster.mood.wallAttackSFX);
@@ -69,7 +64,7 @@ namespace LethalMon.Behaviours
             base.Start();
 
             attackCooldown = GetCooldownWithId(AttackCooldownId);
-            _startPosition = CompanyMonster.transform.position;
+            _lastPosition = CompanyMonster.transform.position;
 
             if (IsTamed)
             {
@@ -83,7 +78,13 @@ namespace LethalMon.Behaviours
 
             CompanyMonster.Update();
             
-            CompanyMonster.transform.position = _startPosition; // debug!
+            CompanyMonster.transform.position = Vector3.Lerp(CompanyMonster.transform.position, _lastPosition, Time.deltaTime); // debug! todo: find out why its falling through the ground
+        }
+
+        public override void MoveTowards(Vector3 position)
+        {
+            _lastPosition = new(position.x, ownerPlayer!.gameplayCamera.transform.position.y, position.z);
+            //base.MoveTowards(position);
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -93,6 +94,8 @@ namespace LethalMon.Behaviours
 
             DestroyImmediate(gameObject); // remove CompanyMonsterAI after the event
         }
+
+        public override 
         #endregion
     }
 #endif
