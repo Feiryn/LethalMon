@@ -8,6 +8,7 @@ using LethalMon.Items;
 using LethalMon.CustomPasses;
 using System;
 using System.Linq;
+using LethalMon.Save;
 
 namespace LethalMon.Patches
 {
@@ -71,12 +72,12 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                MakeLayerColor();
+                DebugEnterBuildMode();
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
             {
-                Instantiate(PC.PC.pcPrefab, Utils.CurrentPlayer.transform.position, Quaternion.identity)!.GetComponent<NetworkObject>().Spawn();
+                SaveManager.DebugUnlockAll();
             }
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
@@ -243,6 +244,27 @@ namespace LethalMon.Patches
                     LethalMon.Log("    Layer: " + LayerMask.LayerToName(component.gameObject.layer));
                 }
             }
+        }
+
+        public static void DebugEnterBuildMode()
+        {
+            bool playerMeetsConditionsToBuild = ShipBuildModeManager.Instance.PlayerMeetsConditionsToBuild(Utils.CurrentPlayer);
+            bool raycastForward = Physics.Raycast(Utils.CurrentPlayer.gameplayCamera.transform.position, Utils.CurrentPlayer.gameplayCamera.transform.forward, out RaycastHit rayHitForward, 4f, ShipBuildModeManager.Instance.placeableShipObjectsMask, QueryTriggerInteraction.Ignore);
+            bool raycastDown = Physics.Raycast(Utils.CurrentPlayer.gameplayCamera.transform.position + Vector3.up * 5f, Vector3.down, out RaycastHit rayHitDown, 5f, ShipBuildModeManager.Instance.placeableShipObjectsMask, QueryTriggerInteraction.Ignore);
+            
+            LethalMon.Log("Player meets conditions to build: " + playerMeetsConditionsToBuild);
+            LethalMon.Log("Raycast forward: " + (raycastForward ? "Hit" : "Miss"));
+            LethalMon.Log("Raycast down: " + (raycastDown ? "Hit" : "Miss"));
+            LethalMon.Log("Raycast hit forward: " + rayHitForward.collider?.name);
+            LethalMon.Log("Raycast hit down: " + rayHitDown.collider?.name);
+            if (raycastForward)
+                LethalMon.Log("Raycast forward is placeable object: " + rayHitForward.collider?.gameObject.CompareTag("PlaceableObject"));
+            if (raycastDown)
+                LethalMon.Log("Raycast down is placeable object: " + rayHitDown.collider?.gameObject.CompareTag("PlaceableObject"));
+            
+            PlaceableShipObject? component = raycastForward ? rayHitForward.collider?.gameObject.GetComponent<PlaceableShipObject>() : raycastDown ? rayHitDown.collider?.gameObject.GetComponent<PlaceableShipObject>() : null;
+            LethalMon.Log("Hit component: " + component);
+            
         }
         #endregion
 
