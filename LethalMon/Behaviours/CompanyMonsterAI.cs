@@ -16,6 +16,7 @@ namespace LethalMon.Behaviours
 
         //internal static MonsterAnimation? monsterAnimationPrefab = null;
 
+        internal GameObject? companyMonsterMesh = null;
         internal GameObject? tentacleContainer = null;
         internal List<GameObject> tentacles = [];
         internal const string TentaclePrefabFileName = "companymonsterTentacles.prefab";
@@ -30,6 +31,7 @@ namespace LethalMon.Behaviours
         // Variables
         internal bool isAttacking = false;
         internal float tentacleScale = 0f;
+        internal bool initialized = false;
         #endregion
 
         #region Initialization
@@ -65,30 +67,42 @@ namespace LethalMon.Behaviours
             moveTowardsDestination = false;
             base.Start();
 
-            transform.localScale = Vector3.one;
+            if (initialized) return;
+            initialized = true;
 
-            eye = transform.Find("Eye");
+            companyMonsterMesh = transform.Find("CompanyMonsterMesh")?.gameObject;
+            if(companyMonsterMesh == null)
+            {
+                LethalMon.Log("Unable to load company monster mesh.", LethalMon.LogType.Error);
+                return;
+            }
 
-            if (!TryGetComponent(out creatureSFX))
+            companyMonsterMesh.transform.localScale = Vector3.one * 0.65f;
+
+            eye = companyMonsterMesh.transform.Find("Eye");
+
+            if (!companyMonsterMesh.TryGetComponent(out creatureSFX))
             {
                 LethalMon.Log("Failed to load audio source of company monster. Creating new one.", LethalMon.LogType.Warning);
-                creatureSFX = Utils.CreateAudioSource(gameObject);
+                creatureSFX = Utils.CreateAudioSource(companyMonsterMesh);
             }
             creatureSFX.volume = 0f;
 
-            collider = GetComponent<SphereCollider>();
+            collider = companyMonsterMesh.GetComponent<SphereCollider>();
             if (collider == null)
                 LethalMon.Log("No collider for company monster");
 
-            if(tentaclePrefab != null && eye != null)
+            if(tentacleContainer == null && tentaclePrefab != null && eye != null)
             {
                 tentacleContainer = new GameObject("TentacleContainer");
                 tentacleContainer.transform.SetPositionAndRotation(eye.transform.position - eye.transform.forward.normalized * 0.5f, eye.transform.rotation);
                 tentacleContainer.transform.SetParent(eye, true);
-
+                LethalMon.Log("Add tentacles for " + name);
                 for (int i = 0; i < TentacleCount; i++)
                     AddTentacle();
             }
+
+            agent.baseOffset = 0f;
         }
 
         private void AddTentacle()
@@ -98,8 +112,8 @@ namespace LethalMon.Behaviours
             var tentacle = Instantiate(tentaclePrefab);
             if (tentacle == null) return;
 
-            //tentacle.transform.SetPositionAndRotation(tentacleContainer.transform.position - transform.forward, tentacleContainer.transform.rotation);
-            tentacle.transform.localPosition = -eye.transform.forward;
+            tentacle.transform.SetParent(null, false);
+            tentacle.transform.SetPositionAndRotation(tentacleContainer.transform.position - eye.transform.forward, RandomRotation);
             tentacle.transform.SetParent(tentacleContainer.transform, false);
             tentacle.SetActive(true);
             tentacle.transform.localScale = Vector3.zero;
@@ -111,7 +125,9 @@ namespace LethalMon.Behaviours
 
         private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.localScale = Vector3.one * scale);
 
-        private void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.localRotation = new(Random.Range(-1f, 1f), Random.Range(-0.3f, 0.3f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)));
+        private void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.localRotation = RandomRotation);
+
+        private Quaternion RandomRotation => new(Random.Range(-1f, 1f), Random.Range(-0.3f, 0.3f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
 
         public override void Update()
         {
@@ -256,7 +272,7 @@ namespace LethalMon.Behaviours
                     Debug.Log("Player body was not spawned in time for animation.");
                 }
                 monsterAnimator.SetBool("grabbingPlayer", value: false);
-                yield return new WaitWhile(() => _companyMonster.isAttacking);
+                yield return new WaitWhile(() => _companyMonster!.isAttacking);
                 if (player.deadBody != null)
                 {
                     player.deadBody.attachedTo = null;

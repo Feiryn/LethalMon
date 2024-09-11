@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace LethalMon.Behaviours
 {
-#if DEBUG
     internal class CompanyMonsterTamedBehaviour : TamedEnemyBehaviour
     {
         #region Properties
@@ -20,8 +19,6 @@ namespace LethalMon.Behaviours
             }
         }
 
-        Vector3 _lastPosition = Vector3.zero;
-
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
         internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
@@ -29,7 +26,7 @@ namespace LethalMon.Behaviours
 
         #region Cooldowns
         private const string AttackCooldownId = "companymonster_attack";
-    
+
         internal override Cooldown[] Cooldowns => [new Cooldown(AttackCooldownId, "Attack", 1f)]; // todo: change back to 10
 
         private CooldownNetworkBehaviour? attackCooldown;
@@ -50,8 +47,8 @@ namespace LethalMon.Behaviours
             {
                 CompanyMonster.AttackServerRpc();
 
-                if(CompanyMonster.mood?.wallAttackSFX != null && CompanyMonster.TryGetComponent(out AudioSource audioSource))
-                    audioSource.PlayOneShot(CompanyMonster.mood.wallAttackSFX);
+                if (CompanyMonster.mood?.wallAttackSFX != null && CompanyMonster.creatureSFX != null)
+                    CompanyMonster.creatureSFX.PlayOneShot(CompanyMonster.mood.wallAttackSFX);
 
                 attackCooldown?.Reset();
             }
@@ -64,11 +61,11 @@ namespace LethalMon.Behaviours
             base.Start();
 
             attackCooldown = GetCooldownWithId(AttackCooldownId);
-            _lastPosition = CompanyMonster.transform.position;
 
             if (IsTamed)
             {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
+                PlaceOnNavMesh();
             }
         }
 
@@ -77,14 +74,6 @@ namespace LethalMon.Behaviours
             base.OnUpdate(update, doAIInterval);
 
             CompanyMonster.Update();
-            
-            CompanyMonster.transform.position = Vector3.Lerp(CompanyMonster.transform.position, _lastPosition, Time.deltaTime); // debug! todo: find out why its falling through the ground
-        }
-
-        public override void MoveTowards(Vector3 position)
-        {
-            _lastPosition = new(position.x, ownerPlayer!.gameplayCamera.transform.position.y, position.z);
-            //base.MoveTowards(position);
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
@@ -94,9 +83,6 @@ namespace LethalMon.Behaviours
 
             DestroyImmediate(gameObject); // remove CompanyMonsterAI after the event
         }
-
-        public override 
         #endregion
     }
-#endif
 }
