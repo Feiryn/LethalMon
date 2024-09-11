@@ -72,7 +72,8 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                DebugEnterBuildMode();
+                // HighlightCollider((BoxCollider) PC.PC.Instance.GetComponentInChildren<PlaceableShipObject>().placeObjectCollider);
+                DebugBuildMode();
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
@@ -124,6 +125,49 @@ namespace LethalMon.Patches
             }
 
             return cube;
+        }
+        
+        private static void HighlightCollider(BoxCollider boxCollider)
+        {
+            Material material = new Material(Shader.Find("HDRP/Unlit"));
+            Color color = Color.green;
+            material.color = color;
+            float width = 0.01f;
+            Vector3 rightDir = boxCollider.transform.right.normalized;
+            Vector3 forwardDir = boxCollider.transform.forward.normalized;
+            Vector3 upDir = boxCollider.transform.up.normalized;
+            Vector3 center = boxCollider.transform.position + boxCollider.center;
+            Vector3 size = boxCollider.size;
+            size.x *= boxCollider.transform.lossyScale.x;
+            size.y *= boxCollider.transform.lossyScale.y;
+            size.z *= boxCollider.transform.lossyScale.z;
+            DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            DrawLine(center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+        }
+
+        private static LineRenderer DrawLine(Vector3 start, Vector3 end, Color color, Material material, float width = 0.01f)
+        {
+            LineRenderer line = new GameObject("Line_" + start + "_" + end).AddComponent<LineRenderer>();
+            line.material = material;
+            line.startColor = color;
+            line.endColor = color;
+            line.startWidth = width;
+            line.endWidth = width;
+            line.positionCount = 2;
+            line.useWorldSpace = true;
+            line.SetPosition(0, start);
+            line.SetPosition(1, end);
+            return line;
         }
         #endregion
 
@@ -246,12 +290,17 @@ namespace LethalMon.Patches
             }
         }
 
-        public static void DebugEnterBuildMode()
+        private static GameObject? _ghostObjectPosition;
+        
+        private static LineRenderer[]? _buildModeLines;
+        
+        public static void DebugBuildMode()
         {
             bool playerMeetsConditionsToBuild = ShipBuildModeManager.Instance.PlayerMeetsConditionsToBuild(Utils.CurrentPlayer);
             bool raycastForward = Physics.Raycast(Utils.CurrentPlayer.gameplayCamera.transform.position, Utils.CurrentPlayer.gameplayCamera.transform.forward, out RaycastHit rayHitForward, 4f, ShipBuildModeManager.Instance.placeableShipObjectsMask, QueryTriggerInteraction.Ignore);
             bool raycastDown = Physics.Raycast(Utils.CurrentPlayer.gameplayCamera.transform.position + Vector3.up * 5f, Vector3.down, out RaycastHit rayHitDown, 5f, ShipBuildModeManager.Instance.placeableShipObjectsMask, QueryTriggerInteraction.Ignore);
             
+            LethalMon.Log("--------- ENTER BUILD MODE INFO ---------");
             LethalMon.Log("Player meets conditions to build: " + playerMeetsConditionsToBuild);
             LethalMon.Log("Raycast forward: " + (raycastForward ? "Hit" : "Miss"));
             LethalMon.Log("Raycast down: " + (raycastDown ? "Hit" : "Miss"));
@@ -264,7 +313,77 @@ namespace LethalMon.Patches
             
             PlaceableShipObject? component = raycastForward ? rayHitForward.collider?.gameObject.GetComponent<PlaceableShipObject>() : raycastDown ? rayHitDown.collider?.gameObject.GetComponent<PlaceableShipObject>() : null;
             LethalMon.Log("Hit component: " + component);
-            
+
+            if (ShipBuildModeManager.Instance.placingObject != null)
+            {
+                BoxCollider boxCollider = (BoxCollider) ShipBuildModeManager.Instance.placingObject.placeObjectCollider;
+                Material material = new Material(Shader.Find("HDRP/Unlit"));
+                Color color = Color.green;
+                material.color = color;
+                float width = 0.01f;
+                Vector3 size = boxCollider.size * 0.57f;
+                Vector3 center = ShipBuildModeManager.Instance.ghostObject.transform.position;
+                
+                LethalMon.Log("--------- PLACEMENT INFO ---------");
+                LethalMon.Log("Colliders: ");
+                
+                Physics.OverlapBox(center, size * 0.5f, Quaternion.Euler(ShipBuildModeManager.Instance.ghostObject.transform.eulerAngles), ShipBuildModeManager.Instance.placementMaskAndBlockers, QueryTriggerInteraction.Ignore).ToList().ForEach(collider =>
+                {
+                    LethalMon.Log(collider.name);
+                    foreach (var component in collider.GetComponents<Component>())
+                    {
+                        LethalMon.Log("  " + component.GetType().Name);
+                        LethalMon.Log("    Layer: " + LayerMask.LayerToName(component.gameObject.layer));
+                    }
+                });
+                
+                LethalMon.Log("--------- END PLACEMENT INFO ---------");
+                
+                if (_ghostObjectPosition == null)
+                {
+                    _ghostObjectPosition = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    _ghostObjectPosition.transform.localScale = Vector3.one * 0.1f;
+                    
+                    if (_ghostObjectPosition.TryGetComponent(out MeshRenderer meshRenderer))
+                    {
+                        meshRenderer.material = new Material(Shader.Find("HDRP/Unlit"));
+                        meshRenderer.material.color = Color.green;
+                        meshRenderer.enabled = true;
+                    }
+                }
+
+                _ghostObjectPosition.transform.position = ShipBuildModeManager.Instance.ghostObject.position;
+                _ghostObjectPosition.transform.rotation = ShipBuildModeManager.Instance.ghostObject.rotation;
+
+                if (_buildModeLines != null)
+                {
+                    foreach (var line in _buildModeLines)
+                    {
+                        Destroy(line.gameObject);
+                    }
+                }
+                else
+                {
+                    _buildModeLines = new LineRenderer[12];
+                }
+                
+                Vector3 rightDir = _ghostObjectPosition.transform.right.normalized;
+                Vector3 forwardDir = _ghostObjectPosition.transform.forward.normalized;
+                Vector3 upDir = _ghostObjectPosition.transform.up.normalized;
+                
+                _buildModeLines[0] = DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[1] = DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[2] = DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[3] = DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[4] = DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[5] = DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[6] = DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[7] = DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[8] = DrawLine(center + upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[9] = DrawLine(center - upDir * size.y / 2f + rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f + rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[10] = DrawLine(center + upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center + upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+                _buildModeLines[11] = DrawLine(center - upDir * size.y / 2f - rightDir * size.x / 2f + forwardDir * size.z / 2f, center - upDir * size.y / 2f - rightDir * size.x / 2f - forwardDir * size.z / 2f, color, material, width);
+            }
         }
         #endregion
 
