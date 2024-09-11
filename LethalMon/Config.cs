@@ -50,6 +50,8 @@ namespace LethalMon
             public KeepBalls KeepBallsIfAllPlayersDead { get; set; }
 
             public int CaptureRateModifier { get; set; }
+            
+            public int[] DuplicationPrices { get; set; }
 
             public float TamedNameFontSize { get; set; }
 
@@ -117,6 +119,21 @@ namespace LethalMon
             values.MonstersReactToFailedCaptures = LethalMon.Instance.Config.Bind("Monsters", "MonstersReactToFailedCaptures", true, "Make the monsters react aggressively if a capture fails").Value;
             values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, new ConfigDescription("Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch", new AcceptableValueRange<int>(-10, 10))).Value;
             values.TamedNameFontSize = LethalMon.Instance.Config.Bind("Monsters", "TamedNameFontSize", 10f, new ConfigDescription("Font size of the text above tamed monsters, that shows the owner. Set this to 0 to disable the text.", new AcceptableValueRange<float>(0f, 20f))).Value;
+            
+            // Monsters > Duplication prices
+            string[] duplicationPrices = LethalMon.Instance.Config.Bind("Monsters", "DuplicationPrices", String.Join(",", Data.DuplicationPrices), "Prices for duplicating a monster. The first value is the price for a monster with a difficulty of 1, the second value for a monster with a difficulty of 2, etc. 10 difficulties in total").Value.Split(",");
+            values.DuplicationPrices = new int[10];
+            for (var i = 0; i < 10; i++)
+            {
+                try
+                {
+                    values.DuplicationPrices[i] = int.Parse(duplicationPrices[i]);
+                }
+                catch
+                {
+                    values.DuplicationPrices[i] = Data.DuplicationPrices[i];
+                }
+            }
 
             // Cooldowns
             values.BrackenGrabCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BrackenGrabCooldown", 20f, "Grab cooldown time in seconds for the bracken").Value;

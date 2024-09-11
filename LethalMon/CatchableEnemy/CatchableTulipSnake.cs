@@ -4,7 +4,7 @@ namespace LethalMon.CatchableEnemy
 {
     internal class CatchableTulipSnake : CatchableEnemy
     {
-        public CatchableTulipSnake() : base(5, "Tulip Snake", 6)
+        public CatchableTulipSnake() : base(5, "Tulip Snake", 6, "When captured, Tulip snakes become much more obedient, allowing their owner to easily control where they go during flight.\nFailing to capture a Tulip snake will lead to them clinging to you, making themselves impossible to capture until they let go.")
         {
         }
 

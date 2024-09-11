@@ -82,6 +82,10 @@ public class PC : NetworkBehaviour
     private DexApp _dexApp;
     
     private ScanApp _scanApp;
+    
+    public DuplicateChooseApp duplicateChooseApp;
+    
+    public DuplicateApp duplicateApp;
     #endregion
 
     private static int _backupRenderTextureWidth;
@@ -131,10 +135,11 @@ public class PC : NetworkBehaviour
         _desktopButtons = new Button[4];
         _desktopButtons[0] = gameObject.transform.Find("Screen/MainMenu/TutorialButton").GetComponent<Button>();
         _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
-        _desktopButtons[1].onClick = FunctionToButtonClickEvent(OnDexButtonClick);
+        _desktopButtons[1].onClick = FunctionToButtonClickEvent(() => SwitchToApp(_dexApp));
         _desktopButtons[2] = gameObject.transform.Find("Screen/MainMenu/ScanButton").GetComponent<Button>();
-        _desktopButtons[2].onClick = FunctionToButtonClickEvent(OnScanButtonClick);
+        _desktopButtons[2].onClick = FunctionToButtonClickEvent(() => SwitchToApp(_scanApp));
         _desktopButtons[3] = gameObject.transform.Find("Screen/MainMenu/DuplicateButton").GetComponent<Button>();
+        _desktopButtons[3].onClick = FunctionToButtonClickEvent(() => SwitchToApp(duplicateChooseApp));
         
         // Load PC apps
         _appCloseButton = _screen.transform.Find("Window/CloseButton").GetComponent<Button>();
@@ -143,6 +148,10 @@ public class PC : NetworkBehaviour
         _dexApp.Hide();
         _scanApp = new ScanApp(_screen);
         _scanApp.Hide();
+        duplicateChooseApp = new DuplicateChooseApp(_screen);
+        duplicateChooseApp.Hide();
+        duplicateApp = new DuplicateApp(_screen);
+        duplicateApp.Hide();
         
         // Load the placeable ship object
         _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
@@ -279,17 +288,19 @@ public class PC : NetworkBehaviour
     {
         if (_currentApp != null && _currentOperationCoroutine == null)
         {
-            _currentApp.Hide();
+            var currentApp = _currentApp;
             _currentApp = null;
             foreach (var desktopButton in _desktopButtons)
             {
                 desktopButton.gameObject.SetActive(true);
             }
+            currentApp.Hide();
         }
     }
     
     public void SwitchToApp(PCApp app)
     {
+        CloseCurrentApp();
         app.Show();
         _currentApp = app;
         foreach (var desktopButton in _desktopButtons)
@@ -332,20 +343,14 @@ public class PC : NetworkBehaviour
     private bool IsCursorOnButton(Button button)
     {
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        Vector3 buttonMin = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x + rectTransform.rect.width / 2, rectTransform.position.y - rectTransform.rect.height / 2));
-        Vector3 buttonMax = _screen.transform.InverseTransformPoint(new Vector2(rectTransform.position.x - rectTransform.rect.width / 2, rectTransform.position.y + rectTransform.rect.height / 2));
+        Vector3 buttonHalfSize = new Vector3(rectTransform.rect.width / 2, rectTransform.rect.height / 2, 0);
+        Vector3 buttonPosition = _screen.transform.InverseTransformPoint(rectTransform.position);
+        
+        Vector3 buttonMin = buttonPosition - buttonHalfSize;
+        Vector3 buttonMax = buttonPosition + buttonHalfSize;
         Vector3 cursorPosition = _screen.transform.InverseTransformPoint(_cursor.position);
+        
         return cursorPosition.x >= buttonMin.x && cursorPosition.x <= buttonMax.x && cursorPosition.y >= buttonMin.y && cursorPosition.y <= buttonMax.y;
-    }
-    
-    public void OnDexButtonClick()
-    {
-        SwitchToApp(_dexApp);
-    }
-
-    public void OnScanButtonClick()
-    {
-        SwitchToApp(_scanApp);
     }
     
     private IEnumerator ProcessOperationCoroutine(Action<float> callback, float duration, float callbackInterval)

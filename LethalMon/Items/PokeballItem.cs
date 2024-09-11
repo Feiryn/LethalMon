@@ -491,13 +491,13 @@ public abstract class PokeballItem : ThrowableItem
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SetCaughtEnemyServerRpc(string enemyTypeName)
+    public void SetCaughtEnemyServerRpc(string enemyTypeName, int price = 0)
     {
-        SetCaughtEnemyClientRpc(enemyTypeName);
+        SetCaughtEnemyClientRpc(enemyTypeName, price);
     }
 
     [ClientRpc]
-    public void SetCaughtEnemyClientRpc(string enemyTypeName)
+    public void SetCaughtEnemyClientRpc(string enemyTypeName, int price)
     {
         LethalMon.Log("SyncContentPacket client rpc received");
 
@@ -506,6 +506,9 @@ public abstract class PokeballItem : ThrowableItem
 
         if (audioSource != null && SuccessSFX != null)
             audioSource.PlayOneShot(SuccessSFX);
+
+        if (price != 0)
+            FindObjectOfType<Terminal>().groupCredits -= price;
     }
     #endregion
 }

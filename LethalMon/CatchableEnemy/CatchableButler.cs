@@ -4,7 +4,7 @@ namespace LethalMon.CatchableEnemy;
 
 public class CatchableButler : CatchableEnemy
 {
-    public CatchableButler() : base(10, "Butler", 4, "Butlers can clean up dead monsters bodies and turn them into scraps.\nWhen they are failed to be captured, they will speed up and stab the thrower.")
+    public CatchableButler() : base(10, "Butler", 4, "It will clean up any carcases and residue left behind by enemies, salvaging valuables from them in the process.\nA failed capture will cause them to brutally stab the thrower to death.")
     {
     }
 

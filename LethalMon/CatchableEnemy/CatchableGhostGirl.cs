@@ -5,7 +5,7 @@ namespace LethalMon.CatchableEnemy
 {
     internal class CatchableGhostGirl : CatchableEnemy
     {
-        public CatchableGhostGirl() : base(7, "GhostGirl", 9)
+        public CatchableGhostGirl() : base(7, "GhostGirl", 9, "Don't be afraid of her, friendly Ghost girls will blink away anything that threatens their friend's safety, even damaging them in the process!\nA failed capture will cause her to terrorize you and hunt you down.")
         {
         }
 

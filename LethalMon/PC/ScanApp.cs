@@ -21,7 +21,7 @@ public class ScanApp : PCApp
 
     #region Constants
 
-    private const float ScanTime = 10f;
+    private const float ScanTime = 6f;
     
     private const float ProgressBarStep = 0.02829f;
     #endregion

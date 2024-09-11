@@ -54,4 +54,15 @@ public class SaveManager
     {
         return Save.UnlockedDna.Contains(dna);
     }
+    
+    #if DEBUG
+    public static void DebugUnlockAll()
+    {
+        foreach (var entry in Data.CatchableMonsters)
+        {
+            Save.UnlockedDexEntries.Add(entry.Key);
+            Save.UnlockedDna.Add(entry.Key);
+        }
+    }
+    #endif
 }

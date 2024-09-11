@@ -72,8 +72,7 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                // HighlightCollider((BoxCollider) PC.PC.Instance.GetComponentInChildren<PlaceableShipObject>().placeObjectCollider);
-                DebugBuildMode();
+                ToggleDna();
             }
 
             else if (Keyboard.current.f8Key.wasPressedThisFrame)
@@ -230,6 +229,15 @@ namespace LethalMon.Patches
                 grabbableObject.itemProperties.canBeGrabbedBeforeGameStart = true;
 
             return item;
+        }
+
+        public static void ToggleDna()
+        {
+            GrabbableObject heldItem = Utils.CurrentPlayer.ItemSlots[Utils.CurrentPlayer.currentItemSlot];
+            if (heldItem == null || heldItem is not PokeballItem pokeballItem) return;
+
+            pokeballItem.isDnaComplete = !pokeballItem.isDnaComplete;
+            HUDManager.Instance.AddTextMessageClientRpc("DNA complete: " + pokeballItem.isDnaComplete);
         }
         #endregion
 

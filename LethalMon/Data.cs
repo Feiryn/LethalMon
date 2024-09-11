@@ -23,6 +23,8 @@ public static class Data
         // Master ball
         new[] { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f }
     };
+    
+    public static readonly int[] DuplicationPrices = [30, 70, 120, 180, 250, 330, 420, 520, 630, 750];
 
     public static readonly Dictionary<string, CatchableEnemy.CatchableEnemy> CatchableMonsters = new()
     {
