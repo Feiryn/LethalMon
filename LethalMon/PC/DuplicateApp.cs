@@ -25,8 +25,6 @@ public class DuplicateApp : PCApp
     
     private const float ProgressBarStep = 0.02829f;
     
-    private const float NoBallProgressCheckpoint = 0.2f;
-    
     private const float NotEmptyBallProgressCheckpoint = 0.3f;
     #endregion
 
@@ -75,6 +73,12 @@ public class DuplicateApp : PCApp
 
         CleanUp();
         
+        if (pc.GetCurrentPlacedBall() == null)
+        {
+            DuplicationError("No ball detected!");
+            return;
+        }
+        
         if (Object.FindObjectOfType<Terminal>().groupCredits < Data.CatchableMonsters[SelectedMonster].DuplicationPrice)
         {
             DuplicationError("Not enough credits!");
@@ -99,17 +103,6 @@ public class DuplicateApp : PCApp
 
         PC pc = PC.Instance;
         PokeballItem? currentBall = pc.GetCurrentPlacedBall();
-
-        if (progress + ProgressBarStep <= NoBallProgressCheckpoint)
-        {
-            return;
-        }
-        
-        if (NoBallProgressCheckpoint > progress - ProgressBarStep && NoBallProgressCheckpoint < progress + ProgressBarStep && currentBall == null)
-        {
-            DuplicationError("No ball detected!");
-            return;
-        }
 
         if (currentBall == null)
         {

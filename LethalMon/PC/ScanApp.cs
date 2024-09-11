@@ -27,8 +27,6 @@ public class ScanApp : PCApp
     #endregion
     
     #region ScanCheckpoints
-    private const float NoBallProgressCheckpoint = 0.2f;
-    
     private const float EmptyBallProgressCheckpoint = 0.3f;
     
     private const float MissingDnaProgressCheckpoint = 0.8f;
@@ -71,6 +69,12 @@ public class ScanApp : PCApp
         {
             return;
         }
+        
+        if (pc.GetCurrentPlacedBall() == null)
+        {
+            ScanError("No ball detected!");
+            return;
+        }
 
         CleanUp();
         pc.ProcessOperation(ScanCallback, ScanTime, ProgressBarStep);
@@ -90,17 +94,6 @@ public class ScanApp : PCApp
 
         PC pc = PC.Instance;
         PokeballItem? currentBall = pc.GetCurrentPlacedBall();
-
-        if (progress + ProgressBarStep <= NoBallProgressCheckpoint)
-        {
-            return;
-        }
-        
-        if (NoBallProgressCheckpoint > progress - ProgressBarStep && NoBallProgressCheckpoint < progress + ProgressBarStep && currentBall == null)
-        {
-            ScanError("No ball detected!");
-            return;
-        }
 
         if (currentBall == null)
         {

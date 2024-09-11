@@ -1,8 +1,10 @@
+using System.IO;
+
 namespace LethalMon.Save;
 
 public class SaveManager
 {
-    private static readonly string SavePath = UnityEngine.Application.persistentDataPath + "/LethalMonSave.json";
+    private static readonly string SavePath = UnityEngine.Application.persistentDataPath + Path.DirectorySeparatorChar + "LethalMonSave.json";
 
     private static Save? _save;
 
@@ -10,9 +12,9 @@ public class SaveManager
     
     private static Save LoadSave()
     {
-        if (System.IO.File.Exists(SavePath))
+        if (File.Exists(SavePath))
         {
-            var json = System.IO.File.ReadAllText(SavePath);
+            var json = File.ReadAllText(SavePath);
             return UnityEngine.JsonUtility.FromJson<Save>(json);
         }
 
@@ -22,14 +24,14 @@ public class SaveManager
     private static void WriteSave()
     {
         var json = UnityEngine.JsonUtility.ToJson(Save);
-        System.IO.File.WriteAllText(SavePath, json);
+        File.WriteAllText(SavePath, json);
     }
     
     public static void UnlockDexEntry(string entry)
     {
-        if (!Save.UnlockedDexEntries.Contains(entry))
+        if (!Save.unlockedDexEntries.Contains(entry))
         {
-            Save.UnlockedDexEntries.Add(entry);
+            Save.unlockedDexEntries.Add(entry);
 
             WriteSave();
         }
@@ -37,9 +39,9 @@ public class SaveManager
     
     public static void UnlockDna(string dna)
     {
-        if (!Save.UnlockedDna.Contains(dna))
+        if (!Save.unlockedDna.Contains(dna))
         {
-            Save.UnlockedDna.Add(dna);
+            Save.unlockedDna.Add(dna);
 
             WriteSave();
         }
@@ -47,12 +49,12 @@ public class SaveManager
     
     public static bool IsDexEntryUnlocked(string entry)
     {
-        return Save.UnlockedDexEntries.Contains(entry);
+        return Save.unlockedDexEntries.Contains(entry);
     }
     
     public static bool IsDnaUnlocked(string dna)
     {
-        return Save.UnlockedDna.Contains(dna);
+        return Save.unlockedDna.Contains(dna);
     }
     
     #if DEBUG
@@ -60,8 +62,8 @@ public class SaveManager
     {
         foreach (var entry in Data.CatchableMonsters)
         {
-            Save.UnlockedDexEntries.Add(entry.Key);
-            Save.UnlockedDna.Add(entry.Key);
+            Save.unlockedDexEntries.Add(entry.Key);
+            Save.unlockedDna.Add(entry.Key);
         }
     }
     #endif

@@ -259,6 +259,11 @@ public class PC : NetworkBehaviour
             player.playerActions.Movement.Look.Disable();
 
             HighQualityCamera();
+            
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Inventory, 0f, 0.13f, 0.13f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.PlayerInfo, 0f, 0.13f, 0.13f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Chat, 0f, 0.35f, 0.13f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Tooltips, 1f, 0f, 0.6f);
         }
         catch
         {
@@ -281,6 +286,20 @@ public class PC : NetworkBehaviour
             _screenInteractTrigger.StopSpecialAnimation();
             
             RollbackHighQualityCamera();
+            
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Inventory, 0f, 0.5f, 0.5f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.PlayerInfo, 0f, 1f, 1f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Chat, 0f, 1f, 1f);
+            HUDManager.Instance.PingHUDElement(HUDManager.Instance.Tooltips, 0f, 1f, 1f);
+            
+            if (_currentPlayer.isHoldingObject && _currentPlayer.currentlyHeldObjectServer != null)
+            {
+                _currentPlayer.currentlyHeldObjectServer.SetControlTipsForItem();
+            }
+            else
+            {
+                HUDManager.Instance.ClearControlTips();
+            }
         }
     }
     

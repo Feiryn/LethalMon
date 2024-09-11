@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 namespace LethalMon.Save;
 
+[Serializable]
 public class Save
 {
-    public List<string> UnlockedDexEntries { get; set; } = [];
+    [FormerlySerializedAs("UnlockedDexEntries")] public List<string> unlockedDexEntries = [];
     
-    public List<string> UnlockedDna { get; set; } = [];
+    [FormerlySerializedAs("UnlockedDna")] public List<string> unlockedDna = [];
 }
