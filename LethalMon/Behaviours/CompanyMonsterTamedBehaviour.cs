@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,6 +23,8 @@ namespace LethalMon.Behaviours
         internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
         internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
+
+        private DepositItemsDesk? _depositItemsDesk = null;
         #endregion
 
         #region Cooldowns
@@ -32,10 +35,58 @@ namespace LethalMon.Behaviours
         private CooldownNetworkBehaviour? attackCooldown;
         #endregion
 
+        #region Custom behaviours
+        internal enum CustomBehaviour
+        {
+            RunToCounter = 1
+        }
+        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        [
+            new (CustomBehaviour.RunToCounter.ToString(), "Running to sell counter", OnRunToCounterBehavior)
+        ];
+
+        internal override void InitCustomBehaviour(int behaviour)
+        {
+            // ANY CLIENT
+            base.InitCustomBehaviour(behaviour);
+
+            switch ((CustomBehaviour)behaviour)
+            {
+                case CustomBehaviour.RunToCounter:
+                    
+                    if(IsOwnerPlayer)
+                    {
+                        _depositItemsDesk = FindObjectOfType<DepositItemsDesk>();
+                        if(_depositItemsDesk == null)
+                        {
+                            LethalMon.Log("No sell counter found. Returning back to following.", LethalMon.LogType.Warning);
+                            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                            return;
+                        }
+
+                        MoveTowards(_depositItemsDesk.transform.position);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        internal void OnRunToCounterBehavior()
+        {
+            if (Vector3.Distance(_depositItemsDesk!.transform.position, CompanyMonster.transform.position) > 2f)
+                return;
+
+            CompanyMonster.RedeemItemsServerRpc();
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        }
+        #endregion
+
         #region Action Keys
         private readonly List<ActionKey> _actionKeys =
         [
-            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Action description here" }
+            new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Attack" }
         ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
@@ -66,6 +117,12 @@ namespace LethalMon.Behaviours
             {
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
                 PlaceOnNavMesh();
+
+
+                if (IsOwnerPlayer && true) // check for company building
+                {
+                    Utils.CreateInteractionForEnemy(CompanyMonster, "Redeem items", 2f, (player) => SwitchToCustomBehaviour((int)CustomBehaviour.RunToCounter), out _, out _);
+                }
             }
         }
 

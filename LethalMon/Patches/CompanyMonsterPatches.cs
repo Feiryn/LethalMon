@@ -27,6 +27,13 @@ namespace LethalMon.Patches
             if (companyMonsterCaught)
             {
                 __instance.gameObject.SetActive(false);
+                if(Utils.IsHost)
+                {
+                    var companyMonster = Object.FindObjectOfType<CompanyMonsterAI>() as CompanyMonsterAI;
+                    if (companyMonster != null)
+                        companyMonster.SpawnCaughtEnemiesOnServer();
+                }
+
                 return;
             }
         }

@@ -1,9 +1,11 @@
 ﻿using GameNetcodeStuff;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UIElements;
+using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -32,6 +34,9 @@ namespace LethalMon.Behaviours
         internal bool isAttacking = false;
         internal float tentacleScale = 0f;
         internal bool initialized = false;
+
+        internal List<Tuple<GrabbableObject, int>> caughtItems = [];
+        internal Dictionary<string, int> caughtEnemies = []; // EnemyType.name, amount
         #endregion
 
         #region Initialization
@@ -105,6 +110,27 @@ namespace LethalMon.Behaviours
             agent.baseOffset = 0f;
         }
 
+        public override void Update()
+        {
+            base.Update();
+
+            if (IsOwner && mood == null && TimeOfDay.Instance != null)
+            {
+                LethalMon.Log("Update mood");
+                UpdateMoodServerRpc();
+            }
+
+            if (creatureSFX.isPlaying && creatureSFX.volume < 1f)
+                creatureSFX.volume = Mathf.Lerp(creatureSFX.volume, 1f, Time.deltaTime);
+        }
+
+        public override void DoAIInterval()
+        {
+            base.DoAIInterval();
+        }
+        #endregion
+
+        #region Tentacles
         private void AddTentacle()
         {
             if (tentacleContainer == null) return;
@@ -126,35 +152,76 @@ namespace LethalMon.Behaviours
         private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.localScale = Vector3.one * scale);
 
         private void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.localRotation = RandomRotation);
-
-        private Quaternion RandomRotation => new(Random.Range(-1f, 1f), Random.Range(-0.3f, 0.3f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-
-        public override void Update()
-        {
-            base.Update();
-
-            if (IsOwner && mood == null && TimeOfDay.Instance != null)
-            {
-                LethalMon.Log("Update mood");
-                UpdateMoodServerRpc();
-            }
-
-            if (creatureSFX.isPlaying && creatureSFX.volume < 1f)
-                creatureSFX.volume = Mathf.Lerp(creatureSFX.volume, 1f, Time.deltaTime);
-        }
-
-        public override void DoAIInterval()
-        {
-            base.DoAIInterval();
-        }
         #endregion
 
         #region Methods
+        private Quaternion RandomRotation => new(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-0.3f, 0.3f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f));
+
+        [ServerRpc(RequireOwnership = false)]
+        internal void CaughtEnemyServerRpc(NetworkObjectReference enemyRef)
+        {
+            if(!enemyRef.TryGet(out NetworkObject networkObj) || !networkObj.TryGetComponent( out EnemyAI enemyAI))
+            {
+                LethalMon.Log("CaughtEnemyServerRpc: Unable to get EnemyAI.", LethalMon.LogType.Error);
+                return;
+            }
+
+            CaughtEnemy(enemyAI);
+        }
+
+        internal void CaughtEnemy(EnemyAI enemy)
+        {
+            if (!caughtEnemies.ContainsKey(enemy.enemyType.name))
+                caughtEnemies.Add(enemy.enemyType.name, 1);
+            else
+                caughtEnemies[enemy.enemyType.name]++;
+        }
+
+        internal void SpawnCaughtEnemiesOnServer()
+        {
+            foreach(var enemy in caughtEnemies)
+            {
+                for(int i = 0; i < enemy.Value; i++)
+                {
+                    var position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(Vector3.zero, 200f);
+                    Utils.SpawnEnemyAtPosition(enemy.Key, position);
+                    LethalMon.Log($"Spawned enemy {enemy.Key} at position {position}");
+                }
+            }
+            caughtEnemies.Clear();
+        }
+
+        [ServerRpc]
+        internal void RedeemItemsServerRpc()
+        {
+            if(caughtItems.Count == 0) return;
+
+            var depositItemsDesk = FindObjectOfType<DepositItemsDesk>();
+            if(depositItemsDesk == null) return;
+
+            depositItemsDesk.inSellingItemsAnimation = true;
+
+            int profits = 0;
+            foreach (var (item, profit) in caughtItems)
+            {
+                depositItemsDesk.itemsOnCounterNetworkObjects.Add(item.NetworkObject);
+                depositItemsDesk.itemsOnCounter.Add(item);
+                depositItemsDesk.AddObjectToDeskClientRpc(item.NetworkObject);
+                if (item.itemProperties.isScrap)
+                    profits += profit;
+            }
+
+            Terminal terminal = FindObjectOfType<Terminal>();
+            terminal.groupCredits += profits;
+            depositItemsDesk.SellItemsClientRpc(profits, terminal.groupCredits, caughtItems.Count, 1f); // or 100f?
+            depositItemsDesk.SellAndDisplayItemProfits(profits, terminal.groupCredits);
+        }
+
         [ServerRpc]
         public void UpdateMoodServerRpc()
         {
             if (TimeOfDay.Instance.CommonCompanyMoods.Length > 0)
-                UpdateMoodClientRpc(Random.RandomRangeInt(0, TimeOfDay.Instance.CommonCompanyMoods.Length - 1));
+                UpdateMoodClientRpc(UnityEngine.Random.RandomRangeInt(0, TimeOfDay.Instance.CommonCompanyMoods.Length - 1));
         }
 
         [ClientRpc]
