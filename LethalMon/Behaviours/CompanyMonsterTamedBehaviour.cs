@@ -25,6 +25,8 @@ namespace LethalMon.Behaviours
         internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
 
         private DepositItemsDesk? _depositItemsDesk = null;
+        private InteractTrigger? _redeemItemsTrigger = null;
+        private GameObject? _redeemItemsTriggerObject = null;
         #endregion
 
         #region Cooldowns
@@ -56,8 +58,7 @@ namespace LethalMon.Behaviours
                     
                     if(IsOwnerPlayer)
                     {
-                        _depositItemsDesk = FindObjectOfType<DepositItemsDesk>();
-                        if(_depositItemsDesk == null)
+                        if(_depositItemsDesk == null || !Utils.AtCompanyBuilding)
                         {
                             LethalMon.Log("No sell counter found. Returning back to following.", LethalMon.LogType.Warning);
                             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
@@ -118,12 +119,24 @@ namespace LethalMon.Behaviours
                 EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, IsOwnerPlayer);
                 PlaceOnNavMesh();
 
-
-                if (IsOwnerPlayer && true) // check for company building
+                if (IsOwnerPlayer && Utils.AtCompanyBuilding)
                 {
-                    Utils.CreateInteractionForEnemy(CompanyMonster, "Redeem items", 2f, (player) => SwitchToCustomBehaviour((int)CustomBehaviour.RunToCounter), out _, out _);
+                    LethalMon.Log("Tamed Company Monster: Creating redeem trigger.");
+                    _depositItemsDesk = FindObjectOfType<DepositItemsDesk>();
+                    Utils.CreateInteractionForEnemy(CompanyMonster, "Redeem items", 2f, (player) => SwitchToCustomBehaviour((int)CustomBehaviour.RunToCounter), out _redeemItemsTrigger, out _redeemItemsTriggerObject);
                 }
             }
+        }
+
+        void OnDestroy()
+        {
+            if (_redeemItemsTrigger != null)
+                Destroy(_redeemItemsTrigger);
+
+            if (_redeemItemsTriggerObject != null)
+                Destroy(_redeemItemsTriggerObject);
+
+            base.OnDestroy();
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -133,12 +146,30 @@ namespace LethalMon.Behaviours
             CompanyMonster.Update();
         }
 
+        internal override void DoAIInterval()
+        {
+            base.DoAIInterval();
+
+            if(_depositItemsDesk != null)
+                SetRedeemItemsTriggerVisible(CompanyMonster.caughtItems.Count > 0 && Vector3.Distance(_depositItemsDesk.transform.position, CompanyMonster.transform.position) < 5f);
+        }
+
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
 
             DestroyImmediate(gameObject); // remove CompanyMonsterAI after the event
+        }
+        #endregion
+
+        #region Methods
+        public void SetRedeemItemsTriggerVisible(bool visible = true)
+        {
+            if (_redeemItemsTrigger == null) return;
+
+            _redeemItemsTrigger.holdInteraction = visible;
+            _redeemItemsTrigger.isPlayingSpecialAnimation = !visible;
         }
         #endregion
     }

@@ -407,6 +407,32 @@ public class Utils
     }
     #endregion
 
+    #region Levels
+    /*
+     foreach (var moon in StartOfRound.Instance.levels)
+                LethalMon.Log(moon.PlanetName + " = " + moon.levelID + ",");
+     */
+    // Can be found in StartOfRound.Instance.currentLevel or TimeOfDay.Instance.currentLevel
+    internal enum Level // SelectableLevel.levelID
+    {
+        Experimentation = 0,
+        Assurance = 1,
+        Vow = 2,
+        Gordion = 3,
+        March = 4,
+        Adamance = 5,
+        Rend = 6,
+        Dine = 7,
+        Offense = 8,
+        Titan = 9,
+        Artifice = 10,
+        Liquidation = 11,
+        Embrion = 12,
+    }
+
+    internal static bool AtCompanyBuilding => StartOfRound.Instance?.currentLevel != null && StartOfRound.Instance.currentLevel.levelID == (int)Utils.Level.Gordion;
+    #endregion
+
     #region Items
 
     private static Item? _giftBoxItem;

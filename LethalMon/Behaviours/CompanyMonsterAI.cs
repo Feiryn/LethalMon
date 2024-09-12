@@ -4,8 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.UIElements;
-using static LethalMon.Utils;
 
 namespace LethalMon.Behaviours
 {
@@ -106,8 +104,6 @@ namespace LethalMon.Behaviours
                 for (int i = 0; i < TentacleCount; i++)
                     AddTentacle();
             }
-
-            agent.baseOffset = 0f;
         }
 
         public override void Update()
