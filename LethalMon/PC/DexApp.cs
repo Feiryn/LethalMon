@@ -30,6 +30,8 @@ public class DexApp : PCApp
     private readonly string[] _enemies;
     
     private int _currentPage;
+    
+    public string[] unlockedDexEntries;
 
     public DexApp(GameObject screen) : base(screen, screen.transform.Find("Window/DexMenu").gameObject, "Dex")
     {
@@ -60,11 +62,11 @@ public class DexApp : PCApp
         base.Show();
     }
 
-    private void UpdateMonsterInfo(string enemyName)
+    public void UpdateMonsterInfo(string enemyName)
     {
         _rightColumn.SetActive(true);
         
-        if (SaveManager.IsDexEntryUnlocked(enemyName))
+        if (unlockedDexEntries.Contains(enemyName))
         {
             CatchableEnemy.CatchableEnemy catchableEnemy = Data.CatchableMonsters[enemyName];
             _monsterName.text = catchableEnemy.DisplayName;
@@ -106,7 +108,14 @@ public class DexApp : PCApp
         _previousPageButton.gameObject.SetActive(_currentPage - 1 >= 0);
     }
 
-    private void NextPage()
+    public void UpdatePage(int page)
+    {
+        _currentPage = page;
+        UpdateMonstersButtons();
+        HideOrShowNextPreviousButtons();
+    }
+    
+    public void NextPage()
     {
         if (_enemies.Length - (_currentPage + 1) * _monstersButtons.Length < 0)
             return;
@@ -116,7 +125,7 @@ public class DexApp : PCApp
         HideOrShowNextPreviousButtons();
     }
 
-    private void PreviousPage()
+    public void PreviousPage()
     {
         if (_currentPage - 1 < 0)
             return;

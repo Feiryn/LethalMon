@@ -20,6 +20,8 @@ public class DuplicateChooseApp : PCApp
     
     private int _currentPage;
     
+    public string[] unlockedDnaEntries;
+    
     public DuplicateChooseApp(GameObject screen) : base(screen, screen.transform.Find("Window/DuplicateChooseMenu").gameObject, "Duplication choice")
     {
         _currentPage = 0;
@@ -56,7 +58,7 @@ public class DuplicateChooseApp : PCApp
                 Image avatar = button.transform.Find("Avatar").GetComponent<Image>();
                 TextMeshProUGUI monsterName = button.GetComponentInChildren<TextMeshProUGUI>();
                 
-                if (SaveManager.IsDnaUnlocked(_enemies[index]))
+                if (unlockedDnaEntries.Contains(enemy))
                 {
                     monsterName.text = Data.CatchableMonsters[enemy].DisplayName;
                     avatar.sprite = LethalMon.monstersSprites[enemy.ToLower()];
@@ -77,18 +79,21 @@ public class DuplicateChooseApp : PCApp
         }
     }
     
+    public void UpdatePage(int page)
+    {
+        _currentPage = page;
+        UpdateMonstersButtons();
+        HideOrShowNextPreviousButtons();
+    }
+    
     private void NextPage()
     {
         _currentPage++;
-        UpdateMonstersButtons();
-        HideOrShowNextPreviousButtons();
     }
     
     private void PreviousPage()
     {
         _currentPage--;
-        UpdateMonstersButtons();
-        HideOrShowNextPreviousButtons();
     }
     
     private void HideOrShowNextPreviousButtons()

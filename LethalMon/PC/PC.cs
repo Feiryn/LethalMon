@@ -61,7 +61,7 @@ public class PC : NetworkBehaviour
     
     private PlayerActions _playerActions;
 
-    private PlayerControllerB _currentPlayer;
+    private PlayerControllerB? _currentPlayer;
     
     private RectTransform _cursor;
 
@@ -439,6 +439,138 @@ public class PC : NetworkBehaviour
         _audioSource.loop = false;
         _audioSource.Stop();
     }
+    
+    #region RPC
+    [ServerRpc(RequireOwnership = false)]
+    public void StartUsingServerRpc(NetworkObjectReference player)
+    {
+        StartUsingClientRpc(player);
+    }
+    
+    [ClientRpc]
+    public void StartUsingClientRpc(NetworkObjectReference player)
+    {
+        if (player.TryGet(out var networkObject))
+        {
+            _currentPlayer = networkObject.GetComponent<PlayerControllerB>();
+        }
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void StopUsingServerRpc()
+    {
+        StopUsingClientRpc();
+    }
+    
+    [ClientRpc]
+    public void StopUsingClientRpc()
+    {
+        _currentPlayer = null;
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenDexServerRpc(string[] unlockedMonsters)
+    {
+        OpenDexClientRpc(unlockedMonsters);
+    }
+    
+    [ClientRpc]
+    public void OpenDexClientRpc(string[] unlockedMonsters)
+    {
+        _dexApp.unlockedDexEntries = unlockedMonsters;
+        SwitchToApp(_dexApp);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void LoadDexEntryServerRpc(string monster)
+    {
+        LoadDexEntryClientRpc(monster);
+    }
+    
+    [ClientRpc]
+    public void LoadDexEntryClientRpc(string monster)
+    {
+        _dexApp.UpdateMonsterInfo(monster);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void DexUpdatePageServerRpc(int page)
+    {
+        DexUpdatePageClientRpc(page);
+    }
+    
+    [ClientRpc]
+    public void DexUpdatePageClientRpc(int page)
+    {
+        _dexApp.UpdatePage(page);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenScanServerRpc()
+    {
+        OpenScanClientRpc();
+    }
+    
+    [ClientRpc]
+    public void OpenScanClientRpc()
+    {
+        SwitchToApp(_scanApp);
+    }
+    
+    // todo scan RPCs: ScanError, ScanSuccess, ScanStart
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenDuplicateChooseServerRpc(string[] unlockedMonsters)
+    {
+        OpenDuplicateChooseClientRpc(unlockedMonsters);
+    }
+    
+    [ClientRpc]
+    public void OpenDuplicateChooseClientRpc(string[] unlockedMonsters)
+    {
+        duplicateChooseApp.unlockedDnaEntries = unlockedMonsters;
+        SwitchToApp(duplicateChooseApp);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void UpdateDuplicateChoosePageServerRpc(int page)
+    {
+        UpdateDuplicateChoosePageClientRpc(page);
+    }
+    
+    [ClientRpc]
+    public void UpdateDuplicateChoosePageClientRpc(int page)
+    {
+        duplicateChooseApp.UpdatePage(page);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenDuplicateServerRpc(string selectedMonster)
+    {
+        OpenDuplicateClientRpc(selectedMonster);
+    }
+    
+    [ClientRpc]
+    public void OpenDuplicateClientRpc(string selectedMonster)
+    {
+        duplicateApp.SelectedMonster = selectedMonster;
+        SwitchToApp(duplicateApp);
+    }
+    
+    // todo duplicate RPCs: DuplicationError, DuplicationSuccess, DuplicationStart
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void CloseAppServerRpc()
+    {
+        CloseAppClientRpc();
+    }
+    
+    [ClientRpc]
+    public void CloseAppClientRpc()
+    {
+        CloseCurrentApp();
+    }
+    #endregion
     
     internal static void LoadAssets(AssetBundle assetBundle)
     {
