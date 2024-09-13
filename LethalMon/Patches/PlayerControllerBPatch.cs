@@ -273,4 +273,14 @@ public class PlayerControllerBPatch
             }
         }
     }
+    
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
+    [HarmonyPrefix]
+    private static void KillPlayerPrefix(PlayerControllerB __instance)
+    {
+        if (__instance.inTerminalMenu && PC.PC.Instance.CurrentPlayer == __instance && Utils.CurrentPlayer == __instance && __instance.AllowPlayerDeath())
+        {
+            PC.PC.Instance.StopUsing();
+        }
+    }
 }

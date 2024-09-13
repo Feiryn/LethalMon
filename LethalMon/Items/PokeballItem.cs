@@ -442,7 +442,7 @@ public abstract class PokeballItem : ThrowableItem
 
         if (PC.PC.Instance.GetCurrentPlacedBall() == this)
         {
-            PC.PC.Instance.RemovePlacedBall();
+            PC.PC.Instance.RemoveBallServerRpc();
         }
     }
 

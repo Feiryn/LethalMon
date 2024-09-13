@@ -7,6 +7,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace LethalMon.PC;
@@ -53,6 +54,8 @@ public class PC : NetworkBehaviour
     private const float CursorMinY = -0.445f;
     
     private const float CursorMaxY = 0.45f;
+    
+    private const float CursorUpdateMagnitude = 0.05f;
     #endregion
     
     #region Components
@@ -62,7 +65,7 @@ public class PC : NetworkBehaviour
     
     private PlayerActions _playerActions;
 
-    private PlayerControllerB? _currentPlayer;
+    public PlayerControllerB? CurrentPlayer;
     
     private RectTransform _cursor;
 
@@ -96,6 +99,8 @@ public class PC : NetworkBehaviour
     internal Coroutine? _currentOperationCoroutine { get; private set; }
 
     private PokeballItem? _placedBall;
+    
+    private Vector2 _cursorLastUpdatePosition = Vector2.zero;
 
     public void Start()
     {
@@ -234,6 +239,7 @@ public class PC : NetworkBehaviour
         if (heldItem != null && heldItem is PokeballItem item && GetCurrentPlacedBall() == null)
         {
             _placedBall = item;
+            PlaceBallServerRpc(item.GetComponent<NetworkObject>());
             player.DiscardHeldObject(true, this.GetComponent<NetworkObject>(), _ballPlaceInteractTrigger.transform.localPosition + Vector3.up * item.itemProperties.verticalOffset);
         }
     }
@@ -248,11 +254,6 @@ public class PC : NetworkBehaviour
         return null;
     }
     
-    public void RemovePlacedBall()
-    {
-        _placedBall = null;
-    }
-    
     public void StartUsing(PlayerControllerB player)
     {
         // Don't trust Zeekerss code... the player is always null on an interact early event
@@ -260,7 +261,7 @@ public class PC : NetworkBehaviour
         
         try
         {
-            _currentPlayer = player;
+            CurrentPlayer = player;
             
             player.inTerminalMenu = true;
 
@@ -292,18 +293,18 @@ public class PC : NetworkBehaviour
     
     public void StopUsing()
     {
-        if (_currentPlayer == Utils.CurrentPlayer)
+        if (CurrentPlayer == Utils.CurrentPlayer)
         {
-            StopUsingServerRpc(_currentPlayer.GetComponent<NetworkObject>());
+            StopUsingServerRpc(CurrentPlayer.GetComponent<NetworkObject>());
             
             _playerActions.Movement.OpenMenu.performed -= PressEsc;
             _playerActions.Movement.Look.performed -= Look_performed;
             _playerActions.Movement.Use.performed -= LeftClick_performed;
             _playerActions.Disable();
-            _currentPlayer.playerActions.Movement.Move.Enable();
-            _currentPlayer.playerActions.Movement.Look.Enable();
+            CurrentPlayer.playerActions.Movement.Move.Enable();
+            CurrentPlayer.playerActions.Movement.Look.Enable();
             
-            _currentPlayer.inTerminalMenu = false;
+            CurrentPlayer.inTerminalMenu = false;
             _screenInteractTrigger.StopSpecialAnimation();
             
             RollbackHighQualityCamera();
@@ -313,16 +314,16 @@ public class PC : NetworkBehaviour
             HUDManager.Instance.PingHUDElement(HUDManager.Instance.Chat, 0f, 1f, 1f);
             HUDManager.Instance.PingHUDElement(HUDManager.Instance.Tooltips, 0f, 1f, 1f);
             
-            if (_currentPlayer.isHoldingObject && _currentPlayer.currentlyHeldObjectServer != null)
+            if (CurrentPlayer.isHoldingObject && CurrentPlayer.currentlyHeldObjectServer != null)
             {
-                _currentPlayer.currentlyHeldObjectServer.SetControlTipsForItem();
+                CurrentPlayer.currentlyHeldObjectServer.SetControlTipsForItem();
             }
             else
             {
                 HUDManager.Instance.ClearControlTips();
             }
 
-            _currentPlayer = null;
+            CurrentPlayer = null;
             _screenInteractTrigger.interactable = true;
         }
     }
@@ -371,6 +372,12 @@ public class PC : NetworkBehaviour
     {
         Vector2 move = context.ReadValue<Vector2>();
         _cursor.anchoredPosition = new Vector2(Mathf.Clamp(_cursor.anchoredPosition.x + move.x * CursorSpeed, CursorMinX, CursorMaxX), Mathf.Clamp(_cursor.anchoredPosition.y + move.y * CursorSpeed, CursorMinY, CursorMaxY));
+        
+        if (Vector2.Distance(_cursor.anchoredPosition, _cursorLastUpdatePosition) > CursorUpdateMagnitude)
+        {
+            _cursorLastUpdatePosition = _cursor.anchoredPosition;
+            MoveCursorServerRpc(_cursor.anchoredPosition);
+        }
     }
     
     public void LeftClick_performed(InputAction.CallbackContext context)
@@ -469,11 +476,50 @@ public class PC : NetworkBehaviour
     
     private bool IsCurrentPlayerUsing()
     {
-        return _currentPlayer == Utils.CurrentPlayer;
+        return CurrentPlayer == Utils.CurrentPlayer;
     }
     
     #region RPC
-    // todo sync cursor
+    [ServerRpc(RequireOwnership = false)]
+    public void MoveCursorServerRpc(Vector2 position)
+    {
+        MoveCursorClientRpc(position);
+    }
+    
+    [ClientRpc]
+    public void MoveCursorClientRpc(Vector2 position)
+    {
+        if (IsCurrentPlayerUsing()) return;
+        
+        _cursor.anchoredPosition = position;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void PlaceBallServerRpc(NetworkObjectReference ball)
+    {
+        PlaceBallClientRpc(ball);
+    }
+    
+    [ClientRpc]
+    public void PlaceBallClientRpc(NetworkObjectReference ball)
+    {
+        if (ball.TryGet(out var networkObject))
+        {
+            _placedBall = networkObject.GetComponent<PokeballItem>();
+        }
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void RemoveBallServerRpc()
+    {
+        RemoveBallClientRpc();
+    }
+    
+    [ClientRpc]
+    public void RemoveBallClientRpc()
+    {
+        _placedBall = null;
+    }
     
     [ServerRpc(RequireOwnership = false)]
     public void StartUsingServerRpc(NetworkObjectReference player)
@@ -486,14 +532,20 @@ public class PC : NetworkBehaviour
     {
         if (!player.TryGet(out var networkObject)) return;
         
-        if (networkObject != Utils.CurrentPlayer.GetComponent<NetworkObject>() && _currentPlayer == Utils.CurrentPlayer)
+        if (networkObject != Utils.CurrentPlayer.GetComponent<NetworkObject>() && CurrentPlayer == Utils.CurrentPlayer)
         {
             StopUsing();
         }
+
+        PlayerControllerB playerInstance = networkObject.GetComponent<PlayerControllerB>();
+        
+        playerInstance.playerBodyAnimator.SetBool("Walking", false);
+        playerInstance.playerBodyAnimator.SetBool("Sprinting", false);
+        playerInstance.playerBodyAnimator.Play("Base Layer.Idle1");
             
         if (IsCurrentPlayerUsing()) return;
         
-        _currentPlayer = networkObject.GetComponent<PlayerControllerB>();
+        CurrentPlayer = playerInstance;
         _screenInteractTrigger.interactable = false;
     }
     
@@ -508,7 +560,7 @@ public class PC : NetworkBehaviour
     {
         if (IsCurrentPlayerUsing()) return;
         
-        _currentPlayer = null;
+        CurrentPlayer = null;
         _screenInteractTrigger.interactable = true;
     }
     
