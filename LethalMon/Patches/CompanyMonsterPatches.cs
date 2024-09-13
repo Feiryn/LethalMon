@@ -29,7 +29,7 @@ namespace LethalMon.Patches
                 __instance.gameObject.SetActive(false);
                 if(Utils.IsHost)
                 {
-                    var companyMonster = Object.FindObjectOfType<CompanyMonsterAI>() as CompanyMonsterAI;
+                    var companyMonster = Object.FindObjectOfType<CompanyMonsterAI>();
                     if (companyMonster != null)
                         companyMonster.SpawnCaughtEnemiesOnServer();
                 }
@@ -110,7 +110,7 @@ namespace LethalMon.Patches
             for(int i = triggers.Length - 1; i >= 0; --i)
             {
                 LethalMon.Log("Replacing trigger");
-                triggers[i].gameObject.AddComponent<CompanyMonsterAI.CollisionDetect>();
+                triggers[i].gameObject.AddComponent<CompanyMonsterCustomCollisionDetect>();
                 Object.Destroy(triggers[i]);
             }
 

@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using LethalMon.Patches;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -40,11 +41,15 @@ namespace LethalMon.Behaviours
         #region Custom behaviours
         internal enum CustomBehaviour
         {
-            RunToCounter = 1
+            RunToCounter = 1,
+            RunTowardsItem,
+            EatItem
         }
         internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
-            new (CustomBehaviour.RunToCounter.ToString(), "Running to sell counter", OnRunToCounterBehavior)
+            new (CustomBehaviour.RunToCounter.ToString(), "Running to sell counter", OnRunToCounterBehavior),
+            new (CustomBehaviour.RunTowardsItem.ToString(), "Running towards an item", OnRunTowardsItemBehavior),
+            new (CustomBehaviour.EatItem.ToString(), "Eats an item", OnEatItemBehavior)
         ];
 
         internal override void InitCustomBehaviour(int behaviour)
@@ -55,17 +60,33 @@ namespace LethalMon.Behaviours
             switch ((CustomBehaviour)behaviour)
             {
                 case CustomBehaviour.RunToCounter:
-                    
                     if(IsOwnerPlayer)
                     {
                         if(_depositItemsDesk == null || !Utils.AtCompanyBuilding)
                         {
-                            LethalMon.Log("No sell counter found. Returning back to following.", LethalMon.LogType.Warning);
+                            LethalMon.Log("CompanyMonster: No sell counter found. Returning back to following.", LethalMon.LogType.Warning);
                             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                             return;
                         }
 
                         MoveTowards(_depositItemsDesk.transform.position);
+                    }
+
+                    break;
+
+                case CustomBehaviour.RunTowardsItem:
+                    if (IsOwnerPlayer && targetItem != null)
+                        MoveTowards(targetItem.transform.position);
+
+                    break;
+
+                case CustomBehaviour.EatItem:
+                    if (CompanyMonster.IsOwner)
+                    {
+                        if (targetItem == null)
+                            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                        else
+                            CompanyMonster.GrabItemAndEatServerRpc(targetItem.NetworkObject);
                     }
                     break;
 
@@ -82,6 +103,28 @@ namespace LethalMon.Behaviours
             CompanyMonster.RedeemItemsServerRpc();
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
+
+        internal void OnRunTowardsItemBehavior()
+        {
+            if(targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy)
+            {
+                if(targetItem == null)
+                    LethalMon.Log("CompanyMonster: Target item disappeared. Returning back to following.", LethalMon.LogType.Warning);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                return;
+            }
+
+            TargetNearestEnemy();
+
+            if (Vector3.Distance(_depositItemsDesk!.transform.position, CompanyMonster.transform.position) < 2f)
+                SwitchToCustomBehaviour((int)CustomBehaviour.EatItem);
+        }
+
+        internal void OnEatItemBehavior()
+        {
+            if (targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy || CompanyMonster.hasEatenItem)
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        }
         #endregion
 
         #region Action Keys
@@ -91,9 +134,39 @@ namespace LethalMon.Behaviours
         ];
         internal override List<ActionKey> ActionKeys => _actionKeys;
 
+        static GameObject? containerCube = null, tentacleCube = null;
         internal override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
+
+            /*CompanyMonster.caughtEnemies = new Dictionary<string, int>
+            {
+                { Utils.Enemy.Crawler.ToString(), 3 },
+                { Utils.Enemy.Centipede.ToString(), 2 },
+                { Utils.Enemy.SpringMan.ToString(), 1 }
+            };
+            CompanyMonster.SpawnCaughtEnemiesOnServer();*/
+
+            /*if (containerCube == null)
+            {
+                containerCube = DebugPatches.CreateCube(Color.red, CompanyMonster.tentacleContainer!.transform.position);
+                containerCube.transform.SetParent(CompanyMonster.tentacleContainer!.transform, true);
+            }
+
+            if(tentacleCube == null)
+            {
+                tentacleCube = DebugPatches.CreateCube(Color.green, CompanyMonster.tentacles[0].transform.position);
+                tentacleCube.transform.SetParent(CompanyMonster.tentacles[0].transform.parent, true);
+            }
+
+            foreach (var tentacle in CompanyMonster.tentacles)
+            {
+                tentacle.SetActive(true);
+                tentacle.transform.position = CompanyMonster.tentacleContainer!.transform.position - CompanyMonster.eye.transform.forward;
+                tentacle.transform.localScale = Vector3.one;
+            }
+
+            CompanyMonster.RandomizeTentacleRotations();*/
 
             if (CanDefend)
             {
@@ -152,6 +225,22 @@ namespace LethalMon.Behaviours
 
             if(_depositItemsDesk != null)
                 SetRedeemItemsTriggerVisible(CompanyMonster.caughtItems.Count > 0 && Vector3.Distance(_depositItemsDesk.transform.position, CompanyMonster.transform.position) < 5f);
+        }
+
+        internal override void OnTamedFollowing()
+        {
+            base.OnTamedFollowing();
+
+            if (!TargetNearestEnemy())
+                TargetNearestItem();
+        }
+
+        internal override void OnFoundTarget()
+        {
+            if (targetEnemy != null)
+                SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+            else if (targetItem != null)
+                SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsItem);
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)

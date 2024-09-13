@@ -97,6 +97,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public PlayerControllerB? targetPlayer = null;
     public float DistanceToTargetPlayer => targetPlayer != null ? Vector3.Distance(Enemy.transform.position, targetPlayer.transform.position) : 0f;
 
+    // Target item
+    public GrabbableObject? targetItem = null;
+    public float DistanceToTargetItem => targetItem != null ? Vector3.Distance(Enemy.transform.position, targetItem.transform.position) : 0f;
+
     // Ball
     public BallType ballType;
 
@@ -120,8 +124,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal float targetNearestEnemyInterval = 0f;
-    internal bool foundEnemiesInRangeInLastSearch = false;
+    internal float targetNearestEnemyInterval = 0f, targetNearestItemInterval = 0f;
+    internal bool foundEnemiesInRangeInLastSearch = false, foundItemsInRangeInLastSearch = false;
 
     #region Behaviours
     public enum TamingBehaviour
@@ -797,11 +801,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
 
-    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
+    internal bool TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         targetNearestEnemyInterval -= Time.deltaTime;
         if (targetNearestEnemyInterval > 0)
-            return;
+            return false;
 
         targetNearestEnemyInterval = foundEnemiesInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
         
@@ -811,7 +815,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             targetEnemy = target;
             OnFoundTarget();
             LethalMon.Log("Targeting " + targetEnemy.enemyType.name);
+            return true;
         }
+
+        return false;
     }
 
     internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
@@ -842,6 +849,57 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             {
                 distance = distanceTowardsEnemy;
                 target = enemyInRange;
+            }
+        }
+
+        return target;
+    }
+
+    internal virtual bool ItemMeetsTargetingConditions(GrabbableObject item)
+    {
+        return !item.isInShipRoom && !item.isHeld;
+    }
+
+    internal bool TargetNearestItem(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
+    {
+        targetNearestItemInterval -= Time.deltaTime;
+        if (targetNearestItemInterval > 0)
+            return false;
+
+        targetNearestItemInterval = foundItemsInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
+
+        var target = NearestItem(requireLOS, fromOwnerPerspective, angle);
+        if (target != null)
+        {
+            targetItem = target;
+            OnFoundTarget();
+            LethalMon.Log("Targeting " + targetItem.itemProperties.itemName);
+            return true;
+        }
+
+        return false;
+    }
+
+    internal GrabbableObject? NearestItem(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
+    {
+        var startTransform = fromOwnerPerspective ? ownerPlayer!.playerEye.transform : Enemy.transform;
+        GrabbableObject? target = null;
+        float distance = float.MaxValue;
+
+        const int layerMask = 1 << (int)Utils.LayerMasks.Mask.Enemies;
+        var itemsInRange = Physics.OverlapSphere(Enemy.transform.position, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
+        foreach (var itemCollider in itemsInRange)
+        {
+            GrabbableObject item = itemCollider.GetComponentInParent<GrabbableObject>();
+            if (item == null || !ItemMeetsTargetingConditions(item)) continue;
+
+            if (requireLOS && !OptimizedCheckLineOfSightForPosition(startTransform.position, item.transform.position, startTransform.forward, angle)) continue;
+
+            float distanceTowardsItem = Vector3.Distance(startTransform.position, item.transform.position);
+            if (distanceTowardsItem < distance)
+            {
+                distance = distanceTowardsItem;
+                target = item;
             }
         }
 

@@ -14,13 +14,12 @@ namespace LethalMon.Behaviours
         internal static GameObject? companyMonsterPrefab = null;
         internal static GameObject? tentaclePrefab = null;
 
-        //internal static MonsterAnimation? monsterAnimationPrefab = null;
-
-        internal GameObject? companyMonsterMesh = null;
+        internal GameObject? model = null;
         internal GameObject? tentacleContainer = null;
         internal List<GameObject> tentacles = [];
-        internal const string TentaclePrefabFileName = "companymonsterTentacles.prefab";
+        internal const string TentaclePrefabFileName = "companymonsterTentacles.prefab"; // wip
         internal const int TentacleCount = 3;
+        internal const float TentacleSize = 0.5f; // wip
 
         // Audio
         internal CompanyMood? mood = null;
@@ -35,6 +34,8 @@ namespace LethalMon.Behaviours
 
         internal List<Tuple<GrabbableObject, int>> caughtItems = [];
         internal Dictionary<string, int> caughtEnemies = []; // EnemyType.name, amount
+
+        internal bool hasEatenItem = false;
         #endregion
 
         #region Initialization
@@ -51,16 +52,15 @@ namespace LethalMon.Behaviours
 
             var companyMonsterAIPrefab = companyMonsterPrefab.AddComponent<CompanyMonsterAI>();
             companyMonsterAIPrefab.enemyType = enemyType;
-            Utils.EnemyTypes.Add(enemyType);
 
-            if (companyMonsterPrefab.TryGetComponent(out EnemyAICollisionDetect collisionDetect))
-                collisionDetect.mainScript = companyMonsterAIPrefab;
-            else
+            var collisionDetect = companyMonsterPrefab.GetComponentInChildren<EnemyAICollisionDetect>();
+            if(collisionDetect == null)
                 LethalMon.Log("Unable to find EnemyAICollisionDetect component of company monster", LethalMon.LogType.Error);
+            else
+                collisionDetect.mainScript = companyMonsterAIPrefab;
 
-            companyMonsterAIPrefab.creatureVoice = companyMonsterPrefab.GetComponent<AudioSource>();
-
-            LethalMon.Log("Loaded company monster prefab.");
+            Utils.EnemyTypes.Add(enemyType);
+            LethalMon.Log("Loaded company monster EnemyType.");
         }
         #endregion
 
@@ -73,37 +73,45 @@ namespace LethalMon.Behaviours
             if (initialized) return;
             initialized = true;
 
-            companyMonsterMesh = transform.Find("CompanyMonsterMesh")?.gameObject;
-            if(companyMonsterMesh == null)
+            model = transform.Find("CompanyMonsterModel")?.gameObject;
+            if(model == null)
             {
                 LethalMon.Log("Unable to load company monster mesh.", LethalMon.LogType.Error);
                 return;
             }
 
-            companyMonsterMesh.transform.localScale = Vector3.one * 0.65f;
+            model.transform.localScale = Vector3.one * 0.42f;
 
-            eye = companyMonsterMesh.transform.Find("Eye");
+            eye = transform.Find("Eye");
+            var creatureSFXContainer = transform.Find("CreatureSFX");
 
-            if (!companyMonsterMesh.TryGetComponent(out creatureSFX))
+            if (creatureSFX != null)
+            {
+                LethalMon.Log("Has creature voice");
+            }
+            if (creatureSFXContainer == null || !creatureSFXContainer.TryGetComponent(out creatureSFX))
             {
                 LethalMon.Log("Failed to load audio source of company monster. Creating new one.", LethalMon.LogType.Warning);
-                creatureSFX = Utils.CreateAudioSource(companyMonsterMesh);
+                creatureSFX = Utils.CreateAudioSource(gameObject);
             }
             creatureSFX.volume = 0f;
 
-            collider = companyMonsterMesh.GetComponent<SphereCollider>();
+            collider = model.GetComponent<SphereCollider>();
             if (collider == null)
                 LethalMon.Log("No collider for company monster");
 
             if(tentacleContainer == null && tentaclePrefab != null && eye != null)
             {
                 tentacleContainer = new GameObject("TentacleContainer");
-                tentacleContainer.transform.SetPositionAndRotation(eye.transform.position - eye.transform.forward.normalized * 0.5f, eye.transform.rotation);
-                tentacleContainer.transform.SetParent(eye, true);
+                tentacleContainer.transform.SetPositionAndRotation(eye.transform.position - eye.transform.forward.normalized * 0.2f, eye.transform.rotation);
+                tentacleContainer.transform.parent = eye;
+                //tentacleContainer.transform.localScale = Vector3.one * TentacleSize;
                 LethalMon.Log("Add tentacles for " + name);
                 for (int i = 0; i < TentacleCount; i++)
                     AddTentacle();
             }
+
+            agent.angularSpeed = 690f;
         }
 
         public override void Update()
@@ -131,27 +139,29 @@ namespace LethalMon.Behaviours
         {
             if (tentacleContainer == null) return;
 
-            var tentacle = Instantiate(tentaclePrefab);
+            var tentacleOrigin = new GameObject("TentacleOrigin");
+            tentacleOrigin.transform.position = tentacleContainer.transform.position;
+            tentacleOrigin.transform.SetParent(tentacleContainer.transform, true);
+
+            var tentacle = Instantiate(tentaclePrefab, tentacleOrigin.transform.position, Quaternion.identity);
             if (tentacle == null) return;
 
-            tentacle.transform.SetParent(null, false);
-            tentacle.transform.SetPositionAndRotation(tentacleContainer.transform.position - eye.transform.forward, RandomRotation);
-            tentacle.transform.SetParent(tentacleContainer.transform, false);
+            tentacle.transform.SetParent(tentacleOrigin.transform, true);
             tentacle.SetActive(true);
-            tentacle.transform.localScale = Vector3.zero;
+            tentacleOrigin.transform.localScale = Vector3.zero;
 
             tentacles.Add(tentacle);
         }
 
         private void ShowTentacles(bool show = true) => tentacles.ForEach(t => t?.GetComponent<Animator>()?.SetBool("visible", value: show));
 
-        private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.localScale = Vector3.one * scale);
+        private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.parent.localScale = Vector3.one * scale);
 
-        private void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.localRotation = RandomRotation);
+        internal void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.parent.localRotation = Quaternion.Euler(RandomRotation));
         #endregion
 
         #region Methods
-        private Quaternion RandomRotation => new(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-0.3f, 0.3f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f));
+        private Vector3 RandomRotation => new(UnityEngine.Random.Range(0, 360f), UnityEngine.Random.Range(0f, 180f), UnityEngine.Random.Range(0f, 360f));
 
         [ServerRpc(RequireOwnership = false)]
         internal void CaughtEnemyServerRpc(NetworkObjectReference enemyRef)
@@ -175,11 +185,12 @@ namespace LethalMon.Behaviours
 
         internal void SpawnCaughtEnemiesOnServer()
         {
+            var random = new System.Random();
             foreach(var enemy in caughtEnemies)
             {
                 for(int i = 0; i < enemy.Value; i++)
                 {
-                    var position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(Vector3.zero, 200f);
+                    var position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(Vector3.zero, 200f, default, random);
                     Utils.SpawnEnemyAtPosition(enemy.Key, position);
                     LethalMon.Log($"Spawned enemy {enemy.Key} at position {position}");
                 }
@@ -275,76 +286,70 @@ namespace LethalMon.Behaviours
 
             ShowTentacles(false);
         }
-        #endregion
 
-        #region CollisionDetect
-        internal class CollisionDetect : MonoBehaviour
+        [ServerRpc]
+        public void GrabItemAndEatServerRpc(NetworkObjectReference itemRef) => GrabItemAndEatClientRpc(itemRef);
+
+        [ClientRpc]
+        public void GrabItemAndEatClientRpc(NetworkObjectReference itemRef)
         {
-            private CompanyMonsterAI? _companyMonster = null;
-            private bool collided = false;
-
-            void Start()
+            if (!itemRef.TryGet(out NetworkObject networkObj) || !networkObj.TryGetComponent(out GrabbableObject item))
             {
-                _companyMonster = GetComponentInParent<CompanyMonsterAI>();
-                if (_companyMonster == null)
+                LethalMon.Log("GrabItemAndEatClientRpc: Unable to get item.", LethalMon.LogType.Error);
+                return;
+            }
+
+            StartCoroutine(GrabObjectAndEatCoroutine(item));
+        }
+
+        internal IEnumerator GrabObjectAndEatCoroutine(GrabbableObject item)
+        {
+            hasEatenItem = false;
+
+            if (tentacles.Count == 0)
+            {
+                AddTentacle();
+                if (tentacles.Count == 0)
                 {
-                    LethalMon.Log("Unable to find company mosnter ai for tentacle collision detector.", LethalMon.LogType.Error);
-                    Destroy(this);
+                    LethalMon.Log("CompanyMonsterAI: Unable to get item. No tentacles.");
+                    yield break;
                 }
             }
 
-            void OnTriggerEnter(Collider other)
-            {
-                if (collided) return;
+            var tentacle = tentacles[0];
 
-                if(other.CompareTag("Player"))
-                {
-                    LethalMon.Log("Tentacle collided with player.");
-                    StartCoroutine(OnColliderWithPlayer(other.GetComponent<PlayerControllerB>()));
-                }
-                else if (other.CompareTag("Enemy"))
-                {
-                    LethalMon.Log("Tentacle collided with enemy.");
-                }
-                else if(!other.CompareTag("Untagged"))
-                    LethalMon.Log("Tentacle collided with tag: " + other.tag + ". Name: " + other.name);
+            RoundManager.Instance.tempTransform.position = eye.transform.position;
+            RoundManager.Instance.tempTransform.LookAt(item.transform.position);
+            tentacle.transform.rotation = RoundManager.Instance.tempTransform.rotation;
+
+            if (!tentacle.TryGetComponent(out Animator tentacleAnimator))
+            {
+                LethalMon.Log("CompanyMonsterAI: Unable to get item. No tentacle animator.");
+                yield break;
             }
 
-            IEnumerator OnColliderWithPlayer(PlayerControllerB player)
+            tentacleAnimator.SetBool("visible", true);
+
+            tentacleScale = 0f;
+            yield return new WaitForSeconds(0.5f);
+            yield return new WaitWhile(() =>
             {
-                collided = true;
-                Animator monsterAnimator = GetComponent<Animator>();
-                Transform monsterAnimatorGrabTarget = gameObject.transform;
-                monsterAnimator.SetBool("grabbingPlayer", value: true);
-                monsterAnimatorGrabTarget.position = player.transform.position;
-                yield return new WaitForSeconds(0.05f);
-                if (player.IsOwner)
-                {
-                    player.KillPlayer(Vector3.zero);
-                }
-                float startTime = Time.realtimeSinceStartup;
-                yield return new WaitUntil(() => player.deadBody != null || Time.realtimeSinceStartup - startTime > 4f);
-                if (player.deadBody != null)
-                {
-                    player.deadBody.attachedTo = monsterAnimatorGrabTarget; // GrabPoint initially
-                    player.deadBody.attachedLimb = player.deadBody.bodyParts[6];
-                    player.deadBody.matchPositionExactly = true;
-                }
-                else
-                {
-                    Debug.Log("Player body was not spawned in time for animation.");
-                }
-                monsterAnimator.SetBool("grabbingPlayer", value: false);
-                yield return new WaitWhile(() => _companyMonster!.isAttacking);
-                if (player.deadBody != null)
-                {
-                    player.deadBody.attachedTo = null;
-                    player.deadBody.attachedLimb = null;
-                    player.deadBody.matchPositionExactly = false;
-                    player.deadBody.gameObject.SetActive(value: false);
-                }
-                collided = false;
-            }
+                tentacleScale += Time.deltaTime * 5f;
+                tentacle.transform.localScale = Vector3.one * tentacleScale;
+                return tentacleScale < 1f;
+            });
+
+            item.transform.SetParent(tentacle.transform, true);
+            yield return new WaitForSeconds(1f);
+
+            yield return new WaitWhile(() =>
+            {
+                tentacleScale -= Time.deltaTime * 5f;
+                tentacle.transform.localScale = Vector3.one * tentacleScale;
+                return tentacleScale > 0f;
+            });
+
+            tentacleAnimator.SetBool("visible", false);
         }
         #endregion
     }
