@@ -21,9 +21,9 @@ public class ScanApp : PCApp
 
     #region Constants
 
-    private const float ScanTime = 6f;
+    public const float ScanTime = 6f;
     
-    private const float ProgressBarStep = 0.02829f;
+    public const float ProgressBarStep = 0.02829f;
     #endregion
     
     #region ScanCheckpoints
@@ -46,7 +46,7 @@ public class ScanApp : PCApp
         CleanUp();
     }
     
-    private void CleanUp()
+    public void CleanUp()
     {
         _lastScanUnlockedDexEntry = false;
         _errorText.SetText("");
@@ -72,38 +72,53 @@ public class ScanApp : PCApp
         
         if (pc.GetCurrentPlacedBall() == null)
         {
-            ScanError("No ball detected!");
+            ScanError("No ball detected!", true);
             return;
         }
 
-        CleanUp();
-        pc.ProcessOperation(ScanCallback, ScanTime, ProgressBarStep);
+        PC.Instance.ScanStartServerRpc();
     }
 
-    private void ScanError(string errorText)
+    public void ScanError(string errorText, bool callRpc = false)
     {
         _errorText.SetText(errorText);
         _progressBar.fillAmount = 0f;
         PC.Instance.StopOperation();
         PC.Instance.PlayErrorSound();
+        
+        if (callRpc)
+        {
+            PC.Instance.ScanErrorServerRpc(errorText);
+        }
     }
 
-    private void ScanCallback(float progress)
+    public void ScanSuccess(string successText)
+    {
+        _successText.SetText(successText);
+        PC.Instance.PlaySuccessSound();
+    }
+    
+    public void FillProgressBar(float progress)
     {
         _progressBar.fillAmount = progress;
+    }
 
+    public void ScanCallback(float progress)
+    {
+        FillProgressBar(progress);
+        
         PC pc = PC.Instance;
         PokeballItem? currentBall = pc.GetCurrentPlacedBall();
 
         if (currentBall == null)
         {
-            ScanError("Ball removed during scan!");
+            ScanError("Ball removed during scan!", true);
             return;
         }
         
         if (EmptyBallProgressCheckpoint > progress - ProgressBarStep && !currentBall.enemyCaptured || currentBall.enemyType == null)
         {
-            ScanError("The ball is empty!");
+            ScanError("The ball is empty!", true);
             return;
         }
         
@@ -126,7 +141,7 @@ public class ScanApp : PCApp
             {
                 errorText += "\nThe monster has been added to the dex though.";
             }
-            ScanError(errorText);
+            ScanError(errorText, true);
             return;
         }
 
@@ -151,8 +166,9 @@ public class ScanApp : PCApp
             {
                 successText += "\nThe monster is already in the dex and its DNA has already been decrypted.";
             }
-            _successText.SetText(successText);
-            PC.Instance.PlaySuccessSound();
+            
+            ScanSuccess(successText);
+            PC.Instance.ScanSuccessServerRpc(successText);
         }
     }
 }

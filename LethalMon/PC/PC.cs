@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using GameNetcodeStuff;
 using LethalMon.Items;
+using LethalMon.Save;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
@@ -135,15 +136,31 @@ public class PC : NetworkBehaviour
         _desktopButtons = new Button[4];
         _desktopButtons[0] = gameObject.transform.Find("Screen/MainMenu/TutorialButton").GetComponent<Button>();
         _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
-        _desktopButtons[1].onClick = FunctionToButtonClickEvent(() => SwitchToApp(_dexApp));
+        _desktopButtons[1].onClick = FunctionToButtonClickEvent(() =>
+        {
+            var unlockedMonsters = SaveManager.GetUnlockedDexEntries();
+            _dexApp.unlockedDexEntries = unlockedMonsters;
+            SwitchToApp(_dexApp);
+            OpenDexServerRpc(string.Join(",", unlockedMonsters));
+        });
         _desktopButtons[2] = gameObject.transform.Find("Screen/MainMenu/ScanButton").GetComponent<Button>();
-        _desktopButtons[2].onClick = FunctionToButtonClickEvent(() => SwitchToApp(_scanApp));
+        _desktopButtons[2].onClick = FunctionToButtonClickEvent(() =>
+        {
+            SwitchToApp(_scanApp);
+            OpenScanServerRpc();
+        });
         _desktopButtons[3] = gameObject.transform.Find("Screen/MainMenu/DuplicateButton").GetComponent<Button>();
-        _desktopButtons[3].onClick = FunctionToButtonClickEvent(() => SwitchToApp(duplicateChooseApp));
+        _desktopButtons[3].onClick = FunctionToButtonClickEvent(() =>
+        {
+            var unlockedMonsters = SaveManager.GetUnlockedDna();
+            duplicateChooseApp.unlockedDnaEntries = unlockedMonsters;
+            SwitchToApp(duplicateChooseApp);
+            OpenDuplicateChooseServerRpc(string.Join(",", unlockedMonsters));
+        });
         
         // Load PC apps
         _appCloseButton = _screen.transform.Find("Window/CloseButton").GetComponent<Button>();
-        _appCloseButton.onClick.AddListener(CloseCurrentApp);
+        _appCloseButton.onClick.AddListener(() => CloseCurrentApp());
         _dexApp = new DexApp(_screen);
         _dexApp.Hide();
         _scanApp = new ScanApp(_screen);
@@ -264,6 +281,8 @@ public class PC : NetworkBehaviour
             HUDManager.Instance.PingHUDElement(HUDManager.Instance.PlayerInfo, 0f, 0.13f, 0.13f);
             HUDManager.Instance.PingHUDElement(HUDManager.Instance.Chat, 0f, 0.35f, 0.13f);
             HUDManager.Instance.PingHUDElement(HUDManager.Instance.Tooltips, 1f, 0f, 0.6f);
+            
+            StartUsingServerRpc(player.GetComponent<NetworkObject>());
         }
         catch
         {
@@ -273,8 +292,10 @@ public class PC : NetworkBehaviour
     
     public void StopUsing()
     {
-        if (_currentPlayer != null)
+        if (_currentPlayer == Utils.CurrentPlayer)
         {
+            StopUsingServerRpc(_currentPlayer.GetComponent<NetworkObject>());
+            
             _playerActions.Movement.OpenMenu.performed -= PressEsc;
             _playerActions.Movement.Look.performed -= Look_performed;
             _playerActions.Movement.Use.performed -= LeftClick_performed;
@@ -300,10 +321,13 @@ public class PC : NetworkBehaviour
             {
                 HUDManager.Instance.ClearControlTips();
             }
+
+            _currentPlayer = null;
+            _screenInteractTrigger.interactable = true;
         }
     }
     
-    public void CloseCurrentApp()
+    public void CloseCurrentApp(bool callRpc = true)
     {
         if (_currentApp != null && _currentOperationCoroutine == null)
         {
@@ -314,12 +338,15 @@ public class PC : NetworkBehaviour
                 desktopButton.gameObject.SetActive(true);
             }
             currentApp.Hide();
+            
+            if (callRpc)
+                CloseAppServerRpc();
         }
     }
     
-    public void SwitchToApp(PCApp app)
+    public void SwitchToApp(PCApp app, bool callRpc = true)
     {
-        CloseCurrentApp();
+        CloseCurrentApp(callRpc);
         app.Show();
         _currentApp = app;
         foreach (var desktopButton in _desktopButtons)
@@ -440,7 +467,14 @@ public class PC : NetworkBehaviour
         _audioSource.Stop();
     }
     
+    private bool IsCurrentPlayerUsing()
+    {
+        return _currentPlayer == Utils.CurrentPlayer;
+    }
+    
     #region RPC
+    // todo sync cursor
+    
     [ServerRpc(RequireOwnership = false)]
     public void StartUsingServerRpc(NetworkObjectReference player)
     {
@@ -450,34 +484,46 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void StartUsingClientRpc(NetworkObjectReference player)
     {
-        if (player.TryGet(out var networkObject))
+        if (!player.TryGet(out var networkObject)) return;
+        
+        if (networkObject != Utils.CurrentPlayer.GetComponent<NetworkObject>() && _currentPlayer == Utils.CurrentPlayer)
         {
-            _currentPlayer = networkObject.GetComponent<PlayerControllerB>();
+            StopUsing();
         }
+            
+        if (IsCurrentPlayerUsing()) return;
+        
+        _currentPlayer = networkObject.GetComponent<PlayerControllerB>();
+        _screenInteractTrigger.interactable = false;
     }
     
     [ServerRpc(RequireOwnership = false)]
-    public void StopUsingServerRpc()
+    public void StopUsingServerRpc(NetworkObjectReference player)
     {
-        StopUsingClientRpc();
+        StopUsingClientRpc(player);
     }
     
     [ClientRpc]
-    public void StopUsingClientRpc()
+    public void StopUsingClientRpc(NetworkObjectReference player)
     {
+        if (IsCurrentPlayerUsing()) return;
+        
         _currentPlayer = null;
+        _screenInteractTrigger.interactable = true;
     }
     
     [ServerRpc(RequireOwnership = false)]
-    public void OpenDexServerRpc(string[] unlockedMonsters)
+    public void OpenDexServerRpc(string unlockedMonsters)
     {
         OpenDexClientRpc(unlockedMonsters);
     }
     
     [ClientRpc]
-    public void OpenDexClientRpc(string[] unlockedMonsters)
+    public void OpenDexClientRpc(string unlockedMonsters)
     {
-        _dexApp.unlockedDexEntries = unlockedMonsters;
+        if (IsCurrentPlayerUsing()) return;
+        
+        _dexApp.unlockedDexEntries = unlockedMonsters.Split(",");
         SwitchToApp(_dexApp);
     }
     
@@ -490,6 +536,8 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void LoadDexEntryClientRpc(string monster)
     {
+        if (IsCurrentPlayerUsing()) return;
+        
         _dexApp.UpdateMonsterInfo(monster);
     }
     
@@ -502,6 +550,8 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void DexUpdatePageClientRpc(int page)
     {
+        if (IsCurrentPlayerUsing()) return;
+        
         _dexApp.UpdatePage(page);
     }
     
@@ -514,22 +564,69 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void OpenScanClientRpc()
     {
-        SwitchToApp(_scanApp);
+        if (IsCurrentPlayerUsing()) return;
+        
+        SwitchToApp(_scanApp, false);
     }
     
-    // todo scan RPCs: ScanError, ScanSuccess, ScanStart
+    [ServerRpc(RequireOwnership = false)]
+    public void ScanErrorServerRpc(string errorText)
+    {
+        ScanErrorClientRpc(errorText);
+    }
+    
+    [ClientRpc]
+    public void ScanErrorClientRpc(string errorText)
+    {
+        if (Utils.IsHost) return;
+        
+        _scanApp.ScanError(errorText);
+    }
     
     [ServerRpc(RequireOwnership = false)]
-    public void OpenDuplicateChooseServerRpc(string[] unlockedMonsters)
+    public void ScanSuccessServerRpc(string successText)
+    {
+        ScanSuccessClientRpc(successText);
+    }
+    
+    [ClientRpc]
+    public void ScanSuccessClientRpc(string successText)
+    {
+        if (Utils.IsHost) return;
+        
+        _scanApp.ScanSuccess(successText);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void ScanStartServerRpc()
+    {
+        ScanStartClientRpc();
+    }
+    
+    [ClientRpc]
+    public void ScanStartClientRpc()
+    {
+        _scanApp.CleanUp();
+        
+        if (Utils.IsHost)
+            ProcessOperation(_scanApp.ScanCallback, ScanApp.ScanTime, ScanApp.ProgressBarStep);
+        else
+            ProcessOperation(progress => _scanApp.FillProgressBar(progress), ScanApp.ScanTime, ScanApp.ProgressBarStep);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenDuplicateChooseServerRpc(string unlockedMonsters)
     {
         OpenDuplicateChooseClientRpc(unlockedMonsters);
     }
     
     [ClientRpc]
-    public void OpenDuplicateChooseClientRpc(string[] unlockedMonsters)
+    public void OpenDuplicateChooseClientRpc(string unlockedMonsters)
     {
-        duplicateChooseApp.unlockedDnaEntries = unlockedMonsters;
-        SwitchToApp(duplicateChooseApp);
+        if (IsCurrentPlayerUsing()) return;
+        
+        duplicateChooseApp.unlockedDnaEntries = unlockedMonsters.Split(",");
+        SwitchToApp(duplicateChooseApp, false);
     }
     
     [ServerRpc(RequireOwnership = false)]
@@ -541,6 +638,8 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void UpdateDuplicateChoosePageClientRpc(int page)
     {
+        if (IsCurrentPlayerUsing()) return;
+        
         duplicateChooseApp.UpdatePage(page);
     }
     
@@ -553,11 +652,56 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void OpenDuplicateClientRpc(string selectedMonster)
     {
+        if (IsCurrentPlayerUsing()) return;
+        
         duplicateApp.SelectedMonster = selectedMonster;
-        SwitchToApp(duplicateApp);
+        SwitchToApp(duplicateApp, false);
     }
     
-    // todo duplicate RPCs: DuplicationError, DuplicationSuccess, DuplicationStart
+    [ServerRpc(RequireOwnership = false)]
+    public void DuplicationErrorServerRpc(string errorText)
+    {
+        DuplicationErrorClientRpc(errorText);
+    }
+    
+    [ClientRpc]
+    public void DuplicationErrorClientRpc(string errorText)
+    {
+        if (Utils.IsHost) return;
+        
+        duplicateApp.DuplicationError(errorText);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void DuplicationSuccessServerRpc(string successText)
+    {
+        DuplicationSuccessClientRpc(successText);
+    }
+    
+    [ClientRpc]
+    public void DuplicationSuccessClientRpc(string successText)
+    {
+        if (Utils.IsHost) return;
+        
+        duplicateApp.DuplicationSuccess(successText);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void DuplicationStartServerRpc()
+    {
+        DuplicationStartClientRpc();
+    }
+    
+    [ClientRpc]
+    public void DuplicationStartClientRpc()
+    {
+        duplicateApp.CleanUp();
+        
+        if (Utils.IsHost)
+            ProcessOperation(duplicateApp.DuplicateCallback, DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
+        else
+            ProcessOperation(progress => duplicateApp.FillProgressBar(progress), DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
+    }
     
     [ServerRpc(RequireOwnership = false)]
     public void CloseAppServerRpc()
@@ -568,7 +712,9 @@ public class PC : NetworkBehaviour
     [ClientRpc]
     public void CloseAppClientRpc()
     {
-        CloseCurrentApp();
+        if (IsCurrentPlayerUsing()) return;
+        
+        CloseCurrentApp(false);
     }
     #endregion
     

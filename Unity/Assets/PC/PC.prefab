@@ -2400,7 +2400,7 @@ MonoBehaviour:
   hoverIcon: {fileID: 0}
   hoverTip: Use PC
   disabledHoverIcon: {fileID: 0}
-  disabledHoverTip: 
+  disabledHoverTip: Someone is using the PC
   interactable: 1
   oneHandedItemAllowed: 1
   twoHandedItemAllowed: 0

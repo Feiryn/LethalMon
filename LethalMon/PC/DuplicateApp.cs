@@ -21,9 +21,9 @@ public class DuplicateApp : PCApp
     #endregion
     
     #region Constants
-    private const float DuplicateTime = 10f;
+    public const float DuplicationTime = 10f;
     
-    private const float ProgressBarStep = 0.02829f;
+    public const float ProgressBarStep = 0.02829f;
     
     private const float NotEmptyBallProgressCheckpoint = 0.3f;
     #endregion
@@ -42,7 +42,7 @@ public class DuplicateApp : PCApp
         CleanUp();
     }
     
-    private void CleanUp()
+    public void CleanUp()
     {
         _errorText.SetText("");
         _successText.SetText("");
@@ -75,44 +75,59 @@ public class DuplicateApp : PCApp
         
         if (pc.GetCurrentPlacedBall() == null)
         {
-            DuplicationError("No ball detected!");
+            DuplicationError("No ball detected!", true);
             return;
         }
         
         if (Object.FindObjectOfType<Terminal>().groupCredits < Data.CatchableMonsters[SelectedMonster].DuplicationPrice)
         {
-            DuplicationError("Not enough credits!");
+            DuplicationError("Not enough credits!", true);
             return;
         }
         
-        pc.ProcessOperation(DuplicateCallback, DuplicateTime, ProgressBarStep);
+        PC.Instance.DuplicationStartServerRpc();
     }
     
-    private void DuplicationError(string errorText)
+    public void DuplicationError(string errorText, bool callRpc = false)
     {
         _errorText.SetText(errorText);
         _progressBar.fillAmount = 0f;
         PC.Instance.StopOperation();
         PC.Instance.PlayErrorSound();
+        
+        if (callRpc)
+        {
+            PC.Instance.DuplicationErrorServerRpc(errorText);
+        }
     }
     
+    public void DuplicationSuccess(string successText)
+    {
+        _successText.SetText(successText);
+        PC.Instance.PlaySuccessSound();
+    }
     
-    private void DuplicateCallback(float progress)
+    public void FillProgressBar(float progress)
     {
         _progressBar.fillAmount = progress;
+    }
+    
+    public void DuplicateCallback(float progress)
+    {
+        FillProgressBar(progress);
 
         PC pc = PC.Instance;
         PokeballItem? currentBall = pc.GetCurrentPlacedBall();
 
         if (currentBall == null)
         {
-            DuplicationError("Ball removed during duplication!");
+            DuplicationError("Ball removed during duplication!", true);
             return;
         }
         
         if (NotEmptyBallProgressCheckpoint > progress - ProgressBarStep && currentBall.enemyCaptured || currentBall.enemyType != null)
         {
-            DuplicationError("The ball is not empty!");
+            DuplicationError("The ball is not empty!", true);
             return;
         }
 
@@ -122,15 +137,16 @@ public class DuplicateApp : PCApp
             
             if (Object.FindObjectOfType<Terminal>().groupCredits < price)
             {
-                DuplicationError("Not enough credits!");
+                DuplicationError("Not enough credits!", true);
                 return;
             }
             
             currentBall.SetCaughtEnemyServerRpc(SelectedMonster, price);
             
             string successText = $"Duplication of {Data.CatchableMonsters[SelectedMonster].DisplayName} successful!";
-            _successText.SetText(successText);
-            PC.Instance.PlaySuccessSound();
+            
+            DuplicationSuccess(successText);
+            PC.Instance.DuplicationSuccessServerRpc(successText);
         }
     }
     

@@ -89,11 +89,17 @@ public class DuplicateChooseApp : PCApp
     private void NextPage()
     {
         _currentPage++;
+        
+        UpdatePage(_currentPage);
+        PC.Instance.UpdateDuplicateChoosePageServerRpc(_currentPage);
     }
     
     private void PreviousPage()
     {
         _currentPage--;
+        
+        UpdatePage(_currentPage);
+        PC.Instance.UpdateDuplicateChoosePageServerRpc(_currentPage);
     }
     
     private void HideOrShowNextPreviousButtons()
@@ -105,6 +111,7 @@ public class DuplicateChooseApp : PCApp
     private void Duplicate(string enemy)
     {
         PC.Instance.duplicateApp.SelectedMonster = enemy;
-        PC.Instance.SwitchToApp(PC.Instance.duplicateApp);
+        PC.Instance.SwitchToApp(PC.Instance.duplicateApp, false);
+        PC.Instance.OpenDuplicateServerRpc(enemy);
     }
 }

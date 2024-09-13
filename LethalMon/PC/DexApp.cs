@@ -81,7 +81,6 @@ public class DexApp : PCApp
             _behaviourDescription.text = "??????";
             _monsterImage.sprite = LethalMon.monstersSprites["unknown"];
         }
-
     }
 
     private void UpdateMonstersButtons()
@@ -97,8 +96,12 @@ public class DexApp : PCApp
             
             _monstersButtons[i].gameObject.SetActive(true);
             _monstersButtons[i].onClick.RemoveAllListeners();
-            _monstersButtons[i].onClick.AddListener(() => UpdateMonsterInfo(_enemies[index]));
-            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = SaveManager.IsDexEntryUnlocked(_enemies[index]) ? Data.CatchableMonsters[_enemies[index]].DisplayName : "??????";
+            _monstersButtons[i].onClick.AddListener(() =>
+            {
+                UpdateMonsterInfo(_enemies[index]);
+                PC.Instance.LoadDexEntryServerRpc(_enemies[index]);
+            });
+            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = unlockedDexEntries.Contains(_enemies[index]) ? Data.CatchableMonsters[_enemies[index]].DisplayName : "??????";
         }
     }
 
@@ -114,8 +117,8 @@ public class DexApp : PCApp
         UpdateMonstersButtons();
         HideOrShowNextPreviousButtons();
     }
-    
-    public void NextPage()
+
+    private void NextPage()
     {
         if (_enemies.Length - (_currentPage + 1) * _monstersButtons.Length < 0)
             return;
@@ -123,9 +126,10 @@ public class DexApp : PCApp
         _currentPage++;
         UpdateMonstersButtons();
         HideOrShowNextPreviousButtons();
+        PC.Instance.DexUpdatePageServerRpc(_currentPage);
     }
 
-    public void PreviousPage()
+    private void PreviousPage()
     {
         if (_currentPage - 1 < 0)
             return;
@@ -133,5 +137,6 @@ public class DexApp : PCApp
         _currentPage--;
         UpdateMonstersButtons();
         HideOrShowNextPreviousButtons();
+        PC.Instance.DexUpdatePageServerRpc(_currentPage);
     }
 }

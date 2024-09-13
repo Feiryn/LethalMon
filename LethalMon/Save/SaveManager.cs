@@ -57,6 +57,16 @@ public class SaveManager
         return Save.unlockedDna.Contains(dna);
     }
     
+    public static string[] GetUnlockedDexEntries()
+    {
+        return Save.unlockedDexEntries.ToArray();
+    }
+    
+    public static string[] GetUnlockedDna()
+    {
+        return Save.unlockedDna.ToArray();
+    }
+    
     #if DEBUG
     public static void DebugUnlockAll()
     {
