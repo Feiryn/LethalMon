@@ -1,5 +1,4 @@
-﻿using GameNetcodeStuff;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -32,10 +31,14 @@ namespace LethalMon.Behaviours
         internal float tentacleScale = 0f;
         internal bool initialized = false;
 
-        internal List<Tuple<GrabbableObject, int>> caughtItems = [];
+        internal Dictionary<GrabbableObject, int> caughtItems = [];
         internal Dictionary<string, int> caughtEnemies = []; // EnemyType.name, amount
 
-        internal bool hasEatenItem = false;
+        internal bool tentacleAnimationFinished = false;
+
+        internal float sellQuota = 1f;
+        internal const float SellQuotaReductionPerItem = 0.05f;
+        internal const float MinimumSellQuota = 0.25f;
         #endregion
 
         #region Initialization
@@ -258,6 +261,7 @@ namespace LethalMon.Behaviours
                 yield break;
             }
 
+            tentacleAnimationFinished = false;
             isAttacking = true;
             tentacleScale = 0f;
 
@@ -285,26 +289,28 @@ namespace LethalMon.Behaviours
             });
 
             ShowTentacles(false);
+            tentacleAnimationFinished = true;
         }
 
         [ServerRpc]
-        public void GrabItemAndEatServerRpc(NetworkObjectReference itemRef) => GrabItemAndEatClientRpc(itemRef);
+        public void ReachOutForItemServerRpc(NetworkObjectReference itemRef) => ReachOutForItemClientRpc(itemRef);
 
         [ClientRpc]
-        public void GrabItemAndEatClientRpc(NetworkObjectReference itemRef)
+        public void ReachOutForItemClientRpc(NetworkObjectReference itemRef)
         {
             if (!itemRef.TryGet(out NetworkObject networkObj) || !networkObj.TryGetComponent(out GrabbableObject item))
             {
-                LethalMon.Log("GrabItemAndEatClientRpc: Unable to get item.", LethalMon.LogType.Error);
+                LethalMon.Log("GReachOutForItemClientRpc: Unable to get item.", LethalMon.LogType.Error);
                 return;
             }
 
-            StartCoroutine(GrabObjectAndEatCoroutine(item));
+            StartCoroutine(ReachOutForItemCoroutine(item));
         }
 
-        internal IEnumerator GrabObjectAndEatCoroutine(GrabbableObject item)
+        internal IEnumerator ReachOutForItemCoroutine(GrabbableObject item)
         {
-            hasEatenItem = false;
+            LethalMon.Log("GrabItemAndEatCoroutine");
+            tentacleAnimationFinished = false;
 
             if (tentacles.Count == 0)
             {
@@ -320,7 +326,8 @@ namespace LethalMon.Behaviours
 
             RoundManager.Instance.tempTransform.position = eye.transform.position;
             RoundManager.Instance.tempTransform.LookAt(item.transform.position);
-            tentacle.transform.rotation = RoundManager.Instance.tempTransform.rotation;
+            tentacle.transform.parent.rotation = RoundManager.Instance.tempTransform.rotation;
+            tentacle.transform.parent.Rotate(0f, 90f, -90f); // wip
 
             if (!tentacle.TryGetComponent(out Animator tentacleAnimator))
             {
@@ -334,22 +341,35 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(0.5f);
             yield return new WaitWhile(() =>
             {
-                tentacleScale += Time.deltaTime * 5f;
-                tentacle.transform.localScale = Vector3.one * tentacleScale;
+                tentacleScale += Time.deltaTime * 2f;
+                tentacle.transform.parent.localScale = Vector3.one * tentacleScale;
                 return tentacleScale < 1f;
             });
 
-            item.transform.SetParent(tentacle.transform, true);
             yield return new WaitForSeconds(1f);
 
             yield return new WaitWhile(() =>
             {
-                tentacleScale -= Time.deltaTime * 5f;
-                tentacle.transform.localScale = Vector3.one * tentacleScale;
+                tentacleScale -= Time.deltaTime * 2f;
+                tentacle.transform.parent.localScale = Vector3.one * tentacleScale;
                 return tentacleScale > 0f;
             });
 
             tentacleAnimator.SetBool("visible", false);
+
+            tentacleAnimationFinished = true;
+        }
+
+        internal void CaughtItem(GrabbableObject item)
+        {
+            item.gameObject.SetActive(false);
+            DontDestroyOnLoad(item);
+
+            sellQuota = Mathf.Max(sellQuota - SellQuotaReductionPerItem, MinimumSellQuota);
+            var scrapValue = (int)(item.scrapValue * sellQuota);
+            LethalMon.Log($"Caught item with a value of {scrapValue} (at {(int)(sellQuota * 100)}% quota)");
+
+            caughtItems.Add(item, scrapValue);
         }
         #endregion
     }

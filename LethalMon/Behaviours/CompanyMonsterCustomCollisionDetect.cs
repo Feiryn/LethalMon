@@ -7,6 +7,7 @@ namespace LethalMon.Behaviours
     internal class CompanyMonsterCustomCollisionDetect : MonoBehaviour
     {
         internal CompanyMonsterAI? _companyMonster = null;
+        private Animator? _monsterAnimator = null;
         private bool collided = false;
 
         void Start()
@@ -15,6 +16,13 @@ namespace LethalMon.Behaviours
             if (_companyMonster == null)
             {
                 LethalMon.Log("Unable to find company mosnter ai for tentacle collision detector.", LethalMon.LogType.Error);
+                Destroy(this);
+            }
+
+            _monsterAnimator = GetComponentInParent<Animator>();
+            if (_monsterAnimator == null)
+            {
+                LethalMon.Log("No tentacle animator found.");
                 Destroy(this);
             }
         }
@@ -31,6 +39,12 @@ namespace LethalMon.Behaviours
             else if (other.CompareTag("Enemy"))
             {
                 LethalMon.Log("Tentacle collided with enemy.");
+                StartCoroutine(OnColliderWithEnemy(other.GetComponent<EnemyAI>()));
+            }
+            else if (other.CompareTag("Props")) // wip
+            {
+                LethalMon.Log("Tentacle collided with item.");
+                StartCoroutine(OnColliderWithItem(other.GetComponent<GrabbableObject>()));
             }
             else if (!other.CompareTag("Untagged"))
                 LethalMon.Log("Tentacle collided with tag: " + other.tag + ". Name: " + other.name);
@@ -38,17 +52,12 @@ namespace LethalMon.Behaviours
 
         IEnumerator OnColliderWithPlayer(PlayerControllerB player)
         {
+            if (_monsterAnimator == null) yield break;
+
             collided = true;
-            Animator monsterAnimator = GetComponentInParent<Animator>();
             Transform monsterAnimatorGrabTarget = gameObject.transform;
 
-            if (monsterAnimator == null)
-            {
-                LethalMon.Log("No tentacle animator found.");
-                yield break;
-            }
-
-            monsterAnimator.SetBool("grabbingPlayer", value: true);
+            _monsterAnimator.SetBool("grabbingPlayer", value: true);
             monsterAnimatorGrabTarget.position = player.transform.position;
             yield return new WaitForSeconds(0.05f);
             if (player.IsOwner)
@@ -67,8 +76,8 @@ namespace LethalMon.Behaviours
             {
                 Debug.Log("Player body was not spawned in time for animation.");
             }
-            monsterAnimator.SetBool("grabbingPlayer", value: false);
             yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            _monsterAnimator.SetBool("grabbingPlayer", value: false);
             if (player.deadBody != null)
             {
                 player.deadBody.attachedTo = null;
@@ -76,6 +85,48 @@ namespace LethalMon.Behaviours
                 player.deadBody.matchPositionExactly = false;
                 player.deadBody.gameObject.SetActive(value: false);
             }
+            collided = false;
+        }
+
+        IEnumerator OnColliderWithEnemy(EnemyAI enemy)
+        {
+            if (_monsterAnimator == null || _companyMonster == null) yield break;
+            collided = true;
+
+            _monsterAnimator.SetBool("grabbingPlayer", value: true);
+            yield return new WaitForSeconds(0.05f);
+
+            enemy.enabled = false;
+            enemy.transform.SetParent(gameObject.transform, true);
+
+            yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            _monsterAnimator.SetBool("grabbingPlayer", value: false);
+
+            _companyMonster.CaughtEnemy(enemy);
+
+            if(enemy.dieSFX != null)
+                Utils.PlaySoundAtPosition(enemy.transform.position, enemy.dieSFX);
+
+            LethalMon.Log("ENEMY DIED FROM COMPANY MONSTER!", LethalMon.LogType.Warning);
+            RoundManager.Instance.DespawnEnemyOnServer(enemy.NetworkObject);
+
+            collided = false;
+        }
+
+        IEnumerator OnColliderWithItem(GrabbableObject item)
+        {
+            if (_monsterAnimator == null || _companyMonster == null) yield break;
+            collided = true;
+
+            _monsterAnimator.SetBool("grabbingPlayer", value: true);
+            yield return new WaitForSeconds(0.05f);
+            item.transform.SetParent(gameObject.transform, true);
+
+            yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            _monsterAnimator.SetBool("grabbingPlayer", value: false);
+
+            _companyMonster.CaughtItem(item);
+
             collided = false;
         }
     }

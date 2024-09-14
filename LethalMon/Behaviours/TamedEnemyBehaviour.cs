@@ -873,7 +873,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             targetItem = target;
             OnFoundTarget();
-            LethalMon.Log("Targeting " + targetItem.itemProperties.itemName);
+            LethalMon.Log("Found item: " + targetItem.itemProperties.itemName);
             return true;
         }
 
@@ -886,7 +886,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         GrabbableObject? target = null;
         float distance = float.MaxValue;
 
-        const int layerMask = 1 << (int)Utils.LayerMasks.Mask.Enemies;
+        const int layerMask = 1 << (int)Utils.LayerMasks.Mask.Props;
         var itemsInRange = Physics.OverlapSphere(Enemy.transform.position, TargetingRange, layerMask, QueryTriggerInteraction.Collide);
         foreach (var itemCollider in itemsInRange)
         {

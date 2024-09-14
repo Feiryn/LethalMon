@@ -86,7 +86,7 @@ namespace LethalMon.Behaviours
                         if (targetItem == null)
                             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                         else
-                            CompanyMonster.GrabItemAndEatServerRpc(targetItem.NetworkObject);
+                            CompanyMonster.ReachOutForItemServerRpc(targetItem.NetworkObject);
                     }
                     break;
 
@@ -116,7 +116,7 @@ namespace LethalMon.Behaviours
 
             TargetNearestEnemy();
 
-            if (Vector3.Distance(_depositItemsDesk!.transform.position, CompanyMonster.transform.position) < 2f)
+            if (DistanceToTargetItem < 2f)
                 SwitchToCustomBehaviour((int)CustomBehaviour.EatItem);
         }
 
