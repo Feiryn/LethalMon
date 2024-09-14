@@ -64,6 +64,8 @@ namespace LethalMon.Behaviours
                 }
 
                 _previousLocalScale = Blob.transform.localScale;
+                for (int i = Blob.maxDistanceForSlimeRays.Length - 1; i >= 0; i--)
+                    Blob.maxDistanceForSlimeRays[i] = 1.5f;
             }
         }
 
@@ -134,6 +136,12 @@ namespace LethalMon.Behaviours
             base.OnEscapedFromBall(playerWhoThrewBall);
 
             Blob.transform.localScale *= 1.5f;
+        }
+
+        internal void FixedUpdate()
+        {
+            if(IsTamed)
+                Blob.FixedUpdate();
         }
 
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
