@@ -1,3 +1,7 @@
+# 0.5.4
+
+- Hygrodere is now catchable
+
 # 0.5.3
 
 - Spider is now catchable

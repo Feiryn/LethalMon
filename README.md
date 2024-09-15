@@ -2,8 +2,6 @@
 
 LethalMon is a Lethal Company mod that includes the possibility to catch monsters and use them to help you.
 
-This mod is still in alpha so expect bugs or not a lot of features.
-
 ## We are recruiting!
 
 We are looking for people to help us with mod.
@@ -53,7 +51,7 @@ Here are the implementation status of monsters:
 |  Forest Keeper  |     No      |                                                 TBD                                                  |                         TBD                          |
 |   Ghost Girl    |     Yes     |                                  Teleports enemies and damages them                                  |     Scaring thrower 3 times, followed by a hunt      |
 |  Hoarding Bug   |     Yes     |                             Brings items in a line of sight to the owner                             |                   Angry at thrower                   |
-|    Hygrodere    |     No      |                                                 TBD                                                  |                         TBD                          |
+|    Hygrodere    |     Yes     |                                                 TBD                                                  |                         TBD                          |
 |     Jester      |     No      |                                                 TBD                                                  |                         TBD                          |
 |  Kidnapper Fox  |  Disabled   |                            Shoots its tongue at enemies and can kill them                            |     Chase player or shoot tongue if close enough     |
 |    Maneater     |     No      |                                                 TBD                                                  |                         TBD                          |
