@@ -48,7 +48,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         { typeof(CrawlerAI),         typeof(CrawlerTamedBehaviour) },
         { typeof(MaskedPlayerEnemy), typeof(MaskedTamedBehaviour) },
         { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
-        { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) }
+        { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) };
+        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
+        { typeof(BlobAI),            typeof(BlobTamedBehaviour) }
     };
 
     private EnemyAI? _enemy = null;
@@ -106,6 +108,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public bool alreadyCollectedThisRound;
 
     public bool hasBeenRetrieved = false;
+
+    // Following
+    internal const float TimeBeforeUsingEntrance = 4f;
+    private float _timeAtEntrance = 0f;
+    private bool _usingEntrance = false;
+    private bool _followingRequiresEntrance = false;
+    internal bool isOutside = false; // We use our own isOutside because we don't want other mods that messes up with the original isOutside to affect our mod
 
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
@@ -299,7 +308,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedFollowing)
         {
-            return FollowingBehaviourDescription;
+            if (_usingEntrance)
+                return "Using entrance...";
+            else if (_followingRequiresEntrance)
+                return "Going to entrance...";
+            else
+                return FollowingBehaviourDescription;
         }
         
         if (Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) TamingBehaviour.TamedDefending)
@@ -524,6 +538,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsTamed)
         {
             Enemy.Start();
+            isOutside = Utils.IsEnemyOutside(Enemy);
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
             if (!CanBlockOtherEnemies && Enemy.agent != null)
@@ -566,6 +581,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (IsOwnerPlayer)
             HUDManagerPatch.EnableHUD(false);
+
+        if (IsTamed && !base.IsServer) // Counter to EnemyAI.Start()
+            RoundManager.Instance.SpawnedEnemies.Remove(Enemy);
 
         HideNameTag();
     }
@@ -729,7 +747,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             //LethalMon.Logger.LogInfo("Follow owner");
             var enemyPosition = Enemy.transform.position;
-            if (Vector3.Distance(enemyPosition, targetPosition) > MaxFollowDistance)
+            if (Vector3.Distance(enemyPosition, targetPosition) > MaxFollowDistance && CanBeTeleported())
             {
                 TeleportBehindOwner();
                 return;
@@ -774,12 +792,55 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         if (ownerPlayer == null) return;
         
+        var entranceTeleportRequired = ownerPlayer.isInsideFactory == isOutside;
+        if(entranceTeleportRequired != _followingRequiresEntrance)
+        {
+            _followingRequiresEntrance = entranceTeleportRequired;
+            HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
+        }
+
+        if(ownerPlayer.isInsideFactory == isOutside)
+        {
+            if(CanBeTeleported() || !EntranceTeleportPatch.HasTeleported)
+            {
+                if (!EntranceTeleportPatch.HasTeleported)
+                    LethalMon.Log("Teleporting behind owner because the monster hasn't been teleported yet");
+
+                TeleportBehindOwner();
+                return;
+            }
+
+            Vector3 destination = EntranceTeleportPatch.lastEntranceTeleportFrom!.Value;
+            if(_timeAtEntrance > 0f || Vector3.Distance(Enemy.transform.position, destination) < 5f)
+            {
+                if(_timeAtEntrance == 0f)
+                {
+                    _usingEntrance = true;
+                    HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
+                }
+
+                _timeAtEntrance += Time.deltaTime;
+                if (_timeAtEntrance >= TimeBeforeUsingEntrance)
+                {
+                    _usingEntrance = false;
+                    _timeAtEntrance = 0f;
+                    Teleport(EntranceTeleportPatch.lastEntranceTeleportTo!.Value, true, true);
+                }
+            }
+            else
+            {
+                PlaceOnNavMesh();
+                MoveTowards(destination);
+            }
+            return;
+        }
+        
         FollowPosition(ownerPlayer.transform.position);
     }
 
     private void TeleportBehindOwner()
     {
-        if (ownerPlayer == null) return;
+        if (ownerPlayer == null || !CanBeTeleported()) return;
 
         Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
@@ -978,6 +1039,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
         if (afterTeleportFunctions.TryGetValue(enemyAI.GetType().Name, out var afterTeleportFunction))
             afterTeleportFunction.Invoke(enemyAI, position);
+        
+        if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+        {
+            tamedBehaviour.isOutside = Utils.IsEnemyOutside(enemyAI);
+        }
     }
 
     public virtual bool CanBeTeleported()

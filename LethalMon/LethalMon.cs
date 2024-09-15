@@ -112,6 +112,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(RoundManagerPatch));
         Harmony.PatchAll(typeof(HUDManagerPatch));
+        Harmony.PatchAll(typeof(GameNetworkManagerPatch));
 
         // Enemies
         Harmony.PatchAll(typeof(EnemyAIPatch));
