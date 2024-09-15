@@ -83,7 +83,7 @@ namespace LethalMon.Behaviours
             LethalMon.Log("Tamed Blob: CreatePhysicsRegion");
 
             // Root object
-#if DEBUG
+#if _DEBUG
             GameObject rootObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
 
             if (rootObject.TryGetComponent(out MeshRenderer meshRenderer))
