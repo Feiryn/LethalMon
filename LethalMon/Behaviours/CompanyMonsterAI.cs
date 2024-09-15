@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -17,8 +16,8 @@ namespace LethalMon.Behaviours
         internal GameObject? tentacleContainer = null;
         internal List<GameObject> tentacles = [];
         internal const string TentaclePrefabFileName = "companymonsterTentacles.prefab"; // wip
-        internal const int TentacleCount = 3;
-        internal const float TentacleSize = 0.5f; // wip
+        internal const int TentacleCount = 5;
+        internal const float TentacleSize = 0.8f; // wip
 
         // Audio
         internal CompanyMood? mood = null;
@@ -27,14 +26,14 @@ namespace LethalMon.Behaviours
         internal SphereCollider? collider = null;
 
         // Variables
-        internal bool isAttacking = false;
         internal float tentacleScale = 0f;
         internal bool initialized = false;
 
         internal Dictionary<GrabbableObject, int> caughtItems = [];
         internal Dictionary<string, int> caughtEnemies = []; // EnemyType.name, amount
 
-        internal bool tentacleAnimationFinished = false;
+        internal bool inTentacleAnimation => _tentacleAnimation != null;
+        private Coroutine? _tentacleAnimation = null;
 
         internal float sellQuota = 1f;
         internal const float SellQuotaReductionPerItem = 0.05f;
@@ -108,7 +107,6 @@ namespace LethalMon.Behaviours
                 tentacleContainer = new GameObject("TentacleContainer");
                 tentacleContainer.transform.SetPositionAndRotation(eye.transform.position - eye.transform.forward.normalized * 0.2f, eye.transform.rotation);
                 tentacleContainer.transform.parent = eye;
-                //tentacleContainer.transform.localScale = Vector3.one * TentacleSize;
                 LethalMon.Log("Add tentacles for " + name);
                 for (int i = 0; i < TentacleCount; i++)
                     AddTentacle();
@@ -158,13 +156,13 @@ namespace LethalMon.Behaviours
 
         private void ShowTentacles(bool show = true) => tentacles.ForEach(t => t?.GetComponent<Animator>()?.SetBool("visible", value: show));
 
-        private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.parent.localScale = Vector3.one * scale);
+        private void ScaleTentacles(float scale) => tentacles.ForEach(t => t.transform.parent.localScale = Vector3.one /** TentacleSize*/ * scale);
 
         internal void RandomizeTentacleRotations() => tentacles.ForEach(t => t.transform.parent.localRotation = Quaternion.Euler(RandomRotation));
         #endregion
 
         #region Methods
-        private Vector3 RandomRotation => new(UnityEngine.Random.Range(0, 360f), UnityEngine.Random.Range(0f, 180f), UnityEngine.Random.Range(0f, 360f));
+        private Vector3 RandomRotation => new(Random.Range(0, 360f), Random.Range(0f, 180f), Random.Range(0f, 360f));
 
         [ServerRpc(RequireOwnership = false)]
         internal void CaughtEnemyServerRpc(NetworkObjectReference enemyRef)
@@ -251,21 +249,24 @@ namespace LethalMon.Behaviours
         public void AttackServerRpc() => AttackClientRpc();
 
         [ClientRpc]
-        public void AttackClientRpc() => StartCoroutine(Attack());
+        public void AttackClientRpc()
+        {
+            if (tentacles.Count == 0)
+            {
+                LethalMon.Log("CompanyMonster is unable to attack. No tentacles found.", LethalMon.LogType.Warning);
+                return;
+            }
+
+            if (_tentacleAnimation != null)
+                StopCoroutine(_tentacleAnimation);
+
+            LethalMon.Log("CompanyMonsterAI: Attack");
+            _tentacleAnimation = StartCoroutine(Attack());
+        }
 
         internal IEnumerator Attack()
         {
-            if(tentacles.Count == 0)
-            {
-                LethalMon.Log("CompanyMonster is unable to attack. No tentacles found.", LethalMon.LogType.Warning);
-                yield break;
-            }
-
-            tentacleAnimationFinished = false;
-            isAttacking = true;
             tentacleScale = 0f;
-
-            LethalMon.Log("Tentacle count: " + tentacles.Count);
 
             RandomizeTentacleRotations();
             ShowTentacles(true);
@@ -274,6 +275,7 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(0.5f);
             yield return new WaitWhile(() =>
             {
+                LethalMon.Log("tentacleScale: " + tentacleScale);
                 tentacleScale += Time.deltaTime * 5f;
                 ScaleTentacles(tentacleScale);
                 return tentacleScale < 1f;
@@ -288,8 +290,9 @@ namespace LethalMon.Behaviours
                 return tentacleScale > 0f;
             });
 
+            ScaleTentacles(0f);
             ShowTentacles(false);
-            tentacleAnimationFinished = true;
+            _tentacleAnimation = null;
         }
 
         [ServerRpc]
@@ -304,30 +307,33 @@ namespace LethalMon.Behaviours
                 return;
             }
 
-            StartCoroutine(ReachOutForItemCoroutine(item));
-        }
-
-        internal IEnumerator ReachOutForItemCoroutine(GrabbableObject item)
-        {
-            LethalMon.Log("GrabItemAndEatCoroutine");
-            tentacleAnimationFinished = false;
-
             if (tentacles.Count == 0)
             {
                 AddTentacle();
                 if (tentacles.Count == 0)
                 {
                     LethalMon.Log("CompanyMonsterAI: Unable to get item. No tentacles.");
-                    yield break;
+                    return;
                 }
             }
+
+            if (_tentacleAnimation != null)
+                StopCoroutine(_tentacleAnimation);
+
+            _tentacleAnimation = StartCoroutine(ReachOutForItemCoroutine(item));
+        }
+
+        internal IEnumerator ReachOutForItemCoroutine(GrabbableObject item)
+        {
+            LethalMon.Log("ReachOutForItemCoroutine");
 
             var tentacle = tentacles[0];
 
             RoundManager.Instance.tempTransform.position = eye.transform.position;
             RoundManager.Instance.tempTransform.LookAt(item.transform.position);
+            LethalMon.Log("Look direction: " + (item.transform.position - eye.transform.position));
             tentacle.transform.parent.rotation = RoundManager.Instance.tempTransform.rotation;
-            tentacle.transform.parent.Rotate(0f, 90f, -90f); // wip
+            tentacle.transform.parent.Rotate(0f, 0f, -90f);
 
             if (!tentacle.TryGetComponent(out Animator tentacleAnimator))
             {
@@ -355,9 +361,10 @@ namespace LethalMon.Behaviours
                 return tentacleScale > 0f;
             });
 
+            tentacle.transform.parent.localScale = Vector3.zero;
             tentacleAnimator.SetBool("visible", false);
 
-            tentacleAnimationFinished = true;
+            _tentacleAnimation = null;
         }
 
         internal void CaughtItem(GrabbableObject item)

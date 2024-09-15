@@ -29,30 +29,46 @@ namespace LethalMon.Behaviours
 
         void OnTriggerEnter(Collider other)
         {
-            if (collided || _companyMonster == null || !_companyMonster.isAttacking) return;
+            if (collided || _companyMonster == null || !_companyMonster.inTentacleAnimation) return;
 
-            if (other.CompareTag("Player"))
+            if (other.gameObject.transform.parent == gameObject.transform || other.gameObject.transform == gameObject.transform.parent) return;
+
+            if (other.CompareTag("Player") || other.CompareTag("PlayerBody"))
             {
                 LethalMon.Log("Tentacle collided with player.");
-                StartCoroutine(OnColliderWithPlayer(other.GetComponent<PlayerControllerB>()));
+                StartCoroutine(OnCollideWithPlayer(other.GetComponent<PlayerControllerB>()));
+                return;
             }
-            else if (other.CompareTag("Enemy"))
+
+            if (other.CompareTag("PlayerBody"))
+            {
+                LethalMon.Log("Tentacle collided with player body.");
+                StartCoroutine(OnCollideWithPlayer(other.GetComponentInParent<PlayerControllerB>()));
+                return;
+            }
+
+            if (other.CompareTag("Enemy"))
             {
                 LethalMon.Log("Tentacle collided with enemy.");
-                StartCoroutine(OnColliderWithEnemy(other.GetComponent<EnemyAI>()));
+                if(other.gameObject.TryGetComponent( out EnemyAICollisionDetect enemyCollisionDetect) && enemyCollisionDetect.mainScript != _companyMonster)
+                    StartCoroutine(OnCollideWithEnemy(enemyCollisionDetect.mainScript));
+                return;
             }
-            else if (other.CompareTag("Props")) // wip
+
+            /*var item = other.GetComponent<GrabbableObject>();
+            if (item != null)
             {
                 LethalMon.Log("Tentacle collided with item.");
-                StartCoroutine(OnColliderWithItem(other.GetComponent<GrabbableObject>()));
-            }
-            else if (!other.CompareTag("Untagged"))
-                LethalMon.Log("Tentacle collided with tag: " + other.tag + ". Name: " + other.name);
+                StartCoroutine(OnCollideWithItem(item));
+                return;
+            }*/
+            
+            //LethalMon.Log("Tentacle collided with tag: " + other.tag + ". Name: " + other.name);
         }
 
-        IEnumerator OnColliderWithPlayer(PlayerControllerB player)
+        IEnumerator OnCollideWithPlayer(PlayerControllerB player)
         {
-            if (_monsterAnimator == null) yield break;
+            if (_monsterAnimator == null || player == null) yield break;
 
             collided = true;
             Transform monsterAnimatorGrabTarget = gameObject.transform;
@@ -76,7 +92,7 @@ namespace LethalMon.Behaviours
             {
                 Debug.Log("Player body was not spawned in time for animation.");
             }
-            yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            yield return new WaitWhile(() => _companyMonster!.inTentacleAnimation);
             _monsterAnimator.SetBool("grabbingPlayer", value: false);
             if (player.deadBody != null)
             {
@@ -88,18 +104,30 @@ namespace LethalMon.Behaviours
             collided = false;
         }
 
-        IEnumerator OnColliderWithEnemy(EnemyAI enemy)
+        IEnumerator OnCollideWithEnemy(EnemyAI enemy)
         {
-            if (_monsterAnimator == null || _companyMonster == null) yield break;
+            if (_monsterAnimator == null || _companyMonster == null || enemy == null) yield break;
             collided = true;
+
+            LethalMon.Log("OnCollideWithEnemy");
 
             _monsterAnimator.SetBool("grabbingPlayer", value: true);
             yield return new WaitForSeconds(0.05f);
 
             enemy.enabled = false;
-            enemy.transform.SetParent(gameObject.transform, true);
+            var positionDiff = enemy.transform.position - gameObject.transform.position;
+            var initialScale = enemy.transform.localScale;
+            //enemy.transform.SetParent(gameObject.transform, true); // tentacles aren't networked
 
-            yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            yield return new WaitWhile(() =>
+            {
+                if (enemy != null)
+                {
+                    enemy.transform.position = positionDiff + gameObject.transform.position;
+                    enemy.transform.localScale = initialScale * _companyMonster.tentacleScale;
+                }
+                return enemy != null && _companyMonster.inTentacleAnimation;
+            });
             _monsterAnimator.SetBool("grabbingPlayer", value: false);
 
             _companyMonster.CaughtEnemy(enemy);
@@ -113,7 +141,7 @@ namespace LethalMon.Behaviours
             collided = false;
         }
 
-        IEnumerator OnColliderWithItem(GrabbableObject item)
+        IEnumerator OnCollideWithItem(GrabbableObject item)
         {
             if (_monsterAnimator == null || _companyMonster == null) yield break;
             collided = true;
@@ -122,7 +150,7 @@ namespace LethalMon.Behaviours
             yield return new WaitForSeconds(0.05f);
             item.transform.SetParent(gameObject.transform, true);
 
-            yield return new WaitWhile(() => _companyMonster!.isAttacking);
+            yield return new WaitWhile(() => _companyMonster!.inTentacleAnimation);
             _monsterAnimator.SetBool("grabbingPlayer", value: false);
 
             _companyMonster.CaughtItem(item);

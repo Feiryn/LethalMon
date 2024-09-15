@@ -124,7 +124,7 @@ public class EnemyAIPatch
         {
             LethalMon.Log(__instance.enemyType.name + " switches from behaviour state (" +
                           __instance.currentBehaviourStateIndex + ") to behaviour state (" + stateIndex +
-                          "), called by:\n" + new StackTrace());
+                          ")");//, called by:\n" + new StackTrace());
         }
     }
     #endif

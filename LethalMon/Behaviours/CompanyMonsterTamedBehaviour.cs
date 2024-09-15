@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using LethalMon.Patches;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -21,13 +22,13 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
-
         internal override bool CanDefend => attackCooldown == null || attackCooldown.IsFinished();
 
         private DepositItemsDesk? _depositItemsDesk = null;
         private InteractTrigger? _redeemItemsTrigger = null;
         private GameObject? _redeemItemsTriggerObject = null;
+
+        private Coroutine? _attackCoroutine = null;
         #endregion
 
         #region Cooldowns
@@ -43,13 +44,17 @@ namespace LethalMon.Behaviours
         {
             RunToCounter = 1,
             RunTowardsItem,
-            EatItem
+            RunTowardsEnemy,
+            EatItem,
+            Attack
         }
         internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.RunToCounter.ToString(), "Running to sell counter", OnRunToCounterBehavior),
-            new (CustomBehaviour.RunTowardsItem.ToString(), "Running towards an item", OnRunTowardsItemBehavior),
-            new (CustomBehaviour.EatItem.ToString(), "Eats an item", OnEatItemBehavior)
+            new (CustomBehaviour.RunTowardsItem.ToString(), "Running towards " + targetItem?.itemProperties.itemName, OnRunTowardsItemBehavior),
+            new (CustomBehaviour.RunTowardsEnemy.ToString(), "Running towards " + targetEnemy?.enemyType.enemyName, OnRunTowardsEnemyBehavior),
+            new (CustomBehaviour.EatItem.ToString(), "Eats " + targetItem?.itemProperties.itemName, OnEatItemBehavior),
+            new (CustomBehaviour.Attack.ToString(), "Attacks!", OnAttackBehavior)
         ];
 
         internal override void InitCustomBehaviour(int behaviour)
@@ -75,18 +80,36 @@ namespace LethalMon.Behaviours
                     break;
 
                 case CustomBehaviour.RunTowardsItem:
+                    CompanyMonster.agent.speed = 10f;
                     if (IsOwnerPlayer && targetItem != null)
                         MoveTowards(targetItem.transform.position);
+                    break;
 
+                case CustomBehaviour.RunTowardsEnemy:
+                    CompanyMonster.agent.speed = 10f;
+                    if (IsOwnerPlayer && targetEnemy != null)
+                        MoveTowards(targetEnemy.transform.position);
                     break;
 
                 case CustomBehaviour.EatItem:
+                    CompanyMonster.agent.speed = 0f;
                     if (CompanyMonster.IsOwner)
                     {
                         if (targetItem == null)
                             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                         else
                             CompanyMonster.ReachOutForItemServerRpc(targetItem.NetworkObject);
+                    }
+                    break;
+
+                case CustomBehaviour.Attack:
+                    CompanyMonster.agent.speed = 0f;
+                    if (CompanyMonster.IsOwner)
+                    {
+                        if (targetEnemy == null || targetEnemy.isEnemyDead)
+                            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                        else
+                            _attackCoroutine = StartCoroutine(AttackCoroutine());
                     }
                     break;
 
@@ -106,24 +129,66 @@ namespace LethalMon.Behaviours
 
         internal void OnRunTowardsItemBehavior()
         {
-            if(targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy)
+            if (targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy)
             {
-                if(targetItem == null)
-                    LethalMon.Log("CompanyMonster: Target item disappeared. Returning back to following.", LethalMon.LogType.Warning);
+                if (targetItem == null)
+                    LethalMon.Log("CompanyMonster: Target item disappeared. Returning back to owner.", LethalMon.LogType.Warning);
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
                 return;
             }
 
             TargetNearestEnemy();
 
-            if (DistanceToTargetItem < 2f)
+            if (DistanceToTargetItem < 5f)
                 SwitchToCustomBehaviour((int)CustomBehaviour.EatItem);
+        }
+
+        internal void OnRunTowardsEnemyBehavior()
+        {
+            if (targetEnemy == null || targetEnemy.isEnemyDead)
+            {
+                if (targetEnemy == null)
+                    LethalMon.Log("CompanyMonster: Target enemy disappeared. Returning back to owner.", LethalMon.LogType.Warning);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                return;
+            }
+
+            if (DistanceToTargetEnemy < 2f)
+                SwitchToCustomBehaviour((int)CustomBehaviour.Attack);
         }
 
         internal void OnEatItemBehavior()
         {
-            if (targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy || CompanyMonster.hasEatenItem)
+            if (targetItem == null || targetItem.isHeld || targetItem.isHeldByEnemy || !CompanyMonster.inTentacleAnimation)
+            {
+                targetItem = null;
                 SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
+        }
+
+        internal void OnAttackBehavior()
+        {
+            if(targetEnemy == null || targetEnemy.isEnemyDead && !CompanyMonster.inTentacleAnimation)
+            {
+                StopCoroutine(_attackCoroutine);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
+        }
+
+        internal IEnumerator AttackCoroutine()
+        {
+            if (CompanyMonster.mood != null && CompanyMonster.mood.angerSFX.Length > 0)
+            {
+                var index = UnityEngine.Random.RandomRangeInt(0, CompanyMonster.mood.angerSFX.Length - 1);
+                CompanyMonster.creatureSFX.PlayOneShot(CompanyMonster.mood.angerSFX[index]);
+                yield return new WaitForSeconds(2f);
+            }
+
+            CompanyMonster.AttackServerRpc();
+            yield return new WaitWhile(() => CompanyMonster.inTentacleAnimation);
+
+            targetEnemy = null;
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
         }
         #endregion
 
@@ -212,6 +277,15 @@ namespace LethalMon.Behaviours
             base.OnDestroy();
         }
 
+        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        {
+            base.InitTamingBehaviour(behaviour);
+            if (behaviour == TamingBehaviour.TamedFollowing)
+                CompanyMonster.agent.speed = 7f;
+            else if(behaviour == TamingBehaviour.TamedDefending && IsOwnerPlayer)
+                SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsEnemy);
+        }
+
         internal override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);
@@ -237,8 +311,8 @@ namespace LethalMon.Behaviours
 
         internal override void OnFoundTarget()
         {
-            if (targetEnemy != null)
-                SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+            if (targetEnemy != null && CanDefend)
+                SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsEnemy);
             else if (targetItem != null)
                 SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsItem);
         }
