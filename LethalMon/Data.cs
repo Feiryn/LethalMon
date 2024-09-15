@@ -40,7 +40,6 @@ public static class Data
         { Enemy.MaskedPlayerEnemy.ToString(), new CatchableMasked() },
         { Enemy.BaboonHawk.ToString(), new CatchableBaboonHawk() },
         { Enemy.SandSpider.ToString(), new CatchableSpider() },
-        { Enemy.BaboonHawk.ToString(), new CatchableBaboonHawk() },
         { Enemy.Blob.ToString(), new CatchableBlob() }
     };
 }
