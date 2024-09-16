@@ -1,3 +1,7 @@
+# 0.5.5
+
+- Fixed incompatibility with an unknown mod that made the game not loading because of the hygrodere
+
 # 0.5.4
 
 - Hygrodere is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
