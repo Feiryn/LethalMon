@@ -1,15 +1,15 @@
 # 0.5.4
 
-- Hygrodere is now catchable
+- Hygrodere is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
 
 # 0.5.3
 
-- Spider is now catchable
+- Spider is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))
 - Hoarder bug can hold items the owner gives him
 - Improved and optimized the line of sight of a lot of tamed monsters, and most will work outside now
 - Bees are working way better now
 - Hoarder bug no longer brings the same item multiple times
-- Fixed a bug that prevented the player from dying from some monsters while on a puffer
+- Fixed a bug that prevented the player from dying from some monsters while on a puffer (thanks to [@NiroDev](https://github.com/NiroDev))
 - Fox is now disabled
 
 # 0.5.2
