@@ -245,32 +245,6 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         }
         HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
     }
-
-    public override int GetItemDataToSave()
-    {
-        base.GetItemDataToSave();
-
-        if (!this.enemyCaptured || this.catchableEnemy == null)
-        {
-            return -1;
-        }
-        else
-        {
-            return this.catchableEnemy.Id;
-        }
-    }
-
-    public override void LoadItemSaveData(int saveData)
-    {
-        base.LoadItemSaveData(saveData);
-
-        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
-        {
-            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
-            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            SetCaughtEnemy(type);
-        }
-    }
 #endregion
 
     #region CaptureAnimation
@@ -502,6 +476,9 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
     public void LoadAdvancedItemData(object data)
     {
-        throw new NotImplementedException();
+        if (data is PokeballSaveData { enemyType: not null } saveData)
+        {
+            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType));
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -52,13 +53,12 @@ namespace LethalMon.Patches
         public static void AdvancedLoad(GrabbableObject grabbableObject)
 		{
 	        LethalMon.Log("Loading advanced saveable item data...");
-	        if (grabbableObject is IAdvancedSaveableItem advancedSaveableItem)
+	        if (grabbableObject is IAdvancedSaveableItem advancedSaveableItem && shipAdvancedItemSaveData[loadIndex] != null)
 	        {
 		        try
 		        {
-			        ES3.Load("shipAdvancedItemSaveData", out object[] advancedItemSaveData, GameNetworkManager.currentSaveFileName);
-			        advancedSaveableItem.LoadAdvancedItemData();
-			        LethalMon.Log("Advanced saveable item data loaded.");
+			        advancedSaveableItem.LoadAdvancedItemData(shipAdvancedItemSaveData[loadIndex]!);
+			        LethalMon.Log("Advanced saveable item data loaded: " + JsonConvert.SerializeObject(shipAdvancedItemSaveData[loadIndex]));
 		        }
 		        catch (Exception e)
 		        {
@@ -153,7 +153,7 @@ namespace LethalMon.Patches
 			if (advancedItemSaveData.Count > 0)
 			{
 				ES3.Save("shipAdvancedItemSaveData", advancedItemSaveData.ToArray(), __instance.currentSaveFileName);
-				LethalMon.Log("Saved advanced saveable items.");
+				LethalMon.Log("Saved advanced saveable items: " + JsonConvert.SerializeObject(advancedItemSaveData));
 			}
 			else
 			{
@@ -173,7 +173,23 @@ namespace LethalMon.Patches
 		[HarmonyPostfix]
 		private static void LoadItemSaveDataPostfix(GrabbableObject __instance)
 		{
-			
+			if ((new StackTrace().GetFrames() ?? []).Any(f => f.GetMethod().Name.Contains("LoadShipGrabbableItems")))
+			{
+				AdvancedLoad(__instance);
+				loadIndex++;
+			}
+		}
+
+		private static int loadIndex;
+
+		private static object?[] shipAdvancedItemSaveData;
+
+		[HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.LoadShipGrabbableItems))]
+		[HarmonyPrefix]
+		private static void LoadShipGrabbableItemsPrefix()
+		{
+			loadIndex = 0;
+			shipAdvancedItemSaveData = ES3.Load<object?[]>("shipAdvancedItemSaveData", GameNetworkManager.Instance.currentSaveFileName);
 		}
     }
 }
