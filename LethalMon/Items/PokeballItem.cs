@@ -14,7 +14,7 @@ using static LethalMon.Utils;
 
 namespace LethalMon.Items;
 
-public abstract class PokeballItem : ThrowableItem
+public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 {
     #region Properties
     private EnemyAI? enemyAI = null;
@@ -491,4 +491,17 @@ public abstract class PokeballItem : ThrowableItem
             audioSource.PlayOneShot(SuccessSFX);
     }
     #endregion
+
+    public object GetAdvancedItemDataToSave()
+    {
+        return new PokeballSaveData
+        {
+            enemyType = enemyType?.name
+        };
+    }
+
+    public void LoadAdvancedItemData(object data)
+    {
+        throw new NotImplementedException();
+    }
 }
