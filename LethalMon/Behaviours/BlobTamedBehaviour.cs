@@ -73,62 +73,71 @@ namespace LethalMon.Behaviours
         {
             if (PhysicsRegionAdded) return;
 
-            var enemyType = Utils.GetEnemyType(Utils.Enemy.Blob);
-            if (enemyType == null)
+            var enemyTypes = Utils.GetEnemyTypes(Utils.Enemy.Blob);
+            if (enemyTypes.Length == 0)
             {
-                LethalMon.Log("Unable to get blob prefab.", LethalMon.LogType.Error);
+                LethalMon.Log("Unable to get blob types.", LethalMon.LogType.Error);
                 return;
             }
 
             LethalMon.Log("Tamed Blob: CreatePhysicsRegion");
 
-            // Root object
-#if _DEBUG
-            GameObject rootObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-
-            if (rootObject.TryGetComponent(out MeshRenderer meshRenderer))
+            foreach (var enemyType in enemyTypes)
             {
-                meshRenderer.material = new Material(Shader.Find("HDRP/Lit")) { color = Color.red };
-                meshRenderer.enabled = true;
-            }
-            rootObject.name = PhysicsObjectName;
-            var rootCollider = rootObject.GetComponent<BoxCollider>();
+                if (enemyType.enemyPrefab == null)
+                {
+                    LethalMon.Log("Unable to get blob prefab.", LethalMon.LogType.Error);
+                    continue;
+                }
+
+                // Root object
+#if _DEBUG
+                GameObject rootObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+                if (rootObject.TryGetComponent(out MeshRenderer meshRenderer))
+                {
+                    meshRenderer.material = new Material(Shader.Find("HDRP/Lit")) { color = Color.red };
+                    meshRenderer.enabled = true;
+                }
+                rootObject.name = PhysicsObjectName;
+                var rootCollider = rootObject.GetComponent<BoxCollider>();
 #else
-            var rootObject = new GameObject(PhysicsObjectName);
-            var rootCollider = rootObject.AddComponent<BoxCollider>();
+                var rootObject = new GameObject(PhysicsObjectName);
+                var rootCollider = rootObject.AddComponent<BoxCollider>();
 #endif
-            rootObject.layer = (int)Utils.LayerMasks.Mask.Room;
-            rootObject.transform.SetParent(enemyType.enemyPrefab.transform, false);
-            rootCollider.isTrigger = false;
+                rootObject.layer = (int)Utils.LayerMasks.Mask.Room;
+                rootObject.transform.SetParent(enemyType.enemyPrefab.transform, false);
+                rootCollider.isTrigger = false;
 
-            // ItemDropCollider
-            var itemDropColliderObject = new GameObject("ItemDropCollider");
-            itemDropColliderObject.layer = (int)Utils.LayerMasks.Mask.Triggers;
-            var itemDropCollider = itemDropColliderObject.AddComponent<BoxCollider>();
-            itemDropCollider.isTrigger = true;
-            itemDropColliderObject.transform.localScale = new(1f, 1.5f, 1f);
-            itemDropColliderObject.transform.SetParent(rootObject.transform, false);
+                // ItemDropCollider
+                var itemDropColliderObject = new GameObject("ItemDropCollider");
+                itemDropColliderObject.layer = (int)Utils.LayerMasks.Mask.Triggers;
+                var itemDropCollider = itemDropColliderObject.AddComponent<BoxCollider>();
+                itemDropCollider.isTrigger = true;
+                itemDropColliderObject.transform.localScale = new(1f, 1.5f, 1f);
+                itemDropColliderObject.transform.SetParent(rootObject.transform, false);
 
-            var physicsRegionObject = new GameObject("PlayerPhysicsRegion");
-            physicsRegionObject.layer = (int)Utils.LayerMasks.Mask.Triggers;
-            var physicsCollider = physicsRegionObject.AddComponent<BoxCollider>();
-            physicsCollider.isTrigger = true;
-            physicsRegionObject.transform.localScale = new(1f, 1.5f, 1f);
-            physicsRegionObject.transform.SetParent(rootObject.transform, false);
+                var physicsRegionObject = new GameObject("PlayerPhysicsRegion");
+                physicsRegionObject.layer = (int)Utils.LayerMasks.Mask.Triggers;
+                var physicsCollider = physicsRegionObject.AddComponent<BoxCollider>();
+                physicsCollider.isTrigger = true;
+                physicsRegionObject.transform.localScale = new(1f, 1.5f, 1f);
+                physicsRegionObject.transform.SetParent(rootObject.transform, false);
 
-            var physicsRegion = physicsRegionObject.AddComponent<PlayerPhysicsRegion>();
-            physicsRegion.parentNetworkObject = enemyType.enemyPrefab.GetComponent<NetworkObject>();
-            physicsRegion.physicsTransform = enemyType.enemyPrefab.gameObject.transform;
-            physicsRegion.allowDroppingItems = true;
-            physicsRegion.itemDropCollider = itemDropCollider;
-            physicsRegion.physicsCollider = physicsCollider;
-            physicsRegion.disablePhysicsRegion = false;
-            physicsRegion.priority = 1;
-            physicsRegion.maxTippingAngle = 360;
+                var physicsRegion = physicsRegionObject.AddComponent<PlayerPhysicsRegion>();
+                physicsRegion.parentNetworkObject = enemyType.enemyPrefab.GetComponent<NetworkObject>();
+                physicsRegion.physicsTransform = enemyType.enemyPrefab.gameObject.transform;
+                physicsRegion.allowDroppingItems = true;
+                physicsRegion.itemDropCollider = itemDropCollider;
+                physicsRegion.physicsCollider = physicsCollider;
+                physicsRegion.disablePhysicsRegion = false;
+                physicsRegion.priority = 1;
+                physicsRegion.maxTippingAngle = 360;
 
-            rootObject.SetActive(false);
+                rootObject.SetActive(false);
 
-            PhysicsRegionAdded = true;
+                PhysicsRegionAdded = true;
+            }
         }
 
         internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
