@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b6a3033b85af7dac1901cadad3beb4c3
+guid: a5b04050deb87998581d7a56faba0eae
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Good Old DOS Smooth
+  - Minecraft
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

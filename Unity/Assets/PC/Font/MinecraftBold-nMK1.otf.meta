@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: cdea3ad5f40e2a926a4a90e9a4b0592f
+guid: b6826026929856ad0a2bb00550c63e52
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Good Old DOS Distorted
+  - Minecraft
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

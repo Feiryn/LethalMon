@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: a8e8002bd10ae9c8cbf076f518092f50
+guid: af715cf688fd3e29d8ff22bf02eb9324
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Good Old DOS Outline
+  - Minecraft
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
