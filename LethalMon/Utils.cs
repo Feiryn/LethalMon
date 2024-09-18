@@ -194,16 +194,10 @@ public class Utils
     #region Enemy
     public static List<EnemyType> EnemyTypes => Resources.FindObjectsOfTypeAll<EnemyType>().ToList();
 
-    public static EnemyType? GetEnemyType(Enemy enemy)
+    public static EnemyType[] GetEnemyTypes(Enemy enemy)
     {
         var enemyName = enemy.ToString();
-        foreach(var enemyType in EnemyTypes)
-        {
-            if (enemyType.name == enemyName)
-                return enemyType;
-        }
-
-        return null;
+        return EnemyTypes.Where(e => e.name == enemyName).ToArray();
     }
 
     public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
@@ -296,9 +290,9 @@ public class Utils
         GameObject gameObject = Object.Instantiate(enemyType.enemyPrefab, position, Quaternion.Euler(new Vector3(0f, 0f /*yRot*/, 0f)));
         gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
         var enemyAI = gameObject.GetComponent<EnemyAI>();
-        RoundManager.Instance.SpawnedEnemies.Add(enemyAI);
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
-        enemyAI.SetEnemyOutside(StartOfRound.Instance.testRoom != null || position.y > -50f);
+        if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
+            tamedEnemyBehaviour.isOutside = IsEnemyOutside(enemyAI);
 
         return enemyAI;
     }
@@ -347,6 +341,8 @@ public class Utils
 
         interactTrigger.enabled = true;
     }
+    
+    public static bool IsEnemyOutside(EnemyAI enemyAI) => enemyAI.transform.position.y > -50f;
     #endregion
 
     #region LayerMasks

@@ -75,6 +75,8 @@ namespace LethalMon
 
             public float MaskedEffectDistance { get; set; }
 
+            public int BlobMaxItems { get; set; }
+
             public float SpiderWebCooldown { get; set; }
         }
 
@@ -147,6 +149,7 @@ namespace LethalMon
 
             // Behaviours
             values.MaskedEffectDistance = LethalMon.Instance.Config.Bind("Behaviours", "MaskedEffectDistance", 20f, "Distance till which enemies can be seen through walls.").Value;
+            values.BlobMaxItems = LethalMon.Instance.Config.Bind("Behaviours", "BlobMaxItems", 4, "Maximum amount of items a tamed blob can carry.").Value;
 
             // Save the config for game changes
             originalValues = values;

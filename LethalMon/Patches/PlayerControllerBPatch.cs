@@ -173,6 +173,15 @@ public class PlayerControllerBPatch
         }
     }
 
+#if DEBUG
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
+    [HarmonyPrefix]
+    private static void TeleportPlayerPrefix(PlayerControllerB __instance, Vector3 pos)
+    {
+        LethalMon.Log(__instance.playerUsername + " is teleporting from " + __instance.transform.position + " to " + pos);
+    }
+#endif
+
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
     [HarmonyPostfix]
     private static void TeleportPlayer(PlayerControllerB __instance, Vector3 pos)
@@ -189,11 +198,12 @@ public class PlayerControllerBPatch
                 position += controller.EnemyOffsetWhileControlling;
                 position.y += __instance.transform.localScale.y;
             }
+            tamedBehaviour.Enemy.transform.position = position;
 
-            tamedBehaviour.Teleport(position, true, true);
-            tamedBehaviour.Enemy.agent.enabled = (controller == null || !controller.EnemyCanFly);
-
-            tamedBehaviour.Enemy.SetEnemyOutside(!__instance.isInsideFactory);
+            if(controller == null || !controller.EnemyCanFly)
+                tamedBehaviour.Enemy.agent.enabled = true;
+            tamedBehaviour.Enemy.serverPosition = position;
+            tamedBehaviour.isOutside = !__instance.isInsideFactory;
         }
     }
     
