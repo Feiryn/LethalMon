@@ -5,8 +5,7 @@
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2100",
     "Evaisa-LethalLib-0.15.1",
-    "Rune580-LethalCompany_InputUtils-0.7.7",
-    "NotAtomicBomb-TerminalApi-1.5.5"
+    "Rune580-LethalCompany_InputUtils-0.7.7"
   ],
   "website_url": "https://github.com/Feiryn/LethalMon"
 }

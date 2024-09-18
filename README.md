@@ -1,78 +1,86 @@
 # LethalMon
 
-LethalMon is a Lethal Company mod that includes the possibility to catch monsters and use them to help you.
+A group of scientists called Lethal Monsters Inc. conducted experiments on monsters and designed balls to catch them.
 
-## We are recruiting!
+Caught monsters can be used to help you in your journey by defending you, attacking enemies, or supporting you in various ways.
 
-We are looking for people to help us with mod.
+## Equipment
 
-We need people to help us with:
-- Coding
-- Modeling
-- Animating
-- Testing
+### PC
 
-If you are interested, please contact us on the LC discord modding server https://discord.com/invite/lcmod (thread in #mod-releases).
+A fresh new PC has been added to your ship!
 
-## How to catch monsters?
+This PC has a lot of useful features:
+- A guide that explains how to use thd mod
+- A detailed list of monsters with their capture probabilities and behaviours
+- A scanner that allows you to scan balls and unlock monsters
+- A duplicator that allows you to duplicate unlocked monsters
 
-You have to find balls in the buildings and then send them to a monster with left click. For now, not all monsters are implemented and catchable. Please take a look at [Implemented monsters and behaviours](#implemented-monsters-and-behaviours)
+![PC](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/pc.png)
 
-Each ball has a different probability of success depending on the type of ball and the monster's type.
+<details><summary>PC screenshots</summary>
 
-The stronger the monster is, the harder to catch it is. And be careful, if the catch fails, the ball disappears and the monster will want to kill you.
+![Dex](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/dex.png)
+
+![Tutorial Page 1](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/tutorial-page1.png)
+
+![Tutorial Page 2](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/tutorial-page2.png)
+
+![Tutorial Page 3](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/tutorial-page3.png)
+
+</details>
+
+### Balls
+
+Balls can be found in the buildings or in the ship's store.
+
+You'll need them to catch monsters!
+
+Balls found in the buildings can be found with a monster already inside... Maybe someone lost them?
 
 ![balls.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/balls.png)
 
+![store.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/store.png)
 
-## Now that I caught one, what should I do?
+## How to catch monsters?
 
-You can throw the ball on the ground where you want the monster to appear.
+If you got some balls in your hands, you can left-click to throw them. If you hit a monster, the capture will start.
 
-To retrieve it, press P (configurable).
+If the capture is successful, the monster will be caught in the ball. If not, the monster will be angry and will want to kill you.
 
-If a player dies or disconnects, the monster will be called in the ball at its location.
+The capture probability depends on the ball's strength, the monster's strength (based on their abilities once caught, not on their original strength), and their remaining HP.
 
+Lethal Monsters Inc. scientists are still experimenting with the balls, So not all monsters are catchable. Please take a look at the section below.
 
-## Implemented monsters and behaviours
+## Catchable monsters
 
-Here are the implementation status of monsters:
+Here are the monsters that can be captured:
+- Baboon Hawk
+- Bees
+- Bracken
+- Butler
+- Eyeless Dog
+- Ghost Girl
+- Hoarding Bug
+- Hygrodere
+- Masked
+- Nutcracker
+- Spider
+- Spore Lizard
+- Thumper
+- Tulip snake
 
-|     Monster     | Implemented |                                              Behaviour                                               |                   Capture failure                    |
-|:---------------:|:-----------:|:----------------------------------------------------------------------------------------------------:|:----------------------------------------------------:|
-|   Baboon Hawk   |     Yes     |                                 Echo-localize items and defends you                                  | Spawns a tiny baboon hawk that attract other baboons |
-|     Barber      |     No      |                                                 TBD                                                  |                         TBD                          |
-|      Bees       |     Yes     |                         Stun monsters and damage players that hurt the owner                         |              Attacking thrower for 10s               |
-|     Bracken     |     Yes     |                                          Drags enemies away                                          |                   Chasing thrower                    |
-|     Butler      |     Yes     |                                Clean up dead enemies and spawn scraps                                |                    Stabs thrower                     |
-|    Coil-head    |     No      |                                                 TBD                                                  |                         TBD                          |
-| Earth Leviathan |     No      |                                                 TBD                                                  |                         TBD                          |
-|   Eyeless Dog   |     Yes     |                Run far from the owner and howls in order to draw other dogs attention                |           Chasing player more aggressively           |
-|  Forest Keeper  |     No      |                                                 TBD                                                  |                         TBD                          |
-|   Ghost Girl    |     Yes     |                                  Teleports enemies and damages them                                  |     Scaring thrower 3 times, followed by a hunt      |
-|  Hoarding Bug   |     Yes     |                             Brings items in a line of sight to the owner                             |                   Angry at thrower                   |
-|    Hygrodere    |     Yes     |                                      Carry items dropped on it                                       |                  Increases in size                   |
-|     Jester      |     No      |                                                 TBD                                                  |                         TBD                          |
-|  Kidnapper Fox  |  Disabled   |                            Shoots its tongue at enemies and can kill them                            |     Chase player or shoot tongue if close enough     |
-|    Maneater     |     No      |                                                 TBD                                                  |                         TBD                          |
-|    Manticoil    |     No      |                                                 TBD                                                  |                         TBD                          |
-|  Mask Hornets   |     No      |                                                 TBD                                                  |                         TBD                          |
-|     Masked      |     Yes     |                     Can lend you its mask to make you see enemies through walls                      |          Spawning 2 ghosts that deal damage          |
-|   Nutcracker    |     Yes     |                                Shoots at any enemy in a line of sight                                |     Shooting while rotating, similar to a turret     |
-|    Old Bird     |     No      |                                                 TBD                                                  |                         TBD                          |
-| Roaming Locusts | Will not be |                                                  -                                                   |                          -                           |
-|   Snare Flea    |     No      |                                                 TBD                                                  |                         TBD                          |
-|     Spider      |     Yes     | Shoots webs that players can jump on, slows down enemies and prevents owner from taking fall damages |                         TBD                          |
-|  Spore Lizard   |     Yes     |                                         Can be used as mount                                         |                    Spawns a cloud                    |
-|     Thumper     |     Yes     |                  Can open all doors and disable turrets, but is not really obedient                  |                    Target thrower                    |
-|   Tulip Snake   |     Yes     |                                       Allows the player to fly                                       |  Clinging to player, during which it is uncatchable  |
-
-
-## Capture probabilities
-
-To get capture probabilities, use the command `lethaldex` in the terminal (the image may be outdated as enemies are regularly added and capture rates can be modified):
-
-![lethaldex.png](https://raw.githubusercontent.com/Feiryn/LethalMon/master/Images/lethaldex.png)
+Here are the monsters that cannot be captured yet:
+- Barber
+- Coil-head
+- Earth Leviathan
+- Forest Keeper
+- Jester
+- Maneater
+- Manticoil
+- Mask Hornets
+- Old Bird
+- Snare Flea
 
 ## Monsters are not working at the company building!
 
@@ -83,6 +91,18 @@ You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.i
 
 We also got you covered with additional mods that add up on this one:
 - [LethalMonReservedSlot](https://thunderstore.io/c/lethal-company/p/Niro/LethalMonReservedSlot/) - A reserved slot for the first pokeball you pick up!
+
+## Lethal Monsters Inc. is recruiting!
+
+We are looking for scientists to help us with the mod.
+
+We need people to help us with:
+- Coding
+- Modeling
+- Animating
+- Testing
+
+If you are interested, please contact us on the LC discord modding server https://discord.com/invite/lcmod (thread in #mod-releases).
 
 ## Bug reports
 
