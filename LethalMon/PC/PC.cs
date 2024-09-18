@@ -208,9 +208,9 @@ public class PC : NetworkBehaviour
         // todo small render distance so low end computers won't burn
 
         Camera camera = Utils.CurrentPlayer.gameplayCamera;
-        if (camera.pixelWidth != 860 || camera.pixelHeight != 520)
+        if (camera.pixelWidth >= 1920 || camera.pixelHeight >= 1080)
         {
-            LethalMon.Log("Detected custom resolution mod, don't change the target texture");
+            LethalMon.Log("Detected an already high target texture (" + camera.pixelWidth + ", " + camera.pixelHeight + "), don't change the target texture");
             return;
         }
         
@@ -228,14 +228,18 @@ public class PC : NetworkBehaviour
 
     private static void RollbackHighQualityCamera()
     {
-        Camera camera = Utils.CurrentPlayer.gameplayCamera;
-        
-        // Release the target texture and double the resolution
-        camera.targetTexture.Release();
-        
-        // Let's assume that the user has a 1920x1080. Higher resolutions can make PCs heat
-        camera.targetTexture.width = _backupRenderTextureWidth;
-        camera.targetTexture.height = _backupRenderTextureHeight;
+        if (_backupRenderTextureWidth != 0 && _backupRenderTextureHeight != 0)
+        {
+            Camera camera = Utils.CurrentPlayer.gameplayCamera;
+
+            camera.targetTexture.Release();
+
+            camera.targetTexture.width = _backupRenderTextureWidth;
+            camera.targetTexture.height = _backupRenderTextureHeight;
+
+            _backupRenderTextureWidth = 0;
+            _backupRenderTextureHeight = 0;
+        }
     }
     
     public void OnBallPlaceInteract(PlayerControllerB player)
