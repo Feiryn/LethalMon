@@ -90,6 +90,8 @@ public class PC : NetworkBehaviour
     public DuplicateChooseApp duplicateChooseApp;
     
     public DuplicateApp duplicateApp;
+    
+    private TutorialApp _tutorialApp;
     #endregion
 
     private static int _backupRenderTextureWidth;
@@ -104,8 +106,6 @@ public class PC : NetworkBehaviour
 
     public void Start()
     {
-        LethalMon.Log("PC Start");
-
         Instance = this;
         
         // Load the triggers from the prefab and set missing properties
@@ -140,6 +140,11 @@ public class PC : NetworkBehaviour
         // Assign buttons to functions
         _desktopButtons = new Button[4];
         _desktopButtons[0] = gameObject.transform.Find("Screen/MainMenu/TutorialButton").GetComponent<Button>();
+        _desktopButtons[0].onClick = FunctionToButtonClickEvent(() =>
+        {
+            SwitchToApp(_tutorialApp);
+            OpenTutorialServerRpc();
+        });
         _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
         _desktopButtons[1].onClick = FunctionToButtonClickEvent(() =>
         {
@@ -174,6 +179,8 @@ public class PC : NetworkBehaviour
         duplicateChooseApp.Hide();
         duplicateApp = new DuplicateApp(_screen);
         duplicateApp.Hide();
+        _tutorialApp = new TutorialApp(_screen);
+        _tutorialApp.Hide();
         
         // Load the placeable ship object
         _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
@@ -233,8 +240,6 @@ public class PC : NetworkBehaviour
     
     public void OnBallPlaceInteract(PlayerControllerB player)
     {
-        LethalMon.Log("Ball place interact");
-
         GrabbableObject heldItem = player.ItemSlots[player.currentItemSlot];
         if (heldItem != null && heldItem is PokeballItem item && GetCurrentPlacedBall() == null)
         {
@@ -382,8 +387,6 @@ public class PC : NetworkBehaviour
     
     public void LeftClick_performed(InputAction.CallbackContext context)
     {
-        LethalMon.Log("Left click performed");
-
         foreach (var button in _screen.GetComponentsInChildren<Button>())
         {
             if (button.IsActive() && IsCursorOnButton(button))
@@ -753,6 +756,34 @@ public class PC : NetworkBehaviour
             ProcessOperation(duplicateApp.DuplicateCallback, DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
         else
             ProcessOperation(progress => duplicateApp.FillProgressBar(progress), DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void OpenTutorialServerRpc()
+    {
+        OpenTutorialClientRpc();
+    }
+    
+    [ClientRpc]
+    public void OpenTutorialClientRpc()
+    {
+        if (IsCurrentPlayerUsing()) return;
+        
+        SwitchToApp(_tutorialApp, false);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void TutorialUpdatePageServerRpc(int page)
+    {
+        TutorialUpdatePageClientRpc(page);
+    }
+    
+    [ClientRpc]
+    public void TutorialUpdatePageClientRpc(int page)
+    {
+        if (IsCurrentPlayerUsing()) return;
+        
+        _tutorialApp.UpdatePage(page);
     }
     
     [ServerRpc(RequireOwnership = false)]
