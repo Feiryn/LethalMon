@@ -184,8 +184,6 @@ public class PC : NetworkBehaviour
         
         // Load the placeable ship object
         _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
-        _placeableShipObject.unlockableID =
-            StartOfRound.Instance.unlockablesList.unlockables.FindIndex(u => u.unlockableName == UnlockableName);
         Terminal terminal = FindObjectOfType<Terminal>();
         if (terminal != null)
         {
@@ -842,5 +840,7 @@ public class PC : NetworkBehaviour
             lowerTorsoCostumeObject = null,
             unlockedInChallengeFile = true
         });
+        pcPrefab!.GetComponentInChildren<PlaceableShipObject>().unlockableID =
+            StartOfRound.Instance.unlockablesList.unlockables.Count - 1;
     }
 }
