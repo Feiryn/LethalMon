@@ -15,7 +15,6 @@ using UnityEngine;
 namespace LethalMon;
 
 [BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.SoftDependency)]
-[BepInDependency("atomic.terminalapi", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("Mirage", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("Ovchinikov.SnatchinBracken.Main", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]

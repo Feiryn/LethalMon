@@ -219,11 +219,6 @@ namespace LethalMon
             {
                 Data.CatchableMonsters.Remove(disabledMonster);
             }
-            
-            if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("atomic.terminalapi"))
-            {
-                LethalDex.Register();
-            }
         }
 
         [HarmonyPatch]
