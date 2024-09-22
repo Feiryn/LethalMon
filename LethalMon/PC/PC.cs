@@ -45,7 +45,7 @@ public class PC : NetworkBehaviour
     #region Constants
     public static readonly string UnlockableName = "LethalMon PC";
         
-    private const float CursorSpeed = 0.001f;
+    private const float CursorSpeed = 0.0005f;
     
     private const float CursorMinX = -0.795f;
     
@@ -136,6 +136,7 @@ public class PC : NetworkBehaviour
         _cursor = gameObject.transform.Find("Screen/Cursor")?.GetComponent<RectTransform>()!;
         _screen = gameObject.transform.Find("Screen")?.gameObject!;
         _audioSource = gameObject.transform.Find("Screen")?.GetComponent<AudioSource>()!;
+        _audioSource.volume = 0.5f;
         
         // Assign buttons to functions
         _desktopButtons = new Button[4];

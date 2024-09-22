@@ -626,6 +626,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         pokeballItem.SetScrapValue(ballValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
         pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
+        pokeballItem.isDnaComplete = isDnaComplete;
         pokeballItem.FallToGround();
 
         OnRetrieveInBall();
