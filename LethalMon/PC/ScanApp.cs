@@ -1,6 +1,8 @@
+using GameNetcodeStuff;
 using LethalMon.Items;
 using LethalMon.Save;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,6 +35,8 @@ public class ScanApp : PCApp
     #endregion
     
     private bool _lastScanUnlockedDexEntry;
+    
+    public PlayerControllerB? playerWhoScanned;
     
     public ScanApp(GameObject screen) : base(screen, screen.transform.Find("Window/ScanMenu").gameObject, "Scan")
     {
@@ -76,7 +80,7 @@ public class ScanApp : PCApp
             return;
         }
 
-        PC.Instance.ScanStartServerRpc();
+        PC.Instance.ScanStartServerRpc(Utils.CurrentPlayer.GetComponent<NetworkObject>());
     }
 
     public void ScanError(string errorText, bool callRpc = false)
@@ -128,9 +132,9 @@ public class ScanApp : PCApp
         }
         
         _lastScanUnlockedDexEntry = !SaveManager.IsDexEntryUnlocked(currentBall.enemyType.name);
-        if (_lastScanUnlockedDexEntry)
+        if (_lastScanUnlockedDexEntry && playerWhoScanned != null)
         {
-            SaveManager.UnlockDexEntry(currentBall.enemyType.name);
+            PC.Instance.UnlockDexEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
         }
         
         if (MissingDnaProgressCheckpoint > progress - ProgressBarStep && MissingDnaProgressCheckpoint < progress + ProgressBarStep && !currentBall.isDnaComplete)
@@ -148,9 +152,9 @@ public class ScanApp : PCApp
         if (progress >= 1f)
         {
             bool unlockedDna = !SaveManager.IsDnaUnlocked(currentBall.enemyType.name);
-            if (unlockedDna)
+            if (unlockedDna && playerWhoScanned != null)
             {
-                SaveManager.UnlockDna(currentBall.enemyType.name);
+                PC.Instance.UnlockDnaEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
             }
             
             string successText = $"Scan of {Data.CatchableMonsters[currentBall.enemyType.name].DisplayName} successful!";

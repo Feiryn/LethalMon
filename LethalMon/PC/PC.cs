@@ -656,15 +656,19 @@ public class PC : NetworkBehaviour
     }
     
     [ServerRpc(RequireOwnership = false)]
-    public void ScanStartServerRpc()
+    public void ScanStartServerRpc(NetworkObjectReference playerWhoScanned)
     {
-        ScanStartClientRpc();
+        ScanStartClientRpc(playerWhoScanned);
     }
     
     [ClientRpc]
-    public void ScanStartClientRpc()
+    public void ScanStartClientRpc(NetworkObjectReference playerWhoScanned)
     {
         _scanApp.CleanUp();
+        if (playerWhoScanned.TryGet(out var networkObject))
+            _scanApp.playerWhoScanned = networkObject.GetComponent<PlayerControllerB>();
+        else
+            _scanApp.playerWhoScanned = null;
         
         if (Utils.IsHost)
             ProcessOperation(_scanApp.ScanCallback, ScanApp.ScanTime, ScanApp.ProgressBarStep);
@@ -757,7 +761,7 @@ public class PC : NetworkBehaviour
     {
         DuplicationStartClientRpc();
     }
-    
+
     [ClientRpc]
     public void DuplicationStartClientRpc()
     {
@@ -817,6 +821,42 @@ public class PC : NetworkBehaviour
         if (IsCurrentPlayerUsing()) return;
         
         CloseCurrentApp(false);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void UnlockDexEntryServerRpc(NetworkObjectReference player, string monster)
+    {
+        UnlockDexEntryClientRpc(player, monster);
+    }
+    
+    [ClientRpc]
+    public void UnlockDexEntryClientRpc(NetworkObjectReference player, string monster)
+    {
+        if (!player.TryGet(out var networkObject)) return;
+        
+        PlayerControllerB playerInstance = networkObject.GetComponent<PlayerControllerB>();
+        if (playerInstance == Utils.CurrentPlayer)
+        {
+            SaveManager.UnlockDexEntry(monster);
+        }
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void UnlockDnaEntryServerRpc(NetworkObjectReference player, string monster)
+    {
+        UnlockDnaEntryClientRpc(player, monster);
+    }
+    
+    [ClientRpc]
+    public void UnlockDnaEntryClientRpc(NetworkObjectReference player, string monster)
+    {
+        if (!player.TryGet(out var networkObject)) return;
+        
+        PlayerControllerB playerInstance = networkObject.GetComponent<PlayerControllerB>();
+        if (playerInstance == Utils.CurrentPlayer)
+        {
+            SaveManager.UnlockDna(monster);
+        }
     }
     #endregion
     
