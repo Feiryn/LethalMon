@@ -1,9 +1,7 @@
-using System.Linq;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using Unity.Netcode;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
 
@@ -52,23 +50,5 @@ public class StartOfRoundPatch
         {
             PC.PC.Instance.StopUsingServerRpc(PC.PC.Instance.CurrentPlayer.GetComponent<NetworkObject>());
         }
-    }
-
-    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Start))]
-    [HarmonyPrefix]
-    private static void StartPrefix(StartOfRound __instance)
-    {
-        if (__instance.unlockablesList.unlockables.Any(u => u.unlockableName == PC.PC.UnlockableName))
-            return;
-        
-        PC.PC.AddToShip();
-    }
-    
-    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.LoadUnlockables))]
-    [HarmonyPostfix]
-    private static void LoadUnlockablesPostFix(StartOfRound __instance)
-    {
-        if (Object.FindObjectsOfType<PC.PC>().Length == 0)
-            __instance.SpawnUnlockable(__instance.unlockablesList.unlockables.FindIndex(u => u.unlockableName == PC.PC.UnlockableName));
     }
 }

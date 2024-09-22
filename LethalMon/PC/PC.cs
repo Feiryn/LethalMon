@@ -1,13 +1,13 @@
 using System;
 using System.Collections;
 using GameNetcodeStuff;
+using LethalLib.Modules;
 using LethalMon.Items;
 using LethalMon.Save;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace LethalMon.PC;
@@ -870,13 +870,10 @@ public class PC : NetworkBehaviour
         _scanSound = assetBundle.LoadAsset<AudioClip>("Assets/PC/Sounds/scan.mp3");
         
         LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(pcPrefab);
-    }
-
-    internal static void AddToShip()
-    {
-        StartOfRound.Instance.unlockablesList.unlockables.Add(new UnlockableItem
+        
+        Unlockables.RegisterUnlockable(new UnlockableItem
         {
-            alreadyUnlocked = true,
+            alreadyUnlocked = false,
             alwaysInStock = false,
             canBeStored = false,
             hasBeenMoved = false,
@@ -896,8 +893,6 @@ public class PC : NetworkBehaviour
             shopSelectionNode = null,
             lowerTorsoCostumeObject = null,
             unlockedInChallengeFile = true
-        });
-        pcPrefab!.GetComponentInChildren<PlaceableShipObject>().unlockableID =
-            StartOfRound.Instance.unlockablesList.unlockables.Count - 1;
+        }, StoreType.None);
     }
 }
