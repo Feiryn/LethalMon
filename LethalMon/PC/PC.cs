@@ -669,7 +669,15 @@ public class PC : NetworkBehaviour
         if (Utils.IsHost)
             ProcessOperation(_scanApp.ScanCallback, ScanApp.ScanTime, ScanApp.ProgressBarStep);
         else
-            ProcessOperation(progress => _scanApp.FillProgressBar(progress), ScanApp.ScanTime, ScanApp.ProgressBarStep);
+            ProcessOperation(progress =>
+            {
+                _scanApp.FillProgressBar(progress);
+
+                if (progress >= 1)
+                {
+                    StopOperation();
+                }
+            }, ScanApp.ScanTime, ScanApp.ProgressBarStep);
     }
     
     [ServerRpc(RequireOwnership = false)]
@@ -758,7 +766,15 @@ public class PC : NetworkBehaviour
         if (Utils.IsHost)
             ProcessOperation(duplicateApp.DuplicateCallback, DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
         else
-            ProcessOperation(progress => duplicateApp.FillProgressBar(progress), DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
+            ProcessOperation(progress =>
+            {
+                duplicateApp.FillProgressBar(progress);
+                
+                if (progress >= 1)
+                {
+                    StopOperation();
+                }
+            }, DuplicateApp.DuplicationTime, DuplicateApp.ProgressBarStep);
     }
     
     [ServerRpc(RequireOwnership = false)]
