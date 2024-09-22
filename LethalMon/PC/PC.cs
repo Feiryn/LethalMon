@@ -656,19 +656,22 @@ public class PC : NetworkBehaviour
     }
     
     [ServerRpc(RequireOwnership = false)]
-    public void ScanStartServerRpc(NetworkObjectReference playerWhoScanned)
+    public void ScanStartServerRpc(NetworkObjectReference playerWhoScanned, string unlockedDexEntries, string unlockedDnaEntries)
     {
-        ScanStartClientRpc(playerWhoScanned);
+        ScanStartClientRpc(playerWhoScanned, unlockedDexEntries, unlockedDnaEntries);
     }
     
     [ClientRpc]
-    public void ScanStartClientRpc(NetworkObjectReference playerWhoScanned)
+    public void ScanStartClientRpc(NetworkObjectReference playerWhoScanned, string unlockedDexEntries, string unlockedDnaEntries)
     {
         _scanApp.CleanUp();
         if (playerWhoScanned.TryGet(out var networkObject))
             _scanApp.playerWhoScanned = networkObject.GetComponent<PlayerControllerB>();
         else
             _scanApp.playerWhoScanned = null;
+
+        _scanApp.unlockedDexEntries = unlockedDexEntries.Split(",");
+        _scanApp.unlockedDnaEntries = unlockedDnaEntries.Split(",");
         
         if (Utils.IsHost)
             ProcessOperation(_scanApp.ScanCallback, ScanApp.ScanTime, ScanApp.ProgressBarStep);

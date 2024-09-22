@@ -1,3 +1,4 @@
+using System.Linq;
 using GameNetcodeStuff;
 using LethalMon.Items;
 using LethalMon.Save;
@@ -37,6 +38,10 @@ public class ScanApp : PCApp
     private bool _lastScanUnlockedDexEntry;
     
     public PlayerControllerB? playerWhoScanned;
+    
+    public string[] unlockedDexEntries;
+    
+    public string[] unlockedDnaEntries;
     
     public ScanApp(GameObject screen) : base(screen, screen.transform.Find("Window/ScanMenu").gameObject, "Scan")
     {
@@ -80,7 +85,7 @@ public class ScanApp : PCApp
             return;
         }
 
-        PC.Instance.ScanStartServerRpc(Utils.CurrentPlayer.GetComponent<NetworkObject>());
+        PC.Instance.ScanStartServerRpc(Utils.CurrentPlayer.GetComponent<NetworkObject>(), string.Join(",", SaveManager.GetUnlockedDexEntries()), string.Join(",", SaveManager.GetUnlockedDna()));
     }
 
     public void ScanError(string errorText, bool callRpc = false)
@@ -131,7 +136,7 @@ public class ScanApp : PCApp
             return;
         }
         
-        _lastScanUnlockedDexEntry = !SaveManager.IsDexEntryUnlocked(currentBall.enemyType.name);
+        _lastScanUnlockedDexEntry = !unlockedDexEntries.Contains(currentBall.enemyType.name);
         if (_lastScanUnlockedDexEntry && playerWhoScanned != null)
         {
             PC.Instance.UnlockDexEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
@@ -151,7 +156,7 @@ public class ScanApp : PCApp
 
         if (progress >= 1f)
         {
-            bool unlockedDna = !SaveManager.IsDnaUnlocked(currentBall.enemyType.name);
+            bool unlockedDna = !unlockedDnaEntries.Contains(currentBall.enemyType.name);
             if (unlockedDna && playerWhoScanned != null)
             {
                 PC.Instance.UnlockDnaEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
