@@ -136,7 +136,7 @@ public class PC : NetworkBehaviour
         _cursor = gameObject.transform.Find("Screen/Cursor")?.GetComponent<RectTransform>()!;
         _screen = gameObject.transform.Find("Screen")?.gameObject!;
         _audioSource = gameObject.transform.Find("Screen")?.GetComponent<AudioSource>()!;
-        _audioSource.volume = 0.5f;
+        _audioSource.volume = 0.3f;
         
         // Assign buttons to functions
         _desktopButtons = new Button[4];
