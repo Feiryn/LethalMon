@@ -2,19 +2,15 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using LethalMon.Items;
 using Newtonsoft.Json;
-using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches
 {
     [HarmonyPatch]
-    internal class GameNetworkManagerPatch
+    internal class AdvancedSavePatch
     {
         [HarmonyPostfix]
         [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
@@ -70,72 +66,6 @@ namespace LethalMon.Patches
 		        LethalMon.Log("Advanced saveable item data not loaded. Item does not implement IAdvancedSaveableItem.");
 	        }
 		}
-        
-        /*
-        [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.SaveItemsInShip))]
-        [HarmonyTranspiler]
-        public static IEnumerable<CodeInstruction> SaveItemsInShipTranspiler(IEnumerable<CodeInstruction> instructions)
-        {
-            CodeInstruction[] instructionArray = instructions.ToArray();
-            List<CodeInstruction> instructionList = [];
-            
-            if (instructionArray.Any(i => i.operand is "shipAdvancedItemSaveData"))
-            {
-	            LethalMon.Log("SaveItemsInShip code already patched");
-	            return instructions;
-            }
-
-            int callVirtualIndex = -1;
-            int deleteShipItemSaveDataIndex = -1;
-            bool insertedDeletion = false;
-            bool insertedAdvancedSave = false;
-            
-            for (var i = 0; i < instructionArray.Length; i++)
-            {
-                CodeInstruction instruction = instructionArray[i];
-                instructionList.Add(instruction);
-                
-                // Detect when the game deletes saved items and insert our advanced saveable items deletion
-                if (instruction.opcode == OpCodes.Ldstr && (string) instruction.operand == "shipItemSaveData")
-				{
-					deleteShipItemSaveDataIndex = i;
-				}
-                if (!insertedDeletion && instruction.opcode == OpCodes.Call && instruction.operand.ToString() == "Void DeleteKey(System.String, System.String)" && deleteShipItemSaveDataIndex == i - 3)
-				{
-					instructionList.Add(new CodeInstruction(OpCodes.Ldstr, "shipAdvancedItemSaveData"));
-					instructionList.Add(new CodeInstruction(OpCodes.Ldarg_0));
-					instructionList.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(GameNetworkManager), nameof(GameNetworkManager.currentSaveFileName))));
-					instructionList.Add(new CodeInstruction(OpCodes.Call, typeof(ES3).GetMethod("DeleteKey", [typeof(string), typeof(string)])));
-					insertedDeletion = true;
-				}
-                
-                // Call our custom code that adds advanced saveable items to the list of items to save
-                if (instruction.opcode == OpCodes.Callvirt && (MethodInfo) instruction.operand == typeof(GrabbableObject).GetMethod("GetItemDataToSave"))
-                {
-                   LethalMon.Log("Opcode operand: " + instruction.operand);
-                   callVirtualIndex = i;
-                }
-                if (!insertedAdvancedSave && callVirtualIndex == i - 1 && instruction.opcode == OpCodes.Stloc_S)
-                {
-                    instructionList.Add(new CodeInstruction(OpCodes.Ldloc_0));
-                    instructionList.Add(new CodeInstruction(OpCodes.Ldloc_S, 6));
-                    instructionList.Add(new CodeInstruction(OpCodes.Ldelem_Ref));
-                    instructionList.Add(new CodeInstruction(OpCodes.Call, typeof(GameNetworkManagerPatch).GetMethod("AdvancedSave", BindingFlags.Static | BindingFlags.Public)));
-                    insertedAdvancedSave = true;
-                }
-            }
-
-            if (insertedDeletion && insertedAdvancedSave)
-            {
-	            LethalMon.Log("Successfully inserted advanced saveable item deletion and advanced saveable item save code.");
-	            return instructionList.AsEnumerable();
-            }
-
-            LethalMon.Log("Failed to insert advanced saveable item deletion or advanced saveable item save code.", LethalMon.LogType.Error);
-			return instructionArray;
-
-        }
-        */
         
         [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.SaveItemsInShip))]
         [HarmonyPrefix]
