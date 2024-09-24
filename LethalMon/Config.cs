@@ -10,6 +10,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using BepInEx.Configuration;
+using LethalMon.Save;
 using static Unity.Netcode.CustomMessagingManager;
 using static LethalMon.ModConfig.ConfigValues;
 
@@ -78,11 +79,20 @@ namespace LethalMon
             public int BlobMaxItems { get; set; }
 
             public float SpiderWebCooldown { get; set; }
+            
+            public bool PcGlobalSave { get; set; }
         }
 
         public ConfigValues values = new();
         
         public ConfigValues originalValues;
+        
+        public struct NetworkSyncData
+        {
+            public ConfigValues values;
+
+            public Save.Save save;
+        }
 
         // Seperate key
         public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
@@ -103,6 +113,9 @@ namespace LethalMon
 
         public void Setup()
         {
+            // Saves
+            values.PcGlobalSave = LethalMon.Instance.Config.Bind("Saves", "PcGlobalSave", true, "Make the PC saves global (true) or per save file (false)").Value;
+            
             // Items
             values.Tier1BallCost = LethalMon.Instance.Config.Bind("Items", "Tier1BallCost", 40, "The cost of the tier 1 ball (pokeball) item in the shop. -1 to disable").Value;
             values.Tier2BallCost = LethalMon.Instance.Config.Bind("Items", "Tier2BallCost", 125, "The cost of the tier 1 ball (great ball) item in the shop. -1 to disable").Value;
@@ -268,7 +281,11 @@ namespace LethalMon
                 if (!Utils.IsHost) // Current player is not the host and therefor not the one who should react
                     return;
 
-                string json = JsonConvert.SerializeObject(Instance.values);
+                string json = JsonConvert.SerializeObject(new NetworkSyncData
+                {
+                    save = SaveManager.GetSave(),
+                    values = Instance.values
+                });
                 Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
 
                 int writeSize = FastBufferWriter.GetWriteSize(json);
@@ -282,9 +299,13 @@ namespace LethalMon
             {
                 reader.ReadValueSafe(out string json);
                 Debug.Log("Received host config: " + json);
-                ConfigValues hostValues = JsonConvert.DeserializeObject<ConfigValues>(json);
+                NetworkSyncData hostData = JsonConvert.DeserializeObject<NetworkSyncData>(json);
 
-                Instance.values = hostValues;
+                SaveManager.SyncSave(hostData.save);
+                Instance.values = hostData.values;
+                
+                if (PC.PC.Instance != null)
+                    PC.PC.Instance.tutorialApp.UpdateTutorialPage2();
 
                 ProcessValues();
             }

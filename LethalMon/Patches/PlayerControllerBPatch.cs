@@ -6,6 +6,7 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using LethalMon.Items;
+using LethalMon.Save;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -106,6 +107,10 @@ public class PlayerControllerBPatch
         ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
         ModConfig.Instance.ActionKey1.performed -= ActionKey1Pressed;
         HUDManagerPatch.EnableHUD(false);
+        if (!ModConfig.Instance.values.PcGlobalSave)
+        {
+            SaveManager.ClearSave();
+        }
     }
 
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)

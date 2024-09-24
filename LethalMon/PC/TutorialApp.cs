@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -26,6 +27,9 @@ public class TutorialApp : PCApp
         {
             _tutorialPages[i] = screen.transform.Find($"Window/TutorialMenu/Page{i + 1}").gameObject;
         }
+        
+        // Change tutorial page depending on save type
+        UpdateTutorialPage2();
         
         _nextPageButton = screen.transform.Find("Window/TutorialMenu/NextPage").GetComponent<Button>();
         _previousPageButton = screen.transform.Find("Window/TutorialMenu/PreviousPage").GetComponent<Button>();
@@ -73,5 +77,17 @@ public class TutorialApp : PCApp
         }
         
         HideOrShowNextPreviousButtons();
+    }
+
+    public void UpdateTutorialPage2()
+    {
+        if (ModConfig.Instance.values.PcGlobalSave)
+        {
+            _tutorialPages[2].transform.Find("Desc").GetComponent<TextMeshProUGUI>().text = "PC session is per employee.\n\nIt means that all employees have different dex and duplicate entries, depending on what they scanned individually.";
+        }
+        else
+        {
+            _tutorialPages[2].transform.Find("Desc").GetComponent<TextMeshProUGUI>().text = "PC session is shared between all employees.\n\nIt means that all employees have the same dex and duplicate entries.";
+        }
     }
 }

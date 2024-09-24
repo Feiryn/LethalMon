@@ -91,7 +91,7 @@ public class PC : NetworkBehaviour
     
     public DuplicateApp duplicateApp;
     
-    private TutorialApp _tutorialApp;
+    public TutorialApp tutorialApp;
     #endregion
 
     private static int _backupRenderTextureWidth;
@@ -143,7 +143,7 @@ public class PC : NetworkBehaviour
         _desktopButtons[0] = gameObject.transform.Find("Screen/MainMenu/TutorialButton").GetComponent<Button>();
         _desktopButtons[0].onClick = FunctionToButtonClickEvent(() =>
         {
-            SwitchToApp(_tutorialApp);
+            SwitchToApp(tutorialApp);
             OpenTutorialServerRpc();
         });
         _desktopButtons[1] = gameObject.transform.Find("Screen/MainMenu/DexButton").GetComponent<Button>();
@@ -180,8 +180,8 @@ public class PC : NetworkBehaviour
         duplicateChooseApp.Hide();
         duplicateApp = new DuplicateApp(_screen);
         duplicateApp.Hide();
-        _tutorialApp = new TutorialApp(_screen);
-        _tutorialApp.Hide();
+        tutorialApp = new TutorialApp(_screen);
+        tutorialApp.Hide();
         
         // Load the placeable ship object
         _placeableShipObject = GetComponentInChildren<PlaceableShipObject>();
@@ -795,7 +795,7 @@ public class PC : NetworkBehaviour
     {
         if (IsCurrentPlayerUsing()) return;
         
-        SwitchToApp(_tutorialApp, false);
+        SwitchToApp(tutorialApp, false);
     }
     
     [ServerRpc(RequireOwnership = false)]
@@ -809,7 +809,7 @@ public class PC : NetworkBehaviour
     {
         if (IsCurrentPlayerUsing()) return;
         
-        _tutorialApp.UpdatePage(page);
+        tutorialApp.UpdatePage(page);
     }
     
     [ServerRpc(RequireOwnership = false)]
@@ -860,6 +860,30 @@ public class PC : NetworkBehaviour
         {
             SaveManager.UnlockDna(monster);
         }
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void UnlockDexEntryForAllServerRpc(string monster)
+    {
+        UnlockDexEntryForAllClientRpc(monster);
+    }
+    
+    [ClientRpc]
+    public void UnlockDexEntryForAllClientRpc(string monster)
+    {
+        SaveManager.UnlockDexEntry(monster);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void UnlockDnaEntryForAllServerRpc(string monster)
+    {
+        UnlockDnaEntryForAllClientRpc(monster);
+    }
+    
+    [ClientRpc]
+    public void UnlockDnaEntryForAllClientRpc(string monster)
+    {
+        SaveManager.UnlockDna(monster);
     }
     #endregion
     

@@ -139,7 +139,14 @@ public class ScanApp : PCApp
         _lastScanUnlockedDexEntry = !unlockedDexEntries.Contains(currentBall.enemyType.name);
         if (_lastScanUnlockedDexEntry && playerWhoScanned != null)
         {
-            PC.Instance.UnlockDexEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
+            if (ModConfig.Instance.values.PcGlobalSave)
+            {
+                PC.Instance.UnlockDexEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
+            }
+            else
+            {
+                PC.Instance.UnlockDexEntryForAllServerRpc(currentBall.enemyType.name);
+            }
         }
         
         if (MissingDnaProgressCheckpoint > progress - ProgressBarStep && MissingDnaProgressCheckpoint < progress + ProgressBarStep && !currentBall.isDnaComplete)
@@ -159,7 +166,14 @@ public class ScanApp : PCApp
             bool unlockedDna = !unlockedDnaEntries.Contains(currentBall.enemyType.name);
             if (unlockedDna && playerWhoScanned != null)
             {
-                PC.Instance.UnlockDnaEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
+                if (ModConfig.Instance.values.PcGlobalSave)
+                {
+                    PC.Instance.UnlockDnaEntryServerRpc(playerWhoScanned.GetComponent<NetworkObject>(), currentBall.enemyType.name);
+                }
+                else
+                {
+                    PC.Instance.UnlockDnaEntryForAllServerRpc(currentBall.enemyType.name);
+                }
             }
             
             string successText = $"Scan of {Data.CatchableMonsters[currentBall.enemyType.name].DisplayName} successful!";
