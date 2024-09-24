@@ -105,6 +105,7 @@ public class PlayerControllerBPatch
     {
         ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
         ModConfig.Instance.ActionKey1.performed -= ActionKey1Pressed;
+        HUDManagerPatch.EnableHUD(false);
     }
 
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
