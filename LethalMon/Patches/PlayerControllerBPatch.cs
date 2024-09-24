@@ -6,6 +6,7 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
 using LethalMon.Items;
+using LethalMon.Save;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -105,6 +106,11 @@ public class PlayerControllerBPatch
     {
         ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
         ModConfig.Instance.ActionKey1.performed -= ActionKey1Pressed;
+        HUDManagerPatch.EnableHUD(false);
+        if (!ModConfig.Instance.values.PcGlobalSave)
+        {
+            SaveManager.ClearSave();
+        }
     }
 
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
@@ -154,6 +160,7 @@ public class PlayerControllerBPatch
                             EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
                                 enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
                             pokeballItem.SetCaughtEnemyServerRpc(enemyType.name);
+                            pokeballItem.isDnaComplete = true;
                             HUDManager.Instance.AddTextMessageClientRpc("Caught enemy: " + enemyType.name);
                             
                             currentTestEnemyTypeIndex++;
@@ -280,6 +287,16 @@ public class PlayerControllerBPatch
                 HUDManager.Instance.DisplayTip("LethalMon Tip", "Scan base game enemies to know if they are catchable or not. Modded enemies are not catchable.");
                 SentBallScanTip = true;
             }
+        }
+    }
+    
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
+    [HarmonyPrefix]
+    private static void KillPlayerPrefix(PlayerControllerB __instance)
+    {
+        if (__instance.inTerminalMenu && PC.PC.Instance.CurrentPlayer == __instance && Utils.CurrentPlayer == __instance && __instance.AllowPlayerDeath())
+        {
+            PC.PC.Instance.StopUsing();
         }
     }
 }

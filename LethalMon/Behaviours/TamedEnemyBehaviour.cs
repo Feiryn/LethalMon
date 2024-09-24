@@ -108,6 +108,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool hasBeenRetrieved = false;
 
+    public bool isDnaComplete = false;
+
     // Following
     internal const float TimeBeforeUsingEntrance = 4f;
     private float _timeAtEntrance = 0f;
@@ -624,6 +626,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         pokeballItem.SetScrapValue(ballValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
         pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
+        pokeballItem.isDnaComplete = isDnaComplete;
         pokeballItem.FallToGround();
 
         OnRetrieveInBall();

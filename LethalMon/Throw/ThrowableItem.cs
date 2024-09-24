@@ -43,7 +43,7 @@ namespace LethalMon.Throw
         }
 
         // The coefficient of restitution
-        protected virtual float BounceCoefficient => 0.2f;
+        protected virtual float BounceCoefficient => 0.15f;
         
         // The force of the throw
         protected virtual float ThrowForce => 20f;
@@ -233,7 +233,7 @@ namespace LethalMon.Throw
 
                 if (_hitPointNormal != null)
                 {
-                    Vector3 velocityBefore = (this.transform.localPosition - previousPosition) / Time.deltaTime;
+                    Vector3 velocityBefore = this._initialVelocity + Gravity * _throwTime;
                     Vector3 velocityAfter = velocityBefore - 2 * Vector3.Dot(velocityBefore, _hitPointNormal.Value) * _hitPointNormal.Value;
                     velocityAfter *= BounceCoefficient;
 

@@ -1,7 +1,6 @@
-using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
-using LethalMon.Items;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Patches;
@@ -45,6 +44,11 @@ public class StartOfRoundPatch
 
                 tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
             }
+        }
+        
+        if (PC.PC.Instance.CurrentPlayer?.playerClientId == clientId)
+        {
+            PC.PC.Instance.StopUsingServerRpc(PC.PC.Instance.CurrentPlayer.GetComponent<NetworkObject>());
         }
     }
 }

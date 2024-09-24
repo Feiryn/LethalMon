@@ -8,7 +8,7 @@ namespace LethalMon.CatchableEnemy;
 /// <summary>
 /// An enemy that can be catched
 /// </summary>
-public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty)
+public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty, string behaviourDescription)
 {
     private readonly int _baseCatchDifficulty = catchDifficulty;
     
@@ -17,6 +17,11 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
     /// </summary>
     public int CatchDifficulty => Math.Clamp(_baseCatchDifficulty + ModConfig.Instance.values.CaptureRateModifier, 0, 9);
 
+    /// <summary>
+    /// Price to duplicate the monster.
+    /// </summary>
+    public int DuplicationPrice => Math.Max(ModConfig.Instance.values.DuplicationPrices[Math.Clamp(_baseCatchDifficulty, 0, 9)], 0);
+    
     /// <summary>
     /// The display name of the monster
     /// </summary>
@@ -27,6 +32,8 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
     /// todo Replace because there can be collisions
     /// </summary>
     public int Id { get; } = id;
+    
+    public string BehaviourDescription { get; } = behaviourDescription;
 
     public float GetCaptureProbability(int ballStrength, EnemyAI? enemyAI = null)
     {

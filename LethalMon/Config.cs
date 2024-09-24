@@ -10,6 +10,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using BepInEx.Configuration;
+using LethalMon.Save;
 using static Unity.Netcode.CustomMessagingManager;
 using static LethalMon.ModConfig.ConfigValues;
 
@@ -50,6 +51,8 @@ namespace LethalMon
             public KeepBalls KeepBallsIfAllPlayersDead { get; set; }
 
             public int CaptureRateModifier { get; set; }
+            
+            public int[] DuplicationPrices { get; set; }
 
             public float TamedNameFontSize { get; set; }
 
@@ -76,11 +79,20 @@ namespace LethalMon
             public int BlobMaxItems { get; set; }
 
             public float SpiderWebCooldown { get; set; }
+            
+            public bool PcGlobalSave { get; set; }
         }
 
         public ConfigValues values = new();
         
         public ConfigValues originalValues;
+        
+        public struct NetworkSyncData
+        {
+            public ConfigValues values;
+
+            public Save.Save save;
+        }
 
         // Seperate key
         public InputAction RetrieveBallKey => Asset["retreiveBallKey"];
@@ -101,6 +113,9 @@ namespace LethalMon
 
         public void Setup()
         {
+            // Saves
+            values.PcGlobalSave = LethalMon.Instance.Config.Bind("Saves", "PcGlobalSave", true, "Make the PC saves global (true) or per save file (false)").Value;
+            
             // Items
             values.Tier1BallCost = LethalMon.Instance.Config.Bind("Items", "Tier1BallCost", 40, "The cost of the tier 1 ball (pokeball) item in the shop. -1 to disable").Value;
             values.Tier2BallCost = LethalMon.Instance.Config.Bind("Items", "Tier2BallCost", 125, "The cost of the tier 1 ball (great ball) item in the shop. -1 to disable").Value;
@@ -119,6 +134,21 @@ namespace LethalMon
             values.MonstersReactToFailedCaptures = LethalMon.Instance.Config.Bind("Monsters", "MonstersReactToFailedCaptures", true, "Make the monsters react aggressively if a capture fails").Value;
             values.CaptureRateModifier = LethalMon.Instance.Config.Bind("Monsters", "CaptureRateModifier", 0, new ConfigDescription("Modifier for the capture rate. Each monster have a difficulty to catch between 1 and 10. You can modify all the monsters difficulty by adding this modifier to the base difficulty. Negative = easier to catch, positive = harder to catch", new AcceptableValueRange<int>(-10, 10))).Value;
             values.TamedNameFontSize = LethalMon.Instance.Config.Bind("Monsters", "TamedNameFontSize", 10f, new ConfigDescription("Font size of the text above tamed monsters, that shows the owner. Set this to 0 to disable the text.", new AcceptableValueRange<float>(0f, 20f))).Value;
+            
+            // Monsters > Duplication prices
+            string[] duplicationPrices = LethalMon.Instance.Config.Bind("Monsters", "DuplicationPrices", String.Join(",", Data.DuplicationPrices), "Prices for duplicating a monster. The first value is the price for a monster with a difficulty of 1, the second value for a monster with a difficulty of 2, etc. 10 difficulties in total").Value.Split(",");
+            values.DuplicationPrices = new int[10];
+            for (var i = 0; i < 10; i++)
+            {
+                try
+                {
+                    values.DuplicationPrices[i] = int.Parse(duplicationPrices[i]);
+                }
+                catch
+                {
+                    values.DuplicationPrices[i] = Data.DuplicationPrices[i];
+                }
+            }
 
             // Cooldowns
             values.BrackenGrabCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BrackenGrabCooldown", 20f, "Grab cooldown time in seconds for the bracken").Value;
@@ -202,11 +232,6 @@ namespace LethalMon
             {
                 Data.CatchableMonsters.Remove(disabledMonster);
             }
-            
-            if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("atomic.terminalapi"))
-            {
-                LethalDex.Register();
-            }
         }
 
         [HarmonyPatch]
@@ -256,7 +281,11 @@ namespace LethalMon
                 if (!Utils.IsHost) // Current player is not the host and therefor not the one who should react
                     return;
 
-                string json = JsonConvert.SerializeObject(Instance.values);
+                string json = JsonConvert.SerializeObject(new NetworkSyncData
+                {
+                    save = SaveManager.GetSave(),
+                    values = Instance.values
+                });
                 Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
 
                 int writeSize = FastBufferWriter.GetWriteSize(json);
@@ -270,9 +299,13 @@ namespace LethalMon
             {
                 reader.ReadValueSafe(out string json);
                 Debug.Log("Received host config: " + json);
-                ConfigValues hostValues = JsonConvert.DeserializeObject<ConfigValues>(json);
+                NetworkSyncData hostData = JsonConvert.DeserializeObject<NetworkSyncData>(json);
 
-                Instance.values = hostValues;
+                SaveManager.SyncSave(hostData.save);
+                Instance.values = hostData.values;
+                
+                if (PC.PC.Instance != null)
+                    PC.PC.Instance.tutorialApp.UpdateTutorialPage2();
 
                 ProcessValues();
             }

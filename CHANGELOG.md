@@ -1,3 +1,18 @@
+# 0.6.0
+
+- Added a PC where you can see the tutorial, browse the dex, scan balls and duplicate monsters
+  - Thanks to [Foof](https://foof000.newgrounds.com/) for the PC model
+  - Thanks to @tln_ on discord for the monsters descriptions
+  - Thanks to @austinfrancisco on discord for the PC icons, background, and for testing
+
+# 0.5.6
+
+- Same as version 0.5.5, but with the correct DLL...
+
+# 0.5.5
+
+- Fixed incompatibility with an unknown mod that made the game not loading because of the hygrodere
+
 # 0.5.4
 
 - Hygrodere is now catchable (thanks to [@NiroDev](https://github.com/NiroDev))

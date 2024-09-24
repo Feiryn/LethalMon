@@ -19,7 +19,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     #region Properties
     private EnemyAI? enemyAI = null;
     
-    private EnemyType? enemyType = null;
+    internal EnemyType? enemyType = null;
 
     private CatchableEnemy.CatchableEnemy? catchableEnemy = null;
 
@@ -36,6 +36,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     private readonly BallType ballType;
 
     public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
+    
+    public bool isDnaComplete = false;
 
     internal Animator? animator;
 
@@ -220,6 +222,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
             tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
             tamedBehaviour.SetCooldownTimers(cooldowns);
+            tamedBehaviour.isDnaComplete = isDnaComplete;
 
             gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
             CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
@@ -244,6 +247,32 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             toolTips[0] = "";
         }
         HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
+    }
+
+    public override int GetItemDataToSave()
+    {
+        base.GetItemDataToSave();
+
+        if (!this.enemyCaptured || this.catchableEnemy == null)
+        {
+            return -1;
+        }
+        else
+        {
+            return this.catchableEnemy.Id;
+        }
+    }
+
+    public override void LoadItemSaveData(int saveData)
+    {
+        base.LoadItemSaveData(saveData);
+
+        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        {
+            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
+            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
+            SetCaughtEnemy(type);
+        }
     }
 #endregion
 
@@ -341,6 +370,16 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             }
         }
         
+        // Make bracken release the enemy is held
+        foreach (var tamedEnemyBehaviour in FindObjectsOfType<TamedEnemyBehaviour>())
+        {
+            if (tamedEnemyBehaviour is FlowermanTamedBehaviour flowermanTamedBehaviour && flowermanTamedBehaviour.GrabbedEnemyAi == enemyAI)
+            {
+                flowermanTamedBehaviour.ReleaseEnemy();
+                flowermanTamedBehaviour.ReleaseEnemyServerRpc();
+            }
+        }
+        
         PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }
 
@@ -362,6 +401,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
             this.SetCaughtEnemyServerRpc(this.enemyType!.name);
 
+            this.isDnaComplete = true;
             this.playerThrownBy = null;
             this.FallToGround();
             this.grabbable = true;
@@ -403,6 +443,17 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         return this.itemProperties.itemName + " (" + this.catchableEnemy?.DisplayName + ")";
     }
+
+    public override void GrabItem()
+    {
+        base.GrabItem();
+
+        if (PC.PC.Instance.GetCurrentPlacedBall() == this)
+        {
+            PC.PC.Instance.RemoveBallServerRpc();
+        }
+    }
+
     #endregion
 
     #region RPCs
@@ -448,13 +499,13 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SetCaughtEnemyServerRpc(string enemyTypeName)
+    public void SetCaughtEnemyServerRpc(string enemyTypeName, int price = 0)
     {
-        SetCaughtEnemyClientRpc(enemyTypeName);
+        SetCaughtEnemyClientRpc(enemyTypeName, price);
     }
 
     [ClientRpc]
-    public void SetCaughtEnemyClientRpc(string enemyTypeName)
+    public void SetCaughtEnemyClientRpc(string enemyTypeName, int price)
     {
         LethalMon.Log("SyncContentPacket client rpc received");
 
@@ -463,6 +514,9 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
         if (audioSource != null && SuccessSFX != null)
             audioSource.PlayOneShot(SuccessSFX);
+
+        if (price != 0)
+            FindObjectOfType<Terminal>().groupCredits -= price;
     }
     #endregion
 

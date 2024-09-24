@@ -25,7 +25,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    private EnemyAI? _grabbedEnemyAi;
+    public EnemyAI? GrabbedEnemyAi { get; private set; }
 
     // Left arm
     private Transform? _arm1L;
@@ -110,7 +110,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void OnDragEnemyAway()
     {
-        if (_grabbedEnemyAi == null)
+        if (GrabbedEnemyAi == null)
         {
             SwitchToCustomBehaviour((int) CustomBehaviour.GoesBackToOwner);
             return;
@@ -128,7 +128,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         else
         {
             // As the Bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
-            Utils.OpenDoorsAsEnemyAroundPosition(_grabbedEnemyAi.transform.position);
+            Utils.OpenDoorsAsEnemyAroundPosition(GrabbedEnemyAi.transform.position);
         }
 
         //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
@@ -206,7 +206,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     {
         base.LateUpdate();
 
-        if (_grabbedEnemyAi != null)
+        if (GrabbedEnemyAi != null)
             SetArmsInHoldPosition();
     }
 
@@ -282,7 +282,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         base.OnDestroy();
     }
 
-    public override bool CanBeTeleported() => _grabbedEnemyAi == null;
+    public override bool CanBeTeleported() => GrabbedEnemyAi == null;
 
     #endregion
 
@@ -323,7 +323,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public void GrabEnemy(EnemyAI enemyAI)
     {
-        if (_grabbedEnemyAi != null)
+        if (GrabbedEnemyAi != null)
         {
             this.ReleaseEnemy();
             ReleaseEnemyServerRpc();
@@ -362,26 +362,26 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             enemyAiTransform.localRotation = monsterPositions.Item3;
         }
 
-        _grabbedEnemyAi = enemyAI;
+        GrabbedEnemyAi = enemyAI;
     }
 
     public void ReleaseEnemy()
     {
         grabCooldown?.Resume();
         
-        if (_grabbedEnemyAi == null) return;
+        if (GrabbedEnemyAi == null) return;
 
-        Transform enemyAiTransform = _grabbedEnemyAi.transform;
+        Transform enemyAiTransform = GrabbedEnemyAi.transform;
         enemyAiTransform.SetParent(null);
         var selfTransform = Bracken.transform;
         enemyAiTransform.localPosition = selfTransform.localPosition;
         enemyAiTransform.position = selfTransform.position;
         enemyAiTransform.rotation = selfTransform.rotation;
         enemyAiTransform.localRotation = selfTransform.localRotation;
-        _grabbedEnemyAi.enabled = true;
-        _grabbedEnemyAi.agent.enabled = true;
-        TeleportEnemy(_grabbedEnemyAi, selfTransform.position);
-        _grabbedEnemyAi = null;
+        GrabbedEnemyAi.enabled = true;
+        GrabbedEnemyAi.agent.enabled = true;
+        TeleportEnemy(GrabbedEnemyAi, selfTransform.position);
+        GrabbedEnemyAi = null;
             
         LethalMon.Log("Enemy release");
     }
