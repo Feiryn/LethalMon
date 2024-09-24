@@ -159,7 +159,7 @@ public class PlayerControllerBPatch
                         {
                             EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
                                 enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
-                            pokeballItem.SetCaughtEnemyServerRpc(enemyType.name);
+                            pokeballItem.SetCaughtEnemyServerRpc(enemyType.name, string.Empty);
                             pokeballItem.isDnaComplete = true;
                             HUDManager.Instance.AddTextMessageClientRpc("Caught enemy: " + enemyType.name);
                             

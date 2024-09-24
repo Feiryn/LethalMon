@@ -4,25 +4,9 @@ using UnityEngine;
 
 namespace LethalMon.Compatibility
 {
-    internal class ModelReplacementAPICompatibility
+    internal class ModelReplacementAPICompatibility() : ModCompatibility("meow.ModelReplacementAPI")
     {
-        public const string ModelReplacementApiReferenceChain = "meow.ModelReplacementAPI";
-
-        private static bool? _modelReplacementApiEnabled;
-
-        public static bool Enabled
-        {
-            get
-            {
-                if (_modelReplacementApiEnabled == null)
-                {
-                    _modelReplacementApiEnabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(ModelReplacementApiReferenceChain);
-                    LethalMon.Log("MRApi enabled -> " + _modelReplacementApiEnabled);
-                }
-
-                return _modelReplacementApiEnabled.Value;
-            }
-        }
+        public static ModelReplacementAPICompatibility Instance { get; } = new();
 
         public static GameObject? FindCurrentReplacementModelIn(GameObject? gameObject, bool isEnemy = false)
         {

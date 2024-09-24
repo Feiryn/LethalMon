@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
+using LethalMon.Compatibility;
 using LethalMon.Items;
 using LethalMon.Patches;
 using TMPro;
@@ -109,6 +110,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public bool hasBeenRetrieved = false;
 
     public bool isDnaComplete = false;
+    
+    internal string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? ForceEnemySkinRegistryId != string.Empty ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
+
+    internal string ForceEnemySkinRegistryId = string.Empty;
 
     // Following
     internal const float TimeBeforeUsingEntrance = 4f;
@@ -625,7 +630,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
         pokeballItem.SetScrapValue(ballValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
-        pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name);
+        pokeballItem.enemySkinRegistryId = EnemySkinRegistryId;
+        pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name, pokeballItem.enemySkinRegistryId);
         pokeballItem.isDnaComplete = isDnaComplete;
         pokeballItem.FallToGround();
 

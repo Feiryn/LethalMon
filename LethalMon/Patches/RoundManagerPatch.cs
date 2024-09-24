@@ -60,7 +60,7 @@ public class RoundManagerPatch
                         randomValue -= 10 - catchableMonster.Value.CatchDifficulty;
                         if (randomValue <= 0)
                         {
-                            pokeballItem.SetCaughtEnemyServerRpc(catchableMonster.Key);
+                            pokeballItem.SetCaughtEnemyServerRpc(catchableMonster.Key, string.Empty);
                             LethalMon.Log("A random " + pokeballItem.itemProperties.itemName + " has been spawned with a " + catchableMonster.Key + " in it");
                             break;
                         }

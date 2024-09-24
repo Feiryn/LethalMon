@@ -180,7 +180,7 @@ namespace LethalMon.Patches
                 return null;
 
             var enemyName = Data.CatchableMonsters.ElementAt(UnityEngine.Random.RandomRangeInt(0, Data.CatchableMonsters.Count - 1)).Key;
-                    pokeballItem.SetCaughtEnemyServerRpc(enemyName);
+                    pokeballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
 
             return pokeballItem;
         }
@@ -199,7 +199,7 @@ namespace LethalMon.Patches
                 if (!Data.CatchableMonsters.ContainsKey(enemyName))
                     LethalMon.Logger.LogInfo("Spawning ball: Enemy not found.");
                 else
-                    pokeballItem.SetCaughtEnemyServerRpc(enemyName);
+                    pokeballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
             }
 
             return pokeballItem;

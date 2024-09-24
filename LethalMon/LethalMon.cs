@@ -19,6 +19,8 @@ namespace LethalMon;
 [BepInDependency("atomic.terminalapi", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("Mirage", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("Ovchinikov.SnatchinBracken.Main", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("meow.ModelReplacementAPI", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("antlershed.lethalcompany.enemyskinregistry", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class LethalMon : BaseUnityPlugin
 {
@@ -132,10 +134,12 @@ public class LethalMon : BaseUnityPlugin
         // Enemy behaviours
         Harmony.PatchAll(typeof(TamedEnemyBehaviour));
         Harmony.PatchAll(typeof(KidnapperFoxTamedBehaviour));
-        if (MirageCompatibility.Enabled)
+        if (MirageCompatibility.Instance.Enabled)
             Harmony.PatchAll(typeof(MirageCompatibility));
-        if (SnatchingBrackenCompatibility.Enabled)
+        if (SnatchingBrackenCompatibility.Instance.Enabled)
             Harmony.PatchAll(typeof(SnatchingBrackenCompatibility));
+        if (EnemySkinRegistryCompatibility.Instance.Enabled)
+            Harmony.PatchAll(typeof(EnemySkinRegistryCompatibility));
         
         // Items
         Harmony.PatchAll(typeof(ThrowableItem));

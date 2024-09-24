@@ -1,6 +1,4 @@
-using System;
 using LethalMon.Items;
-using LethalMon.Save;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -141,7 +139,7 @@ public class DuplicateApp : PCApp
                 return;
             }
             
-            currentBall.SetCaughtEnemyServerRpc(SelectedMonster, price);
+            currentBall.SetCaughtEnemyServerRpc(SelectedMonster, string.Empty, price);
             
             string successText = $"Duplication of {Data.CatchableMonsters[SelectedMonster].DisplayName} successful!";
             

@@ -11,7 +11,7 @@ internal class AdvancedSavePatch
 {
     private const string ES3AdvancedItemSaveDataKey = "shipAdvancedItemSaveData";
     
-    public static List<object?> advancedItemSaveData;
+    public static List<object?> advancedItemSaveData = [];
     
     private string currentSaveFileName;
     

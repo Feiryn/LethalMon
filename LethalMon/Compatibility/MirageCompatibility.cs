@@ -7,26 +7,10 @@ using UnityEngine;
 
 namespace LethalMon.Compatibility
 {
-    internal class MirageCompatibility
+    internal class MirageCompatibility() : ModCompatibility("Mirage")
     {
-        public const string MirageReferenceChain = "Mirage";
-
-        private static bool? _mirageEnabled;
-
-        public static bool Enabled
-        {
-            get
-            {
-                if (_mirageEnabled == null)
-                {
-                    _mirageEnabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(MirageReferenceChain);
-                    LethalMon.Log("Mirage enabled? " + _mirageEnabled);
-                }
-
-                return _mirageEnabled.Value;
-            }
-        }
-
+        public static MirageCompatibility Instance { get; } = new();
+        
         internal static Dictionary<int, List<GameObject>> headMasks = new Dictionary<int, List<GameObject>>();
 
         public static void SaveHeadMasksOf(GameObject gameObject)
@@ -39,7 +23,7 @@ namespace LethalMon.Compatibility
 
         public static void ShowMaskOf(GameObject gameObject, bool show = true)
         {
-            if (!Enabled || !headMasks.ContainsKey(gameObject.GetInstanceID())) return;
+            if (!Instance.Enabled || !headMasks.ContainsKey(gameObject.GetInstanceID())) return;
 
             foreach (var mask in headMasks[gameObject.GetInstanceID()])
                 mask.SetActive(show);
@@ -47,7 +31,7 @@ namespace LethalMon.Compatibility
 
         public static bool IsMaskEnabled(GameObject gameObject)
         {
-            if (!Enabled) return true;
+            if (!Instance.Enabled) return true;
 
             if (!headMasks.ContainsKey(gameObject.GetInstanceID()))
             {

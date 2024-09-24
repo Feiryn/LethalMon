@@ -547,7 +547,7 @@ namespace LethalMon.Behaviours
         {
             SetMaskGlowNoSound(false);
 
-            if (MirageCompatibility.Enabled)
+            if (MirageCompatibility.Instance.Enabled)
                 MirageCompatibility.ShowMaskOf(Masked.gameObject, false);
 
             escapeFromBallEventRunning = false;
@@ -697,7 +697,7 @@ namespace LethalMon.Behaviours
             }
 
             var enableMaskEyes = true;
-            if (ModelReplacementAPICompatibility.Enabled)
+            if (ModelReplacementAPICompatibility.Instance.Enabled)
             {
                 var model = ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(Masked.gameObject, isEnemy: true);
                 if (model != null)

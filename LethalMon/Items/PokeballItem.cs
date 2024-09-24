@@ -40,6 +40,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     
     public bool isDnaComplete = false;
 
+    public string enemySkinRegistryId = string.Empty;
+
     internal Animator? animator;
 
     internal AudioSource? audioSource;
@@ -137,7 +139,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             if (this.enemyAI != null)
             {
                 this.enemyAI.gameObject.SetActive(true); // Show enemy
-                if (ModelReplacementAPICompatibility.Enabled)
+                if (ModelReplacementAPICompatibility.Instance.Enabled)
                     ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(true);
 
                 Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
@@ -224,6 +226,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
             tamedBehaviour.SetCooldownTimers(cooldowns);
             tamedBehaviour.isDnaComplete = isDnaComplete;
+            tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
 
             gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
             CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
@@ -273,7 +276,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         {
             KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
             EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            SetCaughtEnemy(type);
+            SetCaughtEnemy(type, string.Empty);
         }
     }
 #endregion
@@ -316,7 +319,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         
         Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy!);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
-        if (ModelReplacementAPICompatibility.Enabled)
+        if (ModelReplacementAPICompatibility.Instance.Enabled)
             ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(false);
 
         this.PlayCaptureAnimationAnimator();
@@ -345,6 +348,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         this.catchableEnemy = catchable;
         this.enemyAI = enemyAI;
         this.enemyType = enemyAI.enemyType;
+        this.enemySkinRegistryId = EnemySkinRegistryCompatibility.GetEnemySkinId(enemyAI);
         
         float captureProbability = catchable.GetCaptureProbability(this.captureStrength, this.enemyAI);
         float shakeProbability = Mathf.Pow(captureProbability, 1f / 3f); // Cube root
@@ -401,7 +405,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         {
             LethalMon.Log("Capture success");
 
-            this.SetCaughtEnemyServerRpc(this.enemyType!.name);
+            this.SetCaughtEnemyServerRpc(this.enemyType!.name, this.enemySkinRegistryId);
 
             this.isDnaComplete = true;
             this.playerThrownBy = null;
@@ -427,11 +431,12 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         FailureSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/fail.ogg");
     }
 
-    public void SetCaughtEnemy(EnemyType enemyType)
+    public void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
     {
         this.enemyType = enemyType;
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
         this.enemyCaptured = true;
+        this.enemySkinRegistryId = enemySkinRegistryId;
         this.ChangeName();
     }
 
@@ -443,7 +448,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
     private string GetName()
     {
-        return this.itemProperties.itemName + " (" + this.catchableEnemy?.DisplayName + ")";
+        return this.itemProperties.itemName + " (" + enemySkinRegistryId != string.Empty && EnemySkinRegistryCompatibility.Instance.Enabled ? EnemySkinRegistryCompatibility.GetSkinName(enemySkinRegistryId) : this.catchableEnemy?.DisplayName + ")";
     }
 
     public override void GrabItem()
@@ -501,18 +506,18 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SetCaughtEnemyServerRpc(string enemyTypeName, int price = 0)
+    public void SetCaughtEnemyServerRpc(string enemyTypeName, string enemySkinRegistryId, int price = 0)
     {
-        SetCaughtEnemyClientRpc(enemyTypeName, price);
+        SetCaughtEnemyClientRpc(enemyTypeName, enemySkinRegistryId, price);
     }
 
     [ClientRpc]
-    public void SetCaughtEnemyClientRpc(string enemyTypeName, int price)
+    public void SetCaughtEnemyClientRpc(string enemyTypeName, string enemySkinRegistryId, int price)
     {
-        LethalMon.Log("SyncContentPacket client rpc received");
+        LethalMon.Log("SyncContentPacket client rpc received (EnemyType: " + enemyTypeName + ", EnemySkinRegistryId: " + enemySkinRegistryId + ")");
 
         EnemyType enemyType = EnemyTypes.First(type => type.name == enemyTypeName);
-        SetCaughtEnemy(enemyType);
+        SetCaughtEnemy(enemyType, enemySkinRegistryId);
 
         if (audioSource != null && SuccessSFX != null)
             audioSource.PlayOneShot(SuccessSFX);
@@ -527,7 +532,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         return new PokeballSaveData
         {
             enemyType = enemyType?.name,
-            isDnaComplete = isDnaComplete
+            isDnaComplete = isDnaComplete,
+            enemySkinRegistryId = enemySkinRegistryId
         };
     }
 
@@ -535,7 +541,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         if (data is PokeballSaveData { enemyType: not null } saveData)
         {
-            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType));
+            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), EnemySkinRegistryCompatibility.DoesSkinExist(saveData.enemySkinRegistryId) ? saveData.enemySkinRegistryId : string.Empty);
             isDnaComplete = saveData.isDnaComplete;
         }
     }
