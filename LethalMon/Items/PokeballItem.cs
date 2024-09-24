@@ -7,6 +7,7 @@ using LethalLib.Modules;
 using LethalMon.Behaviours;
 using LethalMon.Compatibility;
 using LethalMon.Patches;
+using LethalMon.Save;
 using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
@@ -248,7 +249,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         }
         HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
     }
-
+    
+    // Keep it here in case of advanced saves doesn't work or if an old save is loaded
     public override int GetItemDataToSave()
     {
         base.GetItemDataToSave();
@@ -524,7 +526,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         return new PokeballSaveData
         {
-            enemyType = enemyType?.name
+            enemyType = enemyType?.name,
+            isDnaComplete = isDnaComplete
         };
     }
 
@@ -533,6 +536,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         if (data is PokeballSaveData { enemyType: not null } saveData)
         {
             SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType));
+            isDnaComplete = saveData.isDnaComplete;
         }
     }
 }

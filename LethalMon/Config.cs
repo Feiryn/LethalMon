@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LethalCompanyInputUtils.Api;
@@ -13,6 +15,7 @@ using BepInEx.Configuration;
 using LethalMon.Save;
 using static Unity.Netcode.CustomMessagingManager;
 using static LethalMon.ModConfig.ConfigValues;
+using Object = UnityEngine.Object;
 
 namespace LethalMon
 {
@@ -92,6 +95,8 @@ namespace LethalMon
             public ConfigValues values;
 
             public Save.Save save;
+
+            public Dictionary<ulong, PokeballSaveData> ballSaves;
         }
 
         // Seperate key
@@ -280,11 +285,12 @@ namespace LethalMon
             {
                 if (!Utils.IsHost) // Current player is not the host and therefor not the one who should react
                     return;
-
+                
                 string json = JsonConvert.SerializeObject(new NetworkSyncData
                 {
                     save = SaveManager.GetSave(),
-                    values = Instance.values
+                    values = Instance.values,
+                    ballSaves = Object.FindObjectsOfType<PokeballItem>().ToDictionary(ball => ball.NetworkObjectId, ball => (PokeballSaveData) ball.GetAdvancedItemDataToSave())
                 });
                 Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
 
@@ -306,6 +312,12 @@ namespace LethalMon
                 
                 if (PC.PC.Instance != null)
                     PC.PC.Instance.tutorialApp.UpdateTutorialPage2();
+
+                foreach (var ball in Object.FindObjectsOfType<PokeballItem>())
+                {
+                    if (hostData.ballSaves.TryGetValue(ball.NetworkObjectId, out PokeballSaveData? saveData))
+                        ball.LoadAdvancedItemData(saveData);
+                }
 
                 ProcessValues();
             }

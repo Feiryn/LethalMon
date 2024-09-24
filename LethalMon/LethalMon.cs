@@ -9,6 +9,7 @@ using LethalMon.Behaviours;
 using LethalMon.Compatibility;
 using LethalMon.Items;
 using LethalMon.Patches;
+using LethalMon.Save;
 using LethalMon.Throw;
 using UnityEngine;
 
@@ -114,6 +115,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(RoundManagerPatch));
         Harmony.PatchAll(typeof(HUDManagerPatch));
+        Harmony.PatchAll(typeof(GameNetworkManagerPatch));
         Harmony.PatchAll(typeof(TerminalPatch));
         Harmony.PatchAll(typeof(AdvancedSavePatch));
 

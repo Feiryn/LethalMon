@@ -1,6 +1,4 @@
-using Newtonsoft.Json;
-
-namespace LethalMon.Items;
+namespace LethalMon.Save;
 
 public interface IAdvancedSaveableItem
 {
