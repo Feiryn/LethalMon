@@ -111,7 +111,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool isDnaComplete = false;
     
-    internal string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? ForceEnemySkinRegistryId != string.Empty ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
+    internal string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? !string.IsNullOrEmpty(ForceEnemySkinRegistryId) ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
 
     internal string ForceEnemySkinRegistryId = string.Empty;
 

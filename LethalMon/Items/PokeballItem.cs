@@ -272,7 +272,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         base.LoadItemSaveData(saveData);
 
-        if (Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        if (saveData != 0 && !this.enemyCaptured && Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
         {
             KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
             EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
@@ -442,13 +442,13 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
     private void ChangeName()
     {
-        string name = this.GetName();
-        this.GetComponentInChildren<ScanNodeProperties>().headerText = name;
+        this.GetComponentInChildren<ScanNodeProperties>().headerText = this.GetName();
     }
 
     private string GetName()
     {
-        return this.itemProperties.itemName + " (" + enemySkinRegistryId != string.Empty && EnemySkinRegistryCompatibility.Instance.Enabled ? EnemySkinRegistryCompatibility.GetSkinName(enemySkinRegistryId) : this.catchableEnemy?.DisplayName + ")";
+        var enemySkinRegistryName = !string.IsNullOrEmpty(enemySkinRegistryId) && EnemySkinRegistryCompatibility.Instance.Enabled ? EnemySkinRegistryCompatibility.GetSkinName(enemySkinRegistryId) : null;
+        return this.itemProperties.itemName + " (" + this.catchableEnemy?.DisplayName + (!string.IsNullOrEmpty(enemySkinRegistryName) ? " - " + enemySkinRegistryName : string.Empty) + ")";
     }
 
     public override void GrabItem()
@@ -500,6 +500,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         }
 
         tamedBehaviour.ownerPlayer = ownerPlayer;
+        tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
         tamedBehaviour.OnCallFromBall();
@@ -541,7 +542,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         if (data is PokeballSaveData { enemyType: not null } saveData)
         {
-            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), EnemySkinRegistryCompatibility.DoesSkinExist(saveData.enemySkinRegistryId) ? saveData.enemySkinRegistryId : string.Empty);
+            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), saveData.enemySkinRegistryId);
             isDnaComplete = saveData.isDnaComplete;
         }
     }
