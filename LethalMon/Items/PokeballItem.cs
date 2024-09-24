@@ -372,6 +372,16 @@ public abstract class PokeballItem : ThrowableItem
             }
         }
         
+        // Make bracken release the enemy is held
+        foreach (var tamedEnemyBehaviour in FindObjectsOfType<TamedEnemyBehaviour>())
+        {
+            if (tamedEnemyBehaviour is FlowermanTamedBehaviour flowermanTamedBehaviour && flowermanTamedBehaviour.GrabbedEnemyAi == enemyAI)
+            {
+                flowermanTamedBehaviour.ReleaseEnemy();
+                flowermanTamedBehaviour.ReleaseEnemyServerRpc();
+            }
+        }
+        
         PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }
 
