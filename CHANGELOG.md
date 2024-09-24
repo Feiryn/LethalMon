@@ -1,3 +1,11 @@
+# 0.6.1
+
+- Added EnemySkinRegistry compatibility (requires version 1.4.6+)
+- Added an option to make the PC saves per save and not global (the host decides)
+- Trajectory of the balls has been slightly improved (correct calculation of the velocity at impact)
+- Fixed a bug that made the bracken continue to drag enemies while the enemy was being captured
+- Fixed a bug that made the HUD of the invoked monsters not disappearing when a player left and rejoined a game
+
 # 0.6.0
 
 - Added a PC where you can see the tutorial, browse the dex, scan balls and duplicate monsters
