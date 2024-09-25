@@ -1,3 +1,7 @@
+# 0.6.2
+
+- Fixed compatibility with EnemySkinRegistry that made the mod not working for players that didn't have the mod
+
 # 0.6.1
 
 - Added EnemySkinRegistry compatibility (requires version 1.4.6+)
