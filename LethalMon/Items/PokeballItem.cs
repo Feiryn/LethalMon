@@ -348,7 +348,10 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         this.catchableEnemy = catchable;
         this.enemyAI = enemyAI;
         this.enemyType = enemyAI.enemyType;
-        this.enemySkinRegistryId = EnemySkinRegistryCompatibility.GetEnemySkinId(enemyAI);
+        if (EnemySkinRegistryCompatibility.Instance.Enabled)
+        {
+            this.enemySkinRegistryId = EnemySkinRegistryCompatibility.GetEnemySkinId(enemyAI);
+        }
         
         float captureProbability = catchable.GetCaptureProbability(this.captureStrength, this.enemyAI);
         float shakeProbability = Mathf.Pow(captureProbability, 1f / 3f); // Cube root

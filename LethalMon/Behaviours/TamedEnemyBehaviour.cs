@@ -630,7 +630,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
         pokeballItem.SetScrapValue(ballValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
-        pokeballItem.enemySkinRegistryId = EnemySkinRegistryId;
+        if (EnemySkinRegistryCompatibility.Instance.Enabled)
+            pokeballItem.enemySkinRegistryId = EnemySkinRegistryId;
         pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name, pokeballItem.enemySkinRegistryId);
         pokeballItem.isDnaComplete = isDnaComplete;
         pokeballItem.FallToGround();

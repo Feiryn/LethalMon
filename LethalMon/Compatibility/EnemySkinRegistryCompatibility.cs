@@ -1,5 +1,6 @@
 using System;
 using AntlerShed.SkinRegistry;
+using BepInEx;
 using HarmonyLib;
 using LethalMon.Behaviours;
 
@@ -9,9 +10,27 @@ public class EnemySkinRegistryCompatibility() : ModCompatibility("antlershed.let
 {
     public static EnemySkinRegistryCompatibility Instance { get; } = new();
 
-    private static EnemySkinRegistry? _pluginInstance;
+    private BaseUnityPlugin? _pluginInstance;
     
-    internal static EnemySkinRegistry PluginInstance => _pluginInstance ??= BepInEx.Bootstrap.Chainloader.PluginInfos["antlershed.lethalcompany.enemyskinregistry"].Instance as EnemySkinRegistry;
+    internal BaseUnityPlugin? PluginInstance
+    {
+        get
+        {
+            if (_pluginInstance == null)
+            {
+                if (Instance.Enabled)
+                {
+                    _pluginInstance = BepInEx.Bootstrap.Chainloader.PluginInfos["antlershed.lethalcompany.enemyskinregistry"].Instance as EnemySkinRegistry;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            
+            return _pluginInstance;
+        }
+    }
 
     public static string GetEnemySkinId(EnemyAI enemy)
     {
@@ -25,7 +44,7 @@ public class EnemySkinRegistryCompatibility() : ModCompatibility("antlershed.let
 
         try
         {
-            var skinData = PluginInstance.GetSkinData(skinId);
+            var skinData = ((EnemySkinRegistry) Instance.PluginInstance!).GetSkinData(skinId);
             return skinData != null ? skinData.Label : string.Empty;
         }
         catch (Exception e)
