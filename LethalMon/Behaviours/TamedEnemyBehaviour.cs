@@ -32,6 +32,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     internal virtual bool CanBlockOtherEnemies => false;
 
     internal virtual Cooldown[] Cooldowns => [];
+    
+    internal static bool AlreadyAddedBehaviours = false;
 
     // Add your custom behaviour classes here
     internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new()
@@ -199,9 +201,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     public static Dictionary<int, int> LastDefaultBehaviourIndices = [];
 
     // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
-    [HarmonyPrefix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
+    [HarmonyPostfix, HarmonyPatch(typeof(Terminal), nameof(Terminal.Awake))]
     public static void AddTamingBehaviours()
     {
+        if (AlreadyAddedBehaviours) return;
+        AlreadyAddedBehaviours = true;
+        
         int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
         foreach (var enemyType in Utils.EnemyTypes)
         {

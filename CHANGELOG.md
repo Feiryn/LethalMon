@@ -1,3 +1,7 @@
+# 0.6.3
+
+- Load enemies AIs later to prevent conflicts with other mods (like LLL's moons mod)
+
 # 0.6.2
 
 - Fixed compatibility with EnemySkinRegistry that made the mod not working for players that didn't have the mod
