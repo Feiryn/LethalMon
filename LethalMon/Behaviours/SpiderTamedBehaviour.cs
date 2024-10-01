@@ -178,7 +178,7 @@ namespace LethalMon.Behaviours
                 Spider.CalculateSpiderPathToPosition();
         }
 
-        public override PokeballItem? RetrieveInBall(Vector3 position)
+        public override BallItem? RetrieveInBall(Vector3 position)
         {
             for(int i = Spider.webTraps.Count - 1; i >= 0; --i)
                 Spider.BreakWebClientRpc(Spider.webTraps[i].transform.position, i);

@@ -172,7 +172,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         HoarderBug.CalculateAnimationDirection();
     }
 
-    public override PokeballItem? RetrieveInBall(Vector3 position)
+    public override BallItem? RetrieveInBall(Vector3 position)
     {
         // Drop held item if any
         if (HoarderBug.heldItem?.itemGrabbableObject != null)

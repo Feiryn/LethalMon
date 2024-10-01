@@ -613,39 +613,39 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SetDestinationToPosition(position);
     }
 
-    public virtual PokeballItem? RetrieveInBall(Vector3 position)
+    public virtual BallItem? RetrieveInBall(Vector3 position)
     {
         hasBeenRetrieved = true;
         
         GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
         if (spawnPrefab == null)
         {
-            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
+            LethalMon.Log("Ball prefabs not loaded correctly.", LethalMon.LogType.Error);
             return null;
         }
 
         var ball = Instantiate(spawnPrefab, position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
 
-        PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
+        BallItem ballItem = ball.GetComponent<BallItem>();
         DateTime now = SystemClock.now;
         var cooldowns = GetComponents<CooldownNetworkBehaviour>().Where(item => item?.Id != null);
         if(cooldowns.Any())
-            pokeballItem.cooldowns = cooldowns.ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
-        pokeballItem.fallTime = 0f;
-        pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
-        pokeballItem.SetScrapValue(ballValue);
+            ballItem.cooldowns = cooldowns.ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
+        ballItem.fallTime = 0f;
+        ballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
+        ballItem.SetScrapValue(ballValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
         if (EnemySkinRegistryCompatibility.Instance.Enabled)
-            pokeballItem.enemySkinRegistryId = EnemySkinRegistryId;
-        pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name, pokeballItem.enemySkinRegistryId);
-        pokeballItem.isDnaComplete = isDnaComplete;
-        pokeballItem.FallToGround();
+            ballItem.enemySkinRegistryId = EnemySkinRegistryId;
+        ballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name, ballItem.enemySkinRegistryId);
+        ballItem.isDnaComplete = isDnaComplete;
+        ballItem.FallToGround();
 
         OnRetrieveInBall();
         
         Enemy.GetComponent<NetworkObject>().Despawn(true);
 
-        return pokeballItem;
+        return ballItem;
     }
     #endregion
 

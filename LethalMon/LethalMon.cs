@@ -76,10 +76,10 @@ public class LethalMon : BaseUnityPlugin
     {
         AssetBundle assetBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "lethalmon"));
 
-        Pokeball.Setup(assetBundle);
-        Greatball.Setup(assetBundle);
-        Ultraball.Setup(assetBundle);
-        Masterball.Setup(assetBundle);
+        Tier1Ball.Setup(assetBundle);
+        Tier2Ball.Setup(assetBundle);
+        Tier3Ball.Setup(assetBundle);
+        Tier4Ball.Setup(assetBundle);
 
         Utils.LoadSeeThroughShader(assetBundle);
         Utils.LoadWireframeMaterial(assetBundle);
@@ -90,7 +90,6 @@ public class LethalMon : BaseUnityPlugin
         SpiderTamedBehaviour.LoadAudio(assetBundle);
         
         PC.PC.LoadAssets(assetBundle);
-        PokeballItem.LoadAudio(assetBundle);
 
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
 

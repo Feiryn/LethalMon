@@ -152,7 +152,7 @@ namespace LethalMon.Behaviours
             Fox.EnableEnemyMesh(true);
         }
 
-        public override PokeballItem? RetrieveInBall(Vector3 position)
+        public override BallItem? RetrieveInBall(Vector3 position)
         {
             // ANY CLIENT
             for (int i = hidingSpores.Count - 1; i >= 0; --i)

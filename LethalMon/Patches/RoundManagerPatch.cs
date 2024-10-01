@@ -13,7 +13,7 @@ public class RoundManagerPatch
         GrabbableObject[] grabbableObjects = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
         foreach (GrabbableObject grabbableObject in grabbableObjects)
         {
-            if (grabbableObject.GetType().IsSubclassOf(typeof(PokeballItem)) && (!fullOnly || ((PokeballItem)grabbableObject).enemyCaptured))
+            if (grabbableObject.GetType().IsSubclassOf(typeof(BallItem)) && (!fullOnly || ((BallItem)grabbableObject).enemyCaptured))
             {
                 grabbableObject.itemProperties.isScrap = isScrap;
             }
@@ -50,8 +50,8 @@ public class RoundManagerPatch
         {
             if (scrap.TryGet(out NetworkObject networkObject))
             {
-                PokeballItem pokeballItem = networkObject.gameObject.GetComponent<PokeballItem>();
-                if (pokeballItem != null &&  UnityEngine.Random.Range(0f, 1f) <= ModConfig.Instance.values.FilledBallsPercentage)
+                BallItem ballItem = networkObject.gameObject.GetComponent<BallItem>();
+                if (ballItem != null &&  UnityEngine.Random.Range(0f, 1f) <= ModConfig.Instance.values.FilledBallsPercentage)
                 {
                     int totalDifficulty = Data.CatchableMonsters.Sum(cm => 10 - cm.Value.CatchDifficulty);
                     int randomValue = UnityEngine.Random.Range(0, totalDifficulty);
@@ -60,8 +60,8 @@ public class RoundManagerPatch
                         randomValue -= 10 - catchableMonster.Value.CatchDifficulty;
                         if (randomValue <= 0)
                         {
-                            pokeballItem.SetCaughtEnemyServerRpc(catchableMonster.Key, string.Empty);
-                            LethalMon.Log("A random " + pokeballItem.itemProperties.itemName + " has been spawned with a " + catchableMonster.Key + " in it");
+                            ballItem.SetCaughtEnemyServerRpc(catchableMonster.Key, string.Empty);
+                            LethalMon.Log("A random " + ballItem.itemProperties.itemName + " has been spawned with a " + catchableMonster.Key + " in it");
                             break;
                         }
                     }

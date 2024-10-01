@@ -74,21 +74,21 @@ public class PlayerControllerBPatch
     private static void PetRetrieve(PlayerControllerB player, TamedEnemyBehaviour tamedEnemyBehaviour)
     {
         Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
-        PokeballItem? pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
-        if (pokeballItem == null) return;
+        BallItem? ballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
+        if (ballItem == null) return;
 
         bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
-        player.SetItemInElevator(inShip, inShip, pokeballItem);
-        pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        player.SetItemInElevator(inShip, inShip, ballItem);
+        ballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
         
         if (StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos))
         {
-            player.SetItemInElevator(inShip, inShip, pokeballItem);
-            pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+            player.SetItemInElevator(inShip, inShip, ballItem);
+            ballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
         }
         else
         {
-            pokeballItem.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+            ballItem.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
         }
     }
 
@@ -154,13 +154,13 @@ public class PlayerControllerBPatch
                     if (heldItem != null)
 
                     {
-                        PokeballItem pokeballItem = heldItem.GetComponent<PokeballItem>();
-                        if (pokeballItem != null)
+                        BallItem ballItem = heldItem.GetComponent<BallItem>();
+                        if (ballItem != null)
                         {
                             EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
                                 enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
-                            pokeballItem.SetCaughtEnemyServerRpc(enemyType.name, string.Empty);
-                            pokeballItem.isDnaComplete = true;
+                            ballItem.SetCaughtEnemyServerRpc(enemyType.name, string.Empty);
+                            ballItem.isDnaComplete = true;
                             HUDManager.Instance.AddTextMessageClientRpc("Caught enemy: " + enemyType.name);
                             
                             currentTestEnemyTypeIndex++;
@@ -282,7 +282,7 @@ public class PlayerControllerBPatch
         GrabbableObject currentItem = __instance.ItemSlots[slot];
         if (currentItem != null)
         {
-            if (currentItem.GetType().IsSubclassOf(typeof(PokeballItem)) && !((PokeballItem) currentItem).enemyCaptured)
+            if (currentItem.GetType().IsSubclassOf(typeof(BallItem)) && !((BallItem) currentItem).enemyCaptured)
             {
                 HUDManager.Instance.DisplayTip("LethalMon Tip", "Scan base game enemies to know if they are catchable or not. Modded enemies are not catchable.");
                 SentBallScanTip = true;

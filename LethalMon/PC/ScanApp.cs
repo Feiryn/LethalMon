@@ -117,7 +117,7 @@ public class ScanApp : PCApp
         FillProgressBar(progress);
         
         PC pc = PC.Instance;
-        PokeballItem? currentBall = pc.GetCurrentPlacedBall();
+        BallItem? currentBall = pc.GetCurrentPlacedBall();
 
         if (currentBall == null)
         {

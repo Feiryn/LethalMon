@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,54 +12,50 @@ using LethalMon.Save;
 using LethalMon.Throw;
 using Unity.Netcode;
 using UnityEngine;
-using static LethalMon.Utils;
+using NetworkPrefabs = LethalLib.Modules.NetworkPrefabs;
 
 namespace LethalMon.Items;
 
-public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
+public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
 {
-    #region Properties
+    #region EnemyProperties
     private EnemyAI? enemyAI = null;
     
     internal EnemyType? enemyType = null;
 
     private CatchableEnemy.CatchableEnemy? catchableEnemy = null;
+    
+    public string enemySkinRegistryId = string.Empty;
+    #endregion
 
+    #region CaptureProperties
     private bool captureSuccess = false;
 
     private int captureRounds = 1;
 
-    private int currentCaptureRound = 0;
-
     internal bool enemyCaptured = false;
 
     private readonly int captureStrength;
-
+    #endregion
+    
+    #region BallProperties
     private readonly BallType ballType;
-
+    
     public Dictionary<string, Tuple<float, DateTime>> cooldowns = [];
     
     public bool isDnaComplete = false;
-
-    public string enemySkinRegistryId = string.Empty;
-
-    internal Animator? animator;
-
+    
     internal AudioSource? audioSource;
-
-    internal static AudioClip? BeepSFX = null;
-    internal static AudioClip? SuccessSFX = null;
-    internal static AudioClip? FailureSFX = null;
     #endregion
-
+    
     #region Initialization
-    public PokeballItem(BallType ballType, int captureStrength)
+    public BallItem(BallType ballType, int captureStrength)
     {
         this.ballType = ballType;
         this.captureStrength = captureStrength;
     }
 
-    internal static Item? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : PokeballItem
+    internal static Item? InitBallPrefab<T>(AssetBundle assetBundle, string assetPath, int scrapRarity = 1) where T : BallItem
     {
         if (assetBundle == null) return null;
 
@@ -74,14 +71,14 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         script.grabbable = true;
         script.grabbableToEnemies = true;
 
-        LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(ballItem.spawnPrefab);
+        NetworkPrefabs.RegisterNetworkPrefab(ballItem.spawnPrefab);
 
         LethalLib.Modules.Items.RegisterScrap(ballItem, scrapRarity, Levels.LevelTypes.All);
 
         return ballItem;
     }
     #endregion
-
+    
     #region Base Methods
     public override void Start()
     {
@@ -90,7 +87,6 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             propColliders[i].excludeLayers = 0; // 0 = nothing, -1 = everything (default since v55)
 
         audioSource = gameObject.GetComponent<AudioSource>();
-        animator = gameObject.GetComponent<Animator>();
     }
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
@@ -107,10 +103,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         if (!Utils.IsHost || this.enemyCaptured || this.playerThrownBy == null) return;
 
-        LethalMon.Log("Collided with " + other.gameObject.name);
-
-        //LethalMon.Log("Pokeball has an enemy captured: " + this.enemyCaptured);
-        LethalMon.Log("Pokeball was thrown by: " + this.playerThrownBy);
+        LethalMon.Log("Ball collided with " + other.gameObject.name);
 
         EnemyAI? enemyToCapture = other.GetComponentInParent<EnemyAI>();
         TamedEnemyBehaviour? behaviour = other.GetComponentInParent<TamedEnemyBehaviour>();
@@ -121,7 +114,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         {
             if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
             {
-                this.CaptureEnemy(enemyToCapture, catchable);
+                this.BallCollidedWithEnemy(enemyToCapture, catchable);
             }
             else
                 LethalMon.Log(enemyToCapture.enemyType.name + " is not catchable by the player who threw the ball");
@@ -138,38 +131,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         {
             if (this.enemyAI != null)
             {
-                this.enemyAI.gameObject.SetActive(true); // Show enemy
-                if (ModelReplacementAPICompatibility.Instance.Enabled)
-                    ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(true);
-
-                Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
-
-                if (FailureSFX != null)
-                    Utils.PlaySoundAtPosition(gameObject.transform.position, FailureSFX); // Can't use audioSource as it gets destroyed
-
-                if (Utils.IsHost)
-                {
-                    if (Utils.Random.NextDouble() < 0.5) // todo make it configurable
-                    {
-                        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
-                        
-                        if (spawnPrefab == null)
-                        {
-                            LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
-                        }
-                        else
-                        {
-                            GameObject? ball = Instantiate(spawnPrefab, this.enemyAI.transform.position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
-                            PokeballItem pokeballItem = ball.GetComponent<PokeballItem>();
-                            pokeballItem.fallTime = 0f;
-                            pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds;
-                            pokeballItem.SetScrapValue(scrapValue);
-                            ball.GetComponent<NetworkObject>().Spawn(false);
-                            pokeballItem.FallToGround();
-                            pokeballItem.cooldowns = cooldowns;
-                        }
-                    }
-                }
+                this.CaptureFailed(enemyAI);
             }
         }
         else if(enemyAI != null)
@@ -203,34 +165,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
         if (Utils.IsHost)
         {
-            EnemyType typeToSpawn = this.enemyType!;
-
-            GameObject gameObject = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
-                Quaternion.Euler(new Vector3(0, 0f, 0f)));
-
-            //EnemyAI enemyAi = gameObject.GetComponent<EnemyAI>();
-            if (!gameObject.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
-            {
-                LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
-                return;
-            }
-
-            LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
-            tamedBehaviour.ballType = this.ballType;
-            tamedBehaviour.ballValue = this.scrapValue;
-            tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-            tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
-            tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
-            var enemyPosition = tamedBehaviour.Enemy.transform.position;
-            tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
-            tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
-            tamedBehaviour.SetCooldownTimers(cooldowns);
-            tamedBehaviour.isDnaComplete = isDnaComplete;
-            tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
-
-            gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
-            CallTamedEnemyServerRpc(gameObject.GetComponent<NetworkObject>(), this.enemyType!.name, this.playerThrownBy.NetworkObject);
-            Destroy(this.gameObject);
+            this.ReleaseTamedMon(this.playerThrownBy);
         }
     }
 
@@ -239,7 +174,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         string[] toolTips = itemProperties.toolTips;
         if (toolTips.Length < 1)
         {
-            LethalMon.Log("Pokeball control tips array length is too short to set tips!", LethalMon.LogType.Error);
+            LethalMon.Log("Ball control tips array length is too short to set tips!", LethalMon.LogType.Error);
             return;
         }
         if (this.enemyCaptured && this.enemyType != null)
@@ -252,7 +187,9 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         }
         HUDManager.Instance.ChangeControlTipMultiple(toolTips, holdingItem: true, itemProperties);
     }
-    
+    #endregion
+
+    #region Saving
     // Keep it here in case of advanced saves doesn't work or if an old save is loaded
     public override int GetItemDataToSave()
     {
@@ -279,10 +216,97 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             SetCaughtEnemy(type, string.Empty);
         }
     }
-#endregion
+    
+    public object GetAdvancedItemDataToSave()
+    {
+        return new BallSaveData
+        {
+            enemyType = enemyType?.name,
+            isDnaComplete = isDnaComplete,
+            enemySkinRegistryId = enemySkinRegistryId
+        };
+    }
 
-    #region CaptureAnimation
+    public void LoadAdvancedItemData(object data)
+    {
+        if (data is BallSaveData { enemyType: not null } saveData)
+        {
+            SetCaughtEnemy(Utils.EnemyTypes.First(type => type.name == saveData.enemyType), saveData.enemySkinRegistryId);
+            isDnaComplete = saveData.isDnaComplete;
+        }
+    }
+    #endregion
+    
+    #region CaptureMethods
+    // All clients
+    private void CaptureFailed(EnemyAI enemy)
+    {
+        enemy.gameObject.SetActive(true); // Show enemy
+        if (ModelReplacementAPICompatibility.Instance.Enabled)
+            ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(enemy.gameObject, isEnemy: true)?.SetActive(true);
 
+        Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
+
+        Utils.SpawnPoofCloudAt(this.transform.position);
+
+        if (Utils.IsHost)
+        {
+            if (Utils.Random.NextDouble() < ModConfig.Instance.values.KeepBallAfterCaptureFailureProbability)
+            {
+                GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
+                        
+                if (spawnPrefab == null)
+                {
+                    LethalMon.Log("Ball prefabs not loaded correctly.", LethalMon.LogType.Error);
+                }
+                else
+                {
+                    GameObject? ball = Instantiate(spawnPrefab, enemy.transform.position, Quaternion.Euler(new Vector3(0, 0f, 0f)));
+                    BallItem ballItem = ball.GetComponent<BallItem>();
+                    ballItem.fallTime = 0f;
+                    ballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds;
+                    ballItem.SetScrapValue(scrapValue);
+                    ball.GetComponent<NetworkObject>().Spawn(false);
+                    ballItem.FallToGround();
+                    ballItem.cooldowns = cooldowns;
+                }
+            }
+        }
+    }
+
+    // Host only
+    private void ReleaseTamedMon(PlayerControllerB thrower)
+    {
+        EnemyType typeToSpawn = this.enemyType!;
+
+        GameObject gameObj = Instantiate(typeToSpawn.enemyPrefab, this.transform.position,
+            Quaternion.Euler(new Vector3(0, 0f, 0f)));
+        
+        if (!gameObj.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
+        {
+            LethalMon.Logger.LogWarning("TouchGround: TamedEnemyBehaviour not found");
+            return;
+        }
+
+        LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
+        tamedBehaviour.ballType = this.ballType;
+        tamedBehaviour.ballValue = this.scrapValue;
+        tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+        tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+        tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+        var enemyPosition = tamedBehaviour.Enemy.transform.position;
+        tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
+        tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(thrower.transform.position - enemyPosition);
+        tamedBehaviour.SetCooldownTimers(cooldowns);
+        tamedBehaviour.isDnaComplete = isDnaComplete;
+        tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
+        
+        gameObj.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
+        gameObj.SetActive(false);
+        
+        CallTamedEnemyServerRpc(gameObj.GetComponent<NetworkObject>(), this.enemyType!.name, thrower.NetworkObject);
+    }
+    
     [ServerRpc(RequireOwnership = false)]
     public void PlayCaptureAnimationServerRpc(NetworkObjectReference enemy, int roundsNumber, bool catchSuccess)
     {
@@ -304,16 +328,15 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         this.enemyType = this.enemyAI.enemyType;
         this.captureSuccess = catchSuccess;
         this.captureRounds = roundsNumber;
-        this.currentCaptureRound = 0;
         this.PlayCaptureAnimation();
     }
-
+    
+    // All clients
     public void PlayCaptureAnimation()
     {
         this.startFallingPosition = this.transform.localPosition;
         this.targetFloorPosition = this.transform.localPosition;
         this.fallTime = 1f; // Stop moving
-        this.currentCaptureRound = 0;
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
         
@@ -322,37 +345,59 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         if (ModelReplacementAPICompatibility.Instance.Enabled)
             ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(false);
 
-        this.PlayCaptureAnimationAnimator();
-    }
-
-    public void PlayCaptureAnimationAnimator()
-    {
-        if (animator == null) return;
-        
-        animator.Play("Base Layer.Capture", 0); // Play capture animation
-
-        PlayCaptureBeepSound();
-        Invoke(nameof(PlayCaptureBeepSound), 1.5f * animator.speed);
-    }
-
-    public void PlayCaptureBeepSound()
-    {
-        if (audioSource != null && BeepSFX != null)
-            audioSource.PlayOneShot(BeepSFX);
+        float animationTime = this.StartMonsterGoesInsideBallAnimation();
+        StartCoroutine(this.ExecuteAfterTime(animationTime, () =>
+        {
+            this.EndMonsterGoesInsideBallAnimation();
+            StartCoroutine(this.BallShakesCoroutine(() =>
+            {
+                if (this.captureSuccess)
+                {
+                    float animationTimeCaptureSuccess = this.StartCaptureSuccessAnimation();
+                    StartCoroutine(this.ExecuteAfterTime(animationTimeCaptureSuccess, () =>
+                    {
+                        this.EndCaptureSuccess();
+                        this.EndCaptureSuccessAnimation();
+                    }));
+                }
+                else
+                {
+                    this.EndCaptureFail();
+                }
+            }));
+        }));
     }
     
-    private void CaptureEnemy(EnemyAI enemyAI, CatchableEnemy.CatchableEnemy catchable)
+    // Host only
+    private void BallCollidedWithEnemy(EnemyAI enemy, CatchableEnemy.CatchableEnemy catchable)
     {
-        LethalMon.Log("Start to capture " + enemyAI.name);
+        LethalMon.Log("Start to capture " + enemy.name);
         this.playerThrownBy = null;
         this.catchableEnemy = catchable;
-        this.enemyAI = enemyAI;
-        this.enemyType = enemyAI.enemyType;
+        this.enemyAI = enemy;
+        this.enemyType = enemy.enemyType;
         if (EnemySkinRegistryCompatibility.Instance.Enabled)
         {
-            this.enemySkinRegistryId = EnemySkinRegistryCompatibility.GetEnemySkinId(enemyAI);
+            this.enemySkinRegistryId = EnemySkinRegistryCompatibility.GetEnemySkinId(enemy);
         }
         
+        CalculateCaptureRounds(catchable);
+
+        // Make bracken release the enemy is held
+        foreach (var tamedEnemyBehaviour in FindObjectsOfType<TamedEnemyBehaviour>())
+        {
+            if (tamedEnemyBehaviour is FlowermanTamedBehaviour flowermanTamedBehaviour && flowermanTamedBehaviour.GrabbedEnemyAi == enemy)
+            {
+                flowermanTamedBehaviour.ReleaseEnemy();
+                flowermanTamedBehaviour.ReleaseEnemyServerRpc();
+            }
+        }
+        
+        PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
+    }
+
+    private void CalculateCaptureRounds(CatchableEnemy.CatchableEnemy catchable)
+    {
         float captureProbability = catchable.GetCaptureProbability(this.captureStrength, this.enemyAI);
         float shakeProbability = Mathf.Pow(captureProbability, 1f / 3f); // Cube root
         LethalMon.Log("Total capture probability: " + captureProbability + ". Each shake has probability of " + shakeProbability);
@@ -378,62 +423,113 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
                 break;
             }
         }
-        
-        // Make bracken release the enemy is held
-        foreach (var tamedEnemyBehaviour in FindObjectsOfType<TamedEnemyBehaviour>())
-        {
-            if (tamedEnemyBehaviour is FlowermanTamedBehaviour flowermanTamedBehaviour && flowermanTamedBehaviour.GrabbedEnemyAi == enemyAI)
-            {
-                flowermanTamedBehaviour.ReleaseEnemy();
-                flowermanTamedBehaviour.ReleaseEnemyServerRpc();
-            }
-        }
-        
-        PlayCaptureAnimationServerRpc(this.enemyAI.GetComponent<NetworkObject>(), this.captureRounds, this.captureSuccess);
     }
 
-    public void CaptureEnd(/*string message*/)
+    private void EndCaptureSuccess()
     {
-        LethalMon.Log("Capture animation end");
+        this.SetCaughtEnemyServerRpc(this.enemyType!.name, this.enemySkinRegistryId);
 
-        // Test if we need to play the animation more times
-        if (this.currentCaptureRound + 1 < this.captureRounds)
-        {
-            LethalMon.Log("Play the animation again");
-            
-            this.currentCaptureRound++;
-            PlayCaptureAnimationAnimator();
-        }
-        else if (this.captureSuccess)
-        {
-            LethalMon.Log("Capture success");
-
-            this.SetCaughtEnemyServerRpc(this.enemyType!.name, this.enemySkinRegistryId);
-
-            this.isDnaComplete = true;
-            this.playerThrownBy = null;
-            this.FallToGround();
-            this.grabbable = true;
-            this.grabbableToEnemies = true;
-        }
-        else
-        {
-            LethalMon.Log("Capture failed");
-
-            if (Utils.IsHost)
-                this.GetComponent<NetworkObject>().Despawn(true);
-        }
+        this.isDnaComplete = true;
+        this.playerThrownBy = null;
+        this.FallToGround();
+        this.grabbable = true;
+        this.grabbableToEnemies = true;
     }
+
+    private void EndCaptureFail()
+    {
+        if (Utils.IsHost)
+            this.GetComponent<NetworkObject>().Despawn(true);
+    }
+
+    private IEnumerator BallShakesCoroutine(Action callback)
+    {
+        for (int i = 0; i < this.captureRounds; ++i)
+        {
+            float animationTime = this.StartCaptureShakeAnimation();
+            yield return new WaitForSeconds(animationTime);
+            this.EndCaptureShakeAnimation();
+        }
+
+        callback();
+    }
+    
+    private IEnumerator ExecuteAfterTime(float time, Action action)
+    {
+        yield return new WaitForSeconds(time);
+        action();
+    } 
+
+    public override void StartThrowing()
+    {
+        base.StartThrowing();
+        
+        this.StartThrowAnimation();
+    }
+
+    public override void EndThrowing()
+    {
+        base.EndThrowing();
+        
+        this.EndThrowAnimation();
+    }
+
+    /// <summary>
+    /// Function called when a ball is thrown
+    /// </summary>
+    protected abstract void StartThrowAnimation();
+
+    /// <summary>
+    /// Function called when a ball finished to be thrown (either by hitting the ground or an enemy)
+    /// </summary>
+    protected abstract void EndThrowAnimation();
+    
+    /// <summary>
+    /// Function called when a monster starts to go inside the ball after being hit by a ball
+    /// </summary>
+    /// <returns>Animation time</returns>
+    protected abstract float StartMonsterGoesInsideBallAnimation();
+    
+    /// <summary>
+    /// Function called when a monster finished to go inside the ball after being hit by a ball
+    /// </summary>
+    protected abstract void EndMonsterGoesInsideBallAnimation();
+
+    /// <summary>
+    /// Function called when an animation shake is started
+    /// </summary>
+    /// <returns>Animation time</returns>
+    protected abstract float StartCaptureShakeAnimation();
+    
+    /// <summary>
+    /// Function called when an animation shake is finished
+    /// </summary>
+    protected abstract void EndCaptureShakeAnimation();
+    
+    /// <summary>
+    /// Function called when a monster starts to be caught successfully by a ball
+    /// </summary>
+    /// <returns>Animation time</returns>
+    protected abstract float StartCaptureSuccessAnimation();
+    
+    /// <summary>
+    /// Function called when a monster finished to be caught successfully by a ball
+    /// </summary>
+    protected abstract void EndCaptureSuccessAnimation();
+    
+    /// <summary>
+    /// Function called when a monster starts to be release by someone from a ball
+    /// </summary>
+    /// <returns>Animation time</returns>
+    protected abstract float StartReleaseAnimation();
+    
+    /// <summary>
+    /// Function called when a monster finished to be release by someone from a ball
+    /// </summary>
+    protected abstract void EndReleaseAnimation();
     #endregion
-
-    #region Methods
-    public static void LoadAudio(AssetBundle assetBundle)
-    {
-        BeepSFX    = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/beep.ogg");
-        SuccessSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/success.ogg");
-        FailureSFX = assetBundle.LoadAsset<AudioClip>("Assets/Audio/Balls/fail.ogg");
-    }
-
+    
+    #region BallMethods
     public void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
     {
         this.enemyType = enemyType;
@@ -463,10 +559,9 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             PC.PC.Instance.RemoveBallServerRpc();
         }
     }
-
     #endregion
-
-    #region RPCs
+    
+        #region RPCs
 
     [ServerRpc(RequireOwnership = false)]
     public void CallTamedEnemyServerRpc(NetworkObjectReference networkObjectReference, string enemyName, NetworkObjectReference ownerNetworkReference)
@@ -483,6 +578,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             LethalMon.Log(this.gameObject.name + ": Failed to get network object from network object reference (Capture animation RPC)", LethalMon.LogType.Error);
             return;
         }
+        
+        enemyNetworkObject.gameObject.SetActive(false);
 
         if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy _))
         {
@@ -502,11 +599,20 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             return;
         }
 
-        tamedBehaviour.ownerPlayer = ownerPlayer;
-        tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
-        tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
-        HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
-        tamedBehaviour.OnCallFromBall();
+        float animationTime = this.StartReleaseAnimation();
+        StartCoroutine(this.ExecuteAfterTime(animationTime, () =>
+        {
+            this.EndReleaseAnimation();
+            
+            tamedBehaviour.ownerPlayer = ownerPlayer;
+            tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
+            tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
+            HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
+            enemyNetworkObject.gameObject.SetActive(true);
+            tamedBehaviour.OnCallFromBall();
+            
+            Destroy(this.gameObject);
+        }));
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -520,33 +626,11 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         LethalMon.Log("SyncContentPacket client rpc received (EnemyType: " + enemyTypeName + ", EnemySkinRegistryId: " + enemySkinRegistryId + ")");
 
-        EnemyType enemyType = EnemyTypes.First(type => type.name == enemyTypeName);
+        EnemyType enemyType = Utils.EnemyTypes.First(type => type.name == enemyTypeName);
         SetCaughtEnemy(enemyType, enemySkinRegistryId);
-
-        if (audioSource != null && SuccessSFX != null)
-            audioSource.PlayOneShot(SuccessSFX);
 
         if (price != 0)
             FindObjectOfType<Terminal>().groupCredits -= price;
     }
     #endregion
-
-    public object GetAdvancedItemDataToSave()
-    {
-        return new PokeballSaveData
-        {
-            enemyType = enemyType?.name,
-            isDnaComplete = isDnaComplete,
-            enemySkinRegistryId = enemySkinRegistryId
-        };
-    }
-
-    public void LoadAdvancedItemData(object data)
-    {
-        if (data is PokeballSaveData { enemyType: not null } saveData)
-        {
-            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), saveData.enemySkinRegistryId);
-            isDnaComplete = saveData.isDnaComplete;
-        }
-    }
 }

@@ -84,6 +84,8 @@ namespace LethalMon
             public float SpiderWebCooldown { get; set; }
             
             public bool PcGlobalSave { get; set; }
+            
+            public float KeepBallAfterCaptureFailureProbability { get; set; }
         }
 
         public ConfigValues values = new();
@@ -96,7 +98,7 @@ namespace LethalMon
 
             public Save.Save save;
 
-            public Dictionary<ulong, PokeballSaveData> ballSaves;
+            public Dictionary<ulong, BallSaveData> ballSaves;
         }
 
         // Seperate key
@@ -122,17 +124,18 @@ namespace LethalMon
             values.PcGlobalSave = LethalMon.Instance.Config.Bind("Saves", "PcGlobalSave", true, "Make the PC saves global (true) or per save file (false)").Value;
             
             // Items
-            values.Tier1BallCost = LethalMon.Instance.Config.Bind("Items", "Tier1BallCost", 40, "The cost of the tier 1 ball (pokeball) item in the shop. -1 to disable").Value;
-            values.Tier2BallCost = LethalMon.Instance.Config.Bind("Items", "Tier2BallCost", 125, "The cost of the tier 1 ball (great ball) item in the shop. -1 to disable").Value;
-            values.Tier3BallCost = LethalMon.Instance.Config.Bind("Items", "Tier3BallCost", 375, "The cost of the tier 1 ball (ultra ball) item in the shop. -1 to disable").Value;
-            values.Tier4BallCost = LethalMon.Instance.Config.Bind("Items", "Tier4BallCost", 700, "The cost of the tier 1 ball (master ball) item in the shop. -1 to disable").Value;
-            values.Tier1BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier1BallSpawnWeight", 20, "The spawn weight of the tier 1 ball (pokeball). Higher = more common").Value;
-            values.Tier2BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier2BallSpawnWeight", 10, "The spawn weight of the tier 2 ball (great ball). Higher = more common").Value;
-            values.Tier3BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier3BallSpawnWeight", 6, "The spawn weight of the tier 3 ball (ultra ball). Higher = more common").Value;
-            values.Tier4BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier4BallSpawnWeight", 2, "The spawn weight of the tier 4 ball (master ball). Higher = more common").Value;
+            values.Tier1BallCost = LethalMon.Instance.Config.Bind("Items", "Tier1BallCost", 40, "The cost of the tier 1 ball item in the shop. -1 to disable").Value;
+            values.Tier2BallCost = LethalMon.Instance.Config.Bind("Items", "Tier2BallCost", 125, "The cost of the tier 2 ball item in the shop. -1 to disable").Value;
+            values.Tier3BallCost = LethalMon.Instance.Config.Bind("Items", "Tier3BallCost", 375, "The cost of the tier 3 ball item in the shop. -1 to disable").Value;
+            values.Tier4BallCost = LethalMon.Instance.Config.Bind("Items", "Tier4BallCost", 700, "The cost of the tier 4 ball item in the shop. -1 to disable").Value;
+            values.Tier1BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier1BallSpawnWeight", 20, "The spawn weight of the tier 1 ball. Higher = more common").Value;
+            values.Tier2BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier2BallSpawnWeight", 10, "The spawn weight of the tier 2 ball. Higher = more common").Value;
+            values.Tier3BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier3BallSpawnWeight", 6, "The spawn weight of the tier 3 ball. Higher = more common").Value;
+            values.Tier4BallSpawnWeight = LethalMon.Instance.Config.Bind("Items", "Tier4BallSpawnWeight", 2, "The spawn weight of the tier 4 ball. Higher = more common").Value;
             values.KeepBallsIfAllPlayersDead = LethalMon.Instance.Config.Bind("Items", "KeepBallsIfAllPlayersDead", KeepBalls.No, "Make the balls don't despawn even if all the players are dead.").Value;
             values.FilledBallsPercentage = LethalMon.Instance.Config.Bind("Items", "FilledBallsPercentage", 0.5f, "Percentage of filled balls in the dungeon").Value;
             values.EnemyHPCaptureProbabilityMultiplier = LethalMon.Instance.Config.Bind("Items", "EnemyHPCaptureProbabilityMultiplier", 1f, "Lower enemy HP increases the capture probability. Set this to 0 to disable this feature").Value;
+            values.KeepBallAfterCaptureFailureProbability = LethalMon.Instance.Config.Bind("Items", "KeepBallAfterCaptureFailureProbability", 0.5f, "Probability of keeping the ball after a failed capture").Value;
             
             // Monsters
             values.DisabledMonsters = LethalMon.Instance.Config.Bind("Monsters", "DisabledMonsters", "", "Disabled monsters types. Separate with a comma and don't put spaces. Example: Monster1,Monster2. Available monsters: " + string.Join(", ", Enum.GetNames(typeof(Utils.Enemy)))).Value.Split(",");
@@ -201,36 +204,36 @@ namespace LethalMon
         {
             LethalMon.Log("Processing config");
             
-            if (Pokeball.BallItem != null)
+            if (Tier1Ball.BallItem != null)
             {
                 if (Instance.values.Tier1BallCost >= 0)
-                    LethalLib.Modules.Items.UpdateShopItemPrice(Pokeball.BallItem, Instance.values.Tier1BallCost);
+                    LethalLib.Modules.Items.UpdateShopItemPrice(Tier1Ball.BallItem, Instance.values.Tier1BallCost);
                 else
-                    LethalLib.Modules.Items.RemoveShopItem(Pokeball.BallItem);
+                    LethalLib.Modules.Items.RemoveShopItem(Tier1Ball.BallItem);
             }
             
-            if (Greatball.BallItem != null)
+            if (Tier2Ball.BallItem != null)
             {
                 if (Instance.values.Tier2BallCost >= 0)
-                    LethalLib.Modules.Items.UpdateShopItemPrice(Greatball.BallItem, Instance.values.Tier2BallCost);
+                    LethalLib.Modules.Items.UpdateShopItemPrice(Tier2Ball.BallItem, Instance.values.Tier2BallCost);
                 else
-                    LethalLib.Modules.Items.RemoveShopItem(Greatball.BallItem);
+                    LethalLib.Modules.Items.RemoveShopItem(Tier2Ball.BallItem);
             }
             
-            if (Ultraball.BallItem != null)
+            if (Tier3Ball.BallItem != null)
             {
                 if (Instance.values.Tier3BallCost >= 0)
-                    LethalLib.Modules.Items.UpdateShopItemPrice(Ultraball.BallItem, Instance.values.Tier3BallCost);
+                    LethalLib.Modules.Items.UpdateShopItemPrice(Tier3Ball.BallItem, Instance.values.Tier3BallCost);
                 else
-                    LethalLib.Modules.Items.RemoveShopItem(Ultraball.BallItem);
+                    LethalLib.Modules.Items.RemoveShopItem(Tier3Ball.BallItem);
             }
             
-            if (Masterball.BallItem != null)
+            if (Tier4Ball.BallItem != null)
             {
                 if (Instance.values.Tier4BallCost >= 0)
-                    LethalLib.Modules.Items.UpdateShopItemPrice(Masterball.BallItem, Instance.values.Tier4BallCost);
+                    LethalLib.Modules.Items.UpdateShopItemPrice(Tier4Ball.BallItem, Instance.values.Tier4BallCost);
                 else
-                    LethalLib.Modules.Items.RemoveShopItem(Masterball.BallItem);
+                    LethalLib.Modules.Items.RemoveShopItem(Tier4Ball.BallItem);
             }
 
             foreach (var disabledMonster in Instance.values.DisabledMonsters)
@@ -290,7 +293,7 @@ namespace LethalMon
                 {
                     save = SaveManager.GetSave(),
                     values = Instance.values,
-                    ballSaves = Object.FindObjectsOfType<PokeballItem>().ToDictionary(ball => ball.NetworkObjectId, ball => (PokeballSaveData) ball.GetAdvancedItemDataToSave())
+                    ballSaves = Object.FindObjectsOfType<BallItem>().ToDictionary(ball => ball.NetworkObjectId, ball => (BallSaveData) ball.GetAdvancedItemDataToSave())
                 });
                 Debug.Log("Client [" + clientId + "] requested host config. Sending own config: " + json);
 
@@ -313,9 +316,9 @@ namespace LethalMon
                 if (PC.PC.Instance != null)
                     PC.PC.Instance.tutorialApp.UpdateTutorialPage2();
 
-                foreach (var ball in Object.FindObjectsOfType<PokeballItem>())
+                foreach (var ball in Object.FindObjectsOfType<BallItem>())
                 {
-                    if (hostData.ballSaves.TryGetValue(ball.NetworkObjectId, out PokeballSaveData? saveData))
+                    if (hostData.ballSaves.TryGetValue(ball.NetworkObjectId, out BallSaveData? saveData))
                         ball.LoadAdvancedItemData(saveData);
                 }
 

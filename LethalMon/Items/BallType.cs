@@ -4,10 +4,10 @@ namespace LethalMon.Items;
 
 public enum BallType
 {
-    POKEBALL,
-    GREAT_BALL,
-    ULTRA_BALL,
-    MASTER_BALL
+    TIER1,
+    TIER2,
+    TIER3,
+    TIER4
 }
 
 public class BallTypeMethods
@@ -16,14 +16,14 @@ public class BallTypeMethods
     {
         switch (ballType)
         {
-            case BallType.GREAT_BALL:
-                return Greatball.SpawnPrefab;
-            case BallType.ULTRA_BALL:
-                return Ultraball.SpawnPrefab;
-            case BallType.MASTER_BALL:
-                return Masterball.SpawnPrefab;
+            case BallType.TIER2:
+                return Tier2Ball.SpawnPrefab;
+            case BallType.TIER3:
+                return Tier3Ball.SpawnPrefab;
+            case BallType.TIER4:
+                return Tier4Ball.SpawnPrefab;
             default:
-                return Pokeball.SpawnPrefab;
+                return Tier1Ball.SpawnPrefab;
         }
     }
 }

@@ -141,7 +141,7 @@ namespace LethalMon.Behaviours
             base.DoAIInterval();
         }
 
-        public override PokeballItem? RetrieveInBall(Vector3 position)
+        public override BallItem? RetrieveInBall(Vector3 position)
         {
             // ANY CLIENT
             return base.RetrieveInBall(position);

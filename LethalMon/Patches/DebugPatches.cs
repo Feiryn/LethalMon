@@ -82,22 +82,22 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f9Key.wasPressedThisFrame)
             {
-                SpawnItemInFront(Pokeball.SpawnPrefab);
+                SpawnItemInFront(Tier1Ball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f10Key.wasPressedThisFrame)
             {
-                SpawnItemInFront(Greatball.SpawnPrefab);
+                SpawnItemInFront(Tier2Ball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f11Key.wasPressedThisFrame)
             {
-                SpawnItemInFront(Ultraball.SpawnPrefab);
+                SpawnItemInFront(Tier3Ball.SpawnPrefab);
             }
 
             else if (Keyboard.current.f12Key.wasPressedThisFrame)
             {
-                SpawnItemInFront(Masterball.SpawnPrefab);
+                SpawnItemInFront(Tier4Ball.SpawnPrefab);
             }
 
             else
@@ -171,26 +171,26 @@ namespace LethalMon.Patches
         #endregion
 
         #region Item
-        public static PokeballItem? SpawnRandomlyFilledBall(GameObject? networkPrefab)
+        public static BallItem? SpawnRandomlyFilledBall(GameObject? networkPrefab)
         {
             var ball = SpawnItemInFront(networkPrefab);
             if (ball == null) return null;
 
-            if (!ball.TryGetComponent(out PokeballItem pokeballItem))
+            if (!ball.TryGetComponent(out BallItem ballItem))
                 return null;
 
             var enemyName = Data.CatchableMonsters.ElementAt(UnityEngine.Random.RandomRangeInt(0, Data.CatchableMonsters.Count - 1)).Key;
-                    pokeballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
+                    ballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
 
-            return pokeballItem;
+            return ballItem;
         }
 
-        public static PokeballItem? SpawnBall(GameObject? networkPrefab, Utils.Enemy? withEnemyInside = null)
+        public static BallItem? SpawnBall(GameObject? networkPrefab, Utils.Enemy? withEnemyInside = null)
         {
             var ball = SpawnItemInFront(networkPrefab);
             if(ball == null) return null;
 
-            if(!ball.TryGetComponent(out PokeballItem pokeballItem))
+            if(!ball.TryGetComponent(out BallItem ballItem))
                 return null;
 
             if(withEnemyInside != null)
@@ -199,10 +199,10 @@ namespace LethalMon.Patches
                 if (!Data.CatchableMonsters.ContainsKey(enemyName))
                     LethalMon.Logger.LogInfo("Spawning ball: Enemy not found.");
                 else
-                    pokeballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
+                    ballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
             }
 
-            return pokeballItem;
+            return ballItem;
         }
 
         public static GameObject? SpawnItemInFront(Item item) => item != null ? SpawnItemInFront(item.spawnPrefab) : null;
@@ -234,10 +234,10 @@ namespace LethalMon.Patches
         public static void ToggleDna()
         {
             GrabbableObject heldItem = Utils.CurrentPlayer.ItemSlots[Utils.CurrentPlayer.currentItemSlot];
-            if (heldItem == null || heldItem is not PokeballItem pokeballItem) return;
+            if (heldItem == null || heldItem is not BallItem ballItem) return;
 
-            pokeballItem.isDnaComplete = !pokeballItem.isDnaComplete;
-            HUDManager.Instance.AddTextMessageClientRpc("DNA complete: " + pokeballItem.isDnaComplete);
+            ballItem.isDnaComplete = !ballItem.isDnaComplete;
+            HUDManager.Instance.AddTextMessageClientRpc("DNA complete: " + ballItem.isDnaComplete);
         }
         #endregion
 

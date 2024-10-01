@@ -1,6 +1,6 @@
 namespace LethalMon.Save;
 
-public class PokeballSaveData
+public class BallSaveData
 {
     public string? enemyType;
 

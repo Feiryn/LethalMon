@@ -449,6 +449,21 @@ public class Utils
             presentParticles.Play();
         }
     }
+
+    public static Material GetTeleportParticlesMaterial()
+    {
+        return CurrentPlayer.beamUpParticle.GetComponent<Renderer>().material;
+    }
+
+    public static AudioClip GetTeleportSparkSfx()
+    {
+        return Object.FindObjectOfType<ShipTeleporter>().beamUpPlayerBodySFX;
+    }
+
+    public static AudioClip GetTeleportClick()
+    {
+        return Object.FindObjectOfType<ShipTeleporter>().buttonPressSFX;
+    }
     #endregion
 
     #region Shader & Materials

@@ -243,7 +243,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        public override PokeballItem? RetrieveInBall(Vector3 position)
+        public override BallItem? RetrieveInBall(Vector3 position)
         {
             if (Blob.IsOwner)
             {

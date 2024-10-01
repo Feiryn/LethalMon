@@ -35,7 +35,7 @@ public class PC : NetworkBehaviour
                 _particleSystem = this.transform.Find("BeamParticle")?.GetComponent<ParticleSystem>()!;
                 
                 // Copy material from player's beam up particle system
-                _particleSystem.GetComponent<Renderer>().material = Utils.CurrentPlayer.beamUpParticle.GetComponent<Renderer>().material;
+                _particleSystem.GetComponent<Renderer>().material = Utils.GetTeleportParticlesMaterial();
             }
 
             return _particleSystem;
@@ -100,7 +100,7 @@ public class PC : NetworkBehaviour
     
     internal Coroutine? _currentOperationCoroutine { get; private set; }
 
-    private PokeballItem? _placedBall;
+    private BallItem? _placedBall;
     
     private Vector2 _cursorLastUpdatePosition = Vector2.zero;
 
@@ -244,7 +244,7 @@ public class PC : NetworkBehaviour
     public void OnBallPlaceInteract(PlayerControllerB player)
     {
         GrabbableObject heldItem = player.ItemSlots[player.currentItemSlot];
-        if (heldItem != null && heldItem is PokeballItem item && GetCurrentPlacedBall() == null)
+        if (heldItem != null && heldItem is BallItem item && GetCurrentPlacedBall() == null)
         {
             _placedBall = item;
             PlaceBallServerRpc(item.GetComponent<NetworkObject>());
@@ -252,7 +252,7 @@ public class PC : NetworkBehaviour
         }
     }
 
-    public PokeballItem? GetCurrentPlacedBall()
+    public BallItem? GetCurrentPlacedBall()
     {
         if (_placedBall != null)
         {
@@ -511,7 +511,7 @@ public class PC : NetworkBehaviour
     {
         if (ball.TryGet(out var networkObject))
         {
-            _placedBall = networkObject.GetComponent<PokeballItem>();
+            _placedBall = networkObject.GetComponent<BallItem>();
         }
     }
     

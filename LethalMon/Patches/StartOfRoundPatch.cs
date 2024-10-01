@@ -21,9 +21,9 @@ public class StartOfRoundPatch
             LethalMon.Log("Player is in hangar ship room: " + tamedBehaviour.ownerPlayer.isInHangarShipRoom);
             if (tamedBehaviour.ownerPlayer.isInHangarShipRoom)
             {
-                var pokeballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
-                tamedBehaviour.ownerPlayer.SetItemInElevator(true, true, pokeballItem);
-                pokeballItem?.transform.SetParent(__instance.elevatorTransform, worldPositionStays: true);
+                var ballItem = tamedBehaviour.RetrieveInBall(tamedBehaviour.ownerPlayer.transform.position);
+                tamedBehaviour.ownerPlayer.SetItemInElevator(true, true, ballItem);
+                ballItem?.transform.SetParent(__instance.elevatorTransform, worldPositionStays: true);
             }
         }
     }

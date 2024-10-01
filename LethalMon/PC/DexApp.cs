@@ -1,4 +1,5 @@
 using System.Linq;
+using LethalMon.Items;
 using LethalMon.Save;
 using TMPro;
 using UnityEngine;
@@ -70,14 +71,14 @@ public class DexApp : PCApp
         {
             CatchableEnemy.CatchableEnemy catchableEnemy = Data.CatchableMonsters[enemyName];
             _monsterName.text = catchableEnemy.DisplayName;
-            _captureRates.text = $"Pokeball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(0) * 100)}%\n\nGreat ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(1) * 100)}%\n\nUltra ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(2) * 100)}%\n\nMaster ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(3) * 100)}%";
+            _captureRates.text = $"{Tier1Ball.BallName}: {Mathf.Floor(catchableEnemy.GetCaptureProbability(0) * 100)}%\n\n{Tier2Ball.BallName}: {Mathf.Floor(catchableEnemy.GetCaptureProbability(1) * 100)}%\n\n{Tier3Ball.BallName}: {Mathf.Floor(catchableEnemy.GetCaptureProbability(2) * 100)}%\n\n{Tier4Ball.BallName}: {Mathf.Floor(catchableEnemy.GetCaptureProbability(3) * 100)}%";
             _behaviourDescription.text = catchableEnemy.BehaviourDescription;
             _monsterImage.sprite = LethalMon.monstersSprites[enemyName.ToLower()];
         }
         else
         {
             _monsterName.text = "??????";
-            _captureRates.text = $"Pokeball: ???%\n\nGreat ball: ???%\n\nUltra ball: ???%\n\nMaster ball: ???%";
+            _captureRates.text = $"{Tier1Ball.BallName}: ???%\n\n{Tier2Ball.BallName}: ???%\n\n{Tier3Ball.BallName}: ???%\n\n{Tier4Ball.BallName}: ???%";
             _behaviourDescription.text = "??????";
             _monsterImage.sprite = LethalMon.monstersSprites["unknown"];
         }

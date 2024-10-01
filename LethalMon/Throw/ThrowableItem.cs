@@ -163,6 +163,8 @@ namespace LethalMon.Throw
                 audioSource.PlayOneShot(itemProperties.throwSFX);
                 WalkieTalkie.TransmitOneShotAudio(audioSource, itemProperties.throwSFX);
             }
+
+            StartThrowing();
         }
         
         [ServerRpc(RequireOwnership = false)]
@@ -287,6 +289,14 @@ namespace LethalMon.Throw
         {
             PlayDropSFX();
         }
+        
+        public virtual void StartThrowing()
+        {
+        }
+        
+        public virtual void EndThrowing()
+        {
+        }
 
         private void UpdateParent()
         {
@@ -312,9 +322,8 @@ namespace LethalMon.Throw
         
         private void StopMovingAfterHittingGround()
         {
-            LethalMon.Log("Stop moving");
-            
             OnHitGround();
+            EndThrowing();
             
             this.playerThrownBy = null;
 
