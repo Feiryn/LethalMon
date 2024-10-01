@@ -1,3 +1,8 @@
+# 0.6.4
+
+- Fixed PC not respawning after players got fired
+- Fixed a bug that spammed the console or error if a tamed enemy agent was null
+
 # 0.6.3
 
 - Load enemies AIs later to prevent conflicts with other mods (like LLL's moons mod)

@@ -451,6 +451,51 @@ public class Utils
     }
     #endregion
 
+    #region Game
+
+    public static void UnlockPCIfNotUnlocked()
+    {
+        try
+        {
+            if (!Utils.IsHost)
+                return;
+            
+            if (PC.PC.pcPrefab == null)
+            {
+                LethalMon.Log("PC prefab is null, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            var placeableShipObject = PC.PC.pcPrefab.GetComponentInChildren<PlaceableShipObject>();
+
+            if (placeableShipObject == null)
+            {
+                LethalMon.Log("PC PlaceableShipObject is null, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            var unlockable =
+                StartOfRound.Instance.unlockablesList.unlockables.Find(u => u.prefabObject == PC.PC.pcPrefab);
+
+            if (unlockable == null)
+            {
+                LethalMon.Log("PC Unlockable not found, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            LethalMon.Log("Unlockable ID: " + placeableShipObject.unlockableID);
+            LethalMon.Log("Unlockable has been unlocked: " + unlockable.hasBeenUnlockedByPlayer);
+
+            if (!unlockable.hasBeenUnlockedByPlayer)
+                StartOfRound.Instance.UnlockShipObject(placeableShipObject.unlockableID);
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log(e.ToString(), LethalMon.LogType.Error);
+        }
+    }
+    #endregion
+    
     #region Shader & Materials
     public static List<Renderer> GetRenderers(GameObject? g)
     {

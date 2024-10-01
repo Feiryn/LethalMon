@@ -427,7 +427,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         {
             if (!Enemy.IsOwner)
             {
-                Enemy.SetClientCalculatingAI(enable: false);
+                if (Enemy.agent != null)
+                {
+                    Enemy.SetClientCalculatingAI(enable: false);
+                }
+
                 if (!Enemy.inSpecialAnimation)
                 {
                     base.transform.position = Vector3.SmoothDamp(base.transform.position, Enemy.serverPosition, ref Enemy.tempVelocity, Enemy.syncMovementSpeed);

@@ -1,5 +1,6 @@
 using HarmonyLib;
 using LethalMon.Behaviours;
+using LethalMon.Save;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -50,5 +51,12 @@ public class StartOfRoundPatch
         {
             PC.PC.Instance.StopUsingServerRpc(PC.PC.Instance.CurrentPlayer.GetComponent<NetworkObject>());
         }
+    }
+    
+    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.ResetShipFurniture))]
+    [HarmonyPostfix]
+    private static void OnResetShipFurniturePostFix()
+    {
+        Utils.UnlockPCIfNotUnlocked();
     }
 }
