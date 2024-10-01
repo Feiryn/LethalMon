@@ -224,6 +224,9 @@ namespace LethalMon.Throw
             
             Vector3 previousPosition = this.transform.localPosition;
             this.transform.localPosition = this.startFallingPosition + _initialVelocity * _throwTime + 0.5f * Gravity * _throwTime * _throwTime;
+            this.transform.rotation = Quaternion.Lerp(base.transform.rotation,
+                Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y,
+                    itemProperties.restingRotation.z), this.fallTime / this._totalFallTime);
             this.fallTime = _throwTime / _totalFallTime;
             
             // todo make it rotate
