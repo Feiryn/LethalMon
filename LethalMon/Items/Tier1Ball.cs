@@ -1,4 +1,8 @@
+using System.Collections.Generic;
+using System.Linq;
+using LethalMon.Behaviours;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 namespace LethalMon.Items;
 
@@ -47,6 +51,10 @@ public class Tier1Ball : BallItem
     private AudioSource _audioSource;
     
     private AudioClip _captureSuccessSound;
+
+    private Transform _coneTransform;
+
+    private GameObject? _currentEnemyModel;
     
     public override void Start()
     {
@@ -55,6 +63,44 @@ public class Tier1Ball : BallItem
         _animator = GetComponent<Animator>();
         _audioSource = gameObject.GetComponent<AudioSource>();
         //_captureSuccessSound = Utils.GetTeleportClick();
+        _coneTransform = transform.Find("model/Armature/root/cone");
+    }
+
+    private void InstantiateEnemyModel(string enemyType)
+    {
+        if (_currentEnemyModel != null)
+        {
+            Destroy(_currentEnemyModel);
+        }
+        
+        GameObject? originalPrefab = Utils.GetEnemyPrefab(enemyType);
+        
+        if (originalPrefab == null)
+        {
+            LethalMon.Log("Failed to get enemy prefab for " + enemyType, LethalMon.LogType.Error);
+            return;
+        }
+        
+        this.gameObject.SetActive(false);
+        
+        _currentEnemyModel = Object.Instantiate(originalPrefab, this._coneTransform);
+        
+        var components = _currentEnemyModel.GetComponentsInChildren<Component>().ToList();
+        foreach (var component in components)
+        {
+            if (component is Transform or MeshRenderer or MeshFilter or SkinnedMeshRenderer or Animator or AudioSource)
+            {
+                continue;
+            }
+
+            Destroy(component);
+        }
+        
+        this.gameObject.SetActive(true);
+        
+        _currentEnemyModel.transform.localPosition = Vector3.up * 0.9f; 
+        _currentEnemyModel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+        _currentEnemyModel.transform.localScale = Vector3.one * 0.075f;
     }
 
     protected override void StartThrowAnimation()
@@ -110,5 +156,13 @@ public class Tier1Ball : BallItem
     {
         
     }
+
+    public override void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
+    {
+        base.SetCaughtEnemy(enemyType, enemySkinRegistryId);
+        
+        InstantiateEnemyModel(enemyType.name);
+    }
+
     #endregion
 }

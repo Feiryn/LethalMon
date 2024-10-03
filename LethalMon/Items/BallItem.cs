@@ -530,7 +530,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
     #endregion
     
     #region BallMethods
-    public void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
+    public virtual void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
     {
         this.enemyType = enemyType;
         this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
@@ -561,7 +561,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
     }
     #endregion
     
-        #region RPCs
+    #region RPCs
 
     [ServerRpc(RequireOwnership = false)]
     public void CallTamedEnemyServerRpc(NetworkObjectReference networkObjectReference, string enemyName, NetworkObjectReference ownerNetworkReference)

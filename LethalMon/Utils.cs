@@ -200,6 +200,11 @@ public class Utils
         return EnemyTypes.Where(e => e.name == enemyName).ToArray();
     }
 
+    public static GameObject? GetEnemyPrefab(string enemyType)
+    {
+        return EnemyTypes.FirstOrDefault(e => e.name == enemyType && e.enemyPrefab != null)?.enemyPrefab;
+    }
+
     public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
     {
         Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
