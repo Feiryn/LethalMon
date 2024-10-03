@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace LethalMon.Patches;
 
-public class FlowermanAIPatch
+internal class FlowermanAIPatch
 {
     [HarmonyPatch(typeof(FlowermanAI), nameof(FlowermanAI.HitEnemy))]
     [HarmonyPrefix]

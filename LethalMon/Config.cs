@@ -235,7 +235,7 @@ namespace LethalMon
 
             foreach (var disabledMonster in Instance.values.DisabledMonsters)
             {
-                Data.CatchableMonsters.Remove(disabledMonster);
+                Registry.RemoveEnemy(disabledMonster);
             }
         }
 

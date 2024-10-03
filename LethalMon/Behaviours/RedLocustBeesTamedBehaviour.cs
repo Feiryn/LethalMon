@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace LethalMon.Behaviours;
 
-public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
+internal class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
     private RedLocustBees? _bees;
@@ -21,27 +21,27 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override float TargetingRange => 10f;
+    public override float TargetingRange => 10f;
     #endregion
 
     #region Cooldowns
 
     private const string StunCooldownId = "Bees_stun";
 
-    internal override Cooldown[] Cooldowns => [new Cooldown(StunCooldownId, "Stun enemy", ModConfig.Instance.values.BeesStunCooldown)];
+    public override Cooldown[] Cooldowns => [new Cooldown(StunCooldownId, "Stun enemy", ModConfig.Instance.values.BeesStunCooldown)];
 
     private CooldownNetworkBehaviour? _stunCooldown;
 
-    internal override bool CanDefend => _stunCooldown != null && _stunCooldown.IsFinished();
+    public override bool CanDefend => _stunCooldown != null && _stunCooldown.IsFinished();
     #endregion
 
     #region Base Methods
-    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+    public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, false);
     }
 
-    internal override void Start()
+    public override void Start()
     {
         base.Start();
 
@@ -55,7 +55,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         Bees.gameObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f); // Make them stick tighter together
     }
 
-    internal override void OnTamedFollowing()
+    public override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
@@ -63,7 +63,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             TargetNearestEnemy(true, false, 360f);
     }
 
-    internal override void OnTamedDefending()
+    public override void OnTamedDefending()
     {
         BeesZapOnTimer();
         
@@ -119,7 +119,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
@@ -132,7 +132,7 @@ public class RedLocustBeesTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    public override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
         base.InitTamingBehaviour(behaviour);
 

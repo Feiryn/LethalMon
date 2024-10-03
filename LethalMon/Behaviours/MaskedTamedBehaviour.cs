@@ -8,7 +8,6 @@ using Unity.Netcode;
 using System.Linq;
 using System.Reflection;
 using LethalMon.Patches;
-using LethalLib.Modules;
 using LethalMon.Compatibility;
 
 namespace LethalMon.Behaviours
@@ -44,7 +43,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override bool CanDefend => false;
+        public override bool CanDefend => false;
 
         // Mask
         private bool _isTransferingMask = false;
@@ -98,7 +97,7 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private const string CooldownId = "masked_lendmask";
 
-        internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Lending mask", ModConfig.Instance.values.MaskedLendCooldown)];
+        public override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Lending mask", ModConfig.Instance.values.MaskedLendCooldown)];
 
         private CooldownNetworkBehaviour? lendMaskCooldown;
         #endregion
@@ -109,13 +108,13 @@ namespace LethalMon.Behaviours
             LendMask = 1,
             Ghostified
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.LendMask.ToString(), "Lending mask", OnLendMaskBehavior),
             new (CustomBehaviour.Ghostified.ToString(), "Ghostified", OnGhostBehavior)
         ];
 
-        internal override void InitCustomBehaviour(int behaviour)
+        public override void InitCustomBehaviour(int behaviour)
         {
             // ANY CLIENT
             base.InitCustomBehaviour(behaviour);
@@ -287,9 +286,9 @@ namespace LethalMon.Behaviours
         [
             new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Lend mask" }
         ];
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        public override List<ActionKey> ActionKeys => _actionKeys;
 
-        internal override void ActionKey1Pressed()
+        public override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
 
@@ -307,13 +306,13 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Awake()
+        public override void Awake()
         {
             base.Awake();
             MirageCompatibility.SaveHeadMasksOf(Masked.gameObject);
         }
 
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
             
@@ -371,7 +370,7 @@ namespace LethalMon.Behaviours
             MaskedPlayerEnemyPatch.lastColliderIDs.Remove(Masked.GetInstanceID());
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
@@ -383,7 +382,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void LeaveCustomBehaviour(int behaviour)
+        public override void LeaveCustomBehaviour(int behaviour)
         {
             base.LeaveCustomBehaviour(behaviour);
             
@@ -393,7 +392,7 @@ namespace LethalMon.Behaviours
 
         // OnTamedDefending idea: decoy
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
             if (_isTransferingMask) return;
@@ -404,7 +403,7 @@ namespace LethalMon.Behaviours
                 Masked.CalculateAnimationDirection();
         }
 
-        internal override void DoAIInterval()
+        public override void DoAIInterval()
         {
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();
@@ -432,7 +431,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnCallFromBall()
+        public override void OnCallFromBall()
         {
             base.OnCallFromBall();
 
@@ -445,7 +444,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void TurnTowardsPosition(Vector3 position)
+        public override void TurnTowardsPosition(Vector3 position)
         {
             Masked.lookAtPositionTimer = 0f;
             if (Masked.agent != null)
@@ -454,7 +453,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region EscapedFromBall - GhostEvent
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);

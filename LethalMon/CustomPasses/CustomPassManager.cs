@@ -4,7 +4,7 @@ using UnityEngine.Rendering.HighDefinition;
 
 namespace LethalMon.CustomPasses
 {
-    internal class CustomPassManager
+    public class CustomPassManager
     {
         public enum CustomPassType
         {

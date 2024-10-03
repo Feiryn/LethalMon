@@ -116,8 +116,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         TamedEnemyBehaviour? behaviour = other.GetComponentInParent<TamedEnemyBehaviour>();
         if (enemyToCapture == null || enemyToCapture.isEnemyDead || behaviour == null || behaviour.IsTamed) return;
 
-        if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
-                out CatchableEnemy.CatchableEnemy catchable))
+        var catchable = Registry.GetCatchableEnemy(enemyToCapture.enemyType.name);
+        if (catchable != null)
         {
             if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
             {
@@ -142,7 +142,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
                 if (ModelReplacementAPICompatibility.Instance.Enabled)
                     ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(true);
 
-                Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
+                Registry.GetCatchableEnemy(this.enemyType!.name)!.CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
 
                 if (FailureSFX != null)
                     Utils.PlaySoundAtPosition(gameObject.transform.position, FailureSFX); // Can't use audioSource as it gets destroyed
@@ -258,25 +258,41 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         base.GetItemDataToSave();
 
-        if (!this.enemyCaptured || this.catchableEnemy == null)
+        if (!this.enemyCaptured || this.enemyType == null)
         {
             return -1;
         }
         else
         {
-            return this.catchableEnemy.Id;
+            var enemyTypeId = Registry.GetEnemyTypeId(this.enemyType.name);
+            if (enemyTypeId != null)
+            {
+                return enemyTypeId.Value;
+            }
+            else
+            {
+                LethalMon.Log($"Cannot save ball content: enemy type ID of {this.enemyType.name} not found in registry", LethalMon.LogType.Error);
+                return -1;
+            }
         }
     }
 
     public override void LoadItemSaveData(int saveData)
     {
         base.LoadItemSaveData(saveData);
-
-        if (saveData != 0 && !this.enemyCaptured && Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        
+        var catchable = Registry.GetCatchableEnemy(saveData);
+        if (saveData != 0 && !this.enemyCaptured && catchable != null)
         {
-            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
-            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            SetCaughtEnemy(type, string.Empty);
+            var type = GetFirstEnemyType(Registry.GetEnemyTypeName(saveData));
+            if (type != null)
+            {
+                this.SetCaughtEnemy(type, string.Empty);
+            }
+            else
+            {
+                LethalMon.Log($"Cannot load ball content: enemy type with ID {saveData} not found in registry", LethalMon.LogType.Error);
+            }
         }
     }
 #endregion
@@ -317,7 +333,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
         
-        Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy!);
+        Registry.GetCatchableEnemy(this.enemyAI!.enemyType.name)!.BeforeCapture(this.enemyAI, playerThrownBy!);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
         if (ModelReplacementAPICompatibility.Instance.Enabled)
             ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(false);
@@ -437,7 +453,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     public void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
     {
         this.enemyType = enemyType;
-        this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
+        this.catchableEnemy = Registry.GetCatchableEnemy(this.enemyType.name);
         this.enemyCaptured = true;
         this.enemySkinRegistryId = enemySkinRegistryId;
         this.ChangeName();
@@ -484,7 +500,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             return;
         }
 
-        if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy _))
+        if (!Registry.IsEnemyRegistered(enemyName))
         {
             LethalMon.Log("Enemy not catchable (maybe mod version mismatch).", LethalMon.LogType.Error);
             return;

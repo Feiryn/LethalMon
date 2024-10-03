@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace LethalMon.Patches;
 
-public class MouthDogPatch
+internal class MouthDogPatch
 {
     [HarmonyPatch(typeof(MouthDogAI), nameof(MouthDogAI.ReactToOtherDogHowl))]
     [HarmonyPrefix]

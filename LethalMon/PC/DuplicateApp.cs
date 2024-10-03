@@ -6,7 +6,7 @@ using Object = UnityEngine.Object;
 
 namespace LethalMon.PC;
 
-public class DuplicateApp : PCApp
+internal class DuplicateApp : PCApp
 {
     #region AppComponents
     private readonly Button _duplicateButton;
@@ -48,7 +48,7 @@ public class DuplicateApp : PCApp
         
         if (SelectedMonster != string.Empty)
         {
-            CatchableEnemy.CatchableEnemy enemy = Data.CatchableMonsters[SelectedMonster];
+            CatchableEnemy.CatchableEnemy enemy = Registry.GetCatchableEnemy(SelectedMonster)!;
             _duplicateButton.GetComponentInChildren<TextMeshProUGUI>().text = "> Duplicate <\nMonster: " + enemy.DisplayName + "\nPrice: " + enemy.DuplicationPrice + " ▮";
         }
     }
@@ -77,7 +77,7 @@ public class DuplicateApp : PCApp
             return;
         }
         
-        if (Object.FindObjectOfType<Terminal>().groupCredits < Data.CatchableMonsters[SelectedMonster].DuplicationPrice)
+        if (Object.FindObjectOfType<Terminal>().groupCredits < Registry.GetCatchableEnemy(SelectedMonster)!.DuplicationPrice)
         {
             DuplicationError("Not enough credits!", true);
             return;
@@ -131,7 +131,7 @@ public class DuplicateApp : PCApp
 
         if (progress >= 1f)
         {
-            int price = Data.CatchableMonsters[SelectedMonster].DuplicationPrice;
+            int price = Registry.GetCatchableEnemy(SelectedMonster)!.DuplicationPrice;
             
             if (Object.FindObjectOfType<Terminal>().groupCredits < price)
             {
@@ -141,7 +141,7 @@ public class DuplicateApp : PCApp
             
             currentBall.SetCaughtEnemyServerRpc(SelectedMonster, string.Empty, price);
             
-            string successText = $"Duplication of {Data.CatchableMonsters[SelectedMonster].DisplayName} successful!";
+            string successText = $"Duplication of {Registry.GetCatchableEnemy(SelectedMonster)!.DisplayName} successful!";
             
             DuplicationSuccess(successText);
             PC.Instance.DuplicationSuccessServerRpc(successText);

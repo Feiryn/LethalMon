@@ -33,7 +33,7 @@ namespace LethalMon.Behaviours
 
         private SandSpiderWebTrap? _previousWebTrap = null;
 
-        internal override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
+        public override bool CanDefend => shootWebCooldown != null && shootWebCooldown.IsFinished();
 
         // Audio
         internal static AudioClip[] webBounceSFX = [];
@@ -42,7 +42,7 @@ namespace LethalMon.Behaviours
         #region Cooldowns
         private const string ShootWebCooldownID = "monstername_cooldownname";
 
-        internal override Cooldown[] Cooldowns => [new Cooldown(ShootWebCooldownID, "Shooting web", ModConfig.Instance.values.SpiderWebCooldown)];
+        public override Cooldown[] Cooldowns => [new Cooldown(ShootWebCooldownID, "Shooting web", ModConfig.Instance.values.SpiderWebCooldown)];
 
         private CooldownNetworkBehaviour? shootWebCooldown;
         #endregion
@@ -52,9 +52,9 @@ namespace LethalMon.Behaviours
         [
             new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Shoot web" }
         ];
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        public override List<ActionKey> ActionKeys => _actionKeys;
 
-        internal override void ActionKey1Pressed()
+        public override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
 
@@ -67,7 +67,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -81,7 +81,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
@@ -111,7 +111,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
             
@@ -128,14 +128,14 @@ namespace LethalMon.Behaviours
             Spider.navigateToPositionTarget = position;
         }
 
-        internal override void TurnTowardsPosition(Vector3 position)
+        public override void TurnTowardsPosition(Vector3 position)
         {
             base.TurnTowardsPosition(position);
 
             Spider.SetSpiderLookAtPosition(position);
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -143,7 +143,7 @@ namespace LethalMon.Behaviours
             ShootWebsAround();
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
             base.OnUpdate(update, doAIInterval);
@@ -162,14 +162,14 @@ namespace LethalMon.Behaviours
             Spider.Update();
         }
 
-        internal override void LateUpdate()
+        public override void LateUpdate()
         {
             base.LateUpdate();
 
             Spider.LateUpdate();
         }
 
-        internal override void DoAIInterval()
+        public override void DoAIInterval()
         {
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();

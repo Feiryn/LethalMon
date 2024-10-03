@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 using System.Collections.Generic;
 using LethalMon;
 
-class SeeThroughCustomPass : CustomPass
+public class SeeThroughCustomPass : CustomPass
 {
     public Material seeThroughMaterial = new(Utils.WireframeMaterial!);
     public LayerMask seeThroughLayer;

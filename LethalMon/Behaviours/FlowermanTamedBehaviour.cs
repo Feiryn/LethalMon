@@ -10,7 +10,7 @@ using Random = UnityEngine.Random;
 
 namespace LethalMon.Behaviours;
 
-public class FlowermanTamedBehaviour : TamedEnemyBehaviour
+internal class FlowermanTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
     private FlowermanAI? _bracken = null;
@@ -91,7 +91,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     private const float MaximumDistanceTowardsOwner = 50f; // Distance, after which the grabbed enemy will be dropped in order to return to the owner
 
-    internal override string DefendingBehaviourDescription => "Saw an enemy to drag away!";
+    public override string DefendingBehaviourDescription => "Saw an enemy to drag away!";
 
     #endregion
     
@@ -102,7 +102,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         GoesBackToOwner
     }
     
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new (CustomBehaviour.DragEnemyAway.ToString(), "Drags an enemy away...", OnDragEnemyAway),
         new (CustomBehaviour.GoesBackToOwner.ToString(), "Walks back to you...", OnWalkBackToOwner)
@@ -147,7 +147,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         Bracken.SetDestinationToPosition(ownerPlayer.transform.position);
     }
     
-    internal override void InitCustomBehaviour(int behaviour)
+    public override void InitCustomBehaviour(int behaviour)
     {
         base.InitCustomBehaviour(behaviour);
 
@@ -160,15 +160,15 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     private const string GrabCooldownId = "Bracken_grab";
     
-    internal override Cooldown[] Cooldowns => [new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown)];
+    public override Cooldown[] Cooldowns => [new Cooldown(GrabCooldownId, "Grab enemy", ModConfig.Instance.values.BrackenGrabCooldown)];
 
     private CooldownNetworkBehaviour? grabCooldown;
 
-    internal override bool CanDefend => grabCooldown != null && grabCooldown.IsFinished();
+    public override bool CanDefend => grabCooldown != null && grabCooldown.IsFinished();
     #endregion
 
     #region Base Methods
-    internal override void Start()
+    public override void Start()
     {
         base.Start();
 
@@ -202,7 +202,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void LateUpdate()
+    public override void LateUpdate()
     {
         base.LateUpdate();
 
@@ -210,7 +210,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             SetArmsInHoldPosition();
     }
 
-    internal override void OnTamedFollowing()
+    public override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
@@ -218,7 +218,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             TargetNearestEnemy();
     }
 
-    internal override void OnTamedDefending()
+    public override void OnTamedDefending()
     {
         if (!HasTargetEnemy)
         {
@@ -254,7 +254,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
         
     }
 
-    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
@@ -262,12 +262,12 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
             Bracken.AddToAngerMeter(float.MaxValue);
     }
 
-    internal override void DoAIInterval()
+    public override void DoAIInterval()
     {
         base.DoAIInterval();
     }
 
-    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+    public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, false);
 
@@ -287,7 +287,7 @@ public class FlowermanTamedBehaviour : TamedEnemyBehaviour
     #endregion
 
     #region Methods
-    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    public override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
         base.InitTamingBehaviour(behaviour);
 

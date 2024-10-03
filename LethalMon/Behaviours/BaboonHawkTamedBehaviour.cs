@@ -24,7 +24,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override float TargetingRange => 5f;
+        public override float TargetingRange => 5f;
 
         internal static AudioClip? EchoLotSFX = null;
         internal const float MaximumEchoDistance = 50f;
@@ -39,7 +39,7 @@ namespace LethalMon.Behaviours
         private const string EchoLotCooldownId = "baboonhawk_echolot";
         private const string HittingEnemyCooldownId = "baboonhawk_hittingenemy";
 
-        internal override Cooldown[] Cooldowns => [
+        public override Cooldown[] Cooldowns => [
             new Cooldown(EchoLotCooldownId, "Echo lot", 15f),
             new Cooldown(HittingEnemyCooldownId, "Hitting enemy", 5f)
             ];
@@ -53,9 +53,9 @@ namespace LethalMon.Behaviours
         [
             new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Scan for items" }
         ];
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        public override List<ActionKey> ActionKeys => _actionKeys;
 
-        internal override void ActionKey1Pressed()
+        public override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
             if (echoLotCooldown != null && echoLotCooldown.IsFinished())
@@ -64,7 +64,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -87,7 +87,7 @@ namespace LethalMon.Behaviours
             BaboonHawk.creatureAnimator.speed = 1f;
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, false);
 
@@ -112,7 +112,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void TurnTowardsPosition(Vector3 position)
+        public override void TurnTowardsPosition(Vector3 position)
         {
             if(IsSleeping) return;
 
@@ -121,7 +121,7 @@ namespace LethalMon.Behaviours
             BaboonHawk.AnimateLooking(position);
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             base.InitTamingBehaviour(behaviour);
 
@@ -151,7 +151,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
@@ -165,7 +165,7 @@ namespace LethalMon.Behaviours
             TargetNearestEnemy();
         }
 
-        internal override void OnTamedDefending()
+        public override void OnTamedDefending()
         {
             base.OnTamedDefending();
 
@@ -205,14 +205,14 @@ namespace LethalMon.Behaviours
                 BaboonHawk.StartMiscAnimationServerRpc(UnityEngine.Random.RandomRangeInt(0, BaboonHawk.enemyType.miscAnimations.Length - 1));
         }
 
-        internal override bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
+        public override bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
         {
             if (!enemyAI.enemyType.canDie) return false; // pointless to attack
 
             return base.EnemyMeetsTargetingConditions(enemyAI);
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -263,7 +263,7 @@ namespace LethalMon.Behaviours
             isEscapeFromBallCoroutineRunning = false;
         }
 
-        internal override void OnCallFromBall()
+        public override void OnCallFromBall()
         {
             base.OnCallFromBall();
 

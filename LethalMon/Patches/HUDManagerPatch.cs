@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
 
-public class HUDManagerPatch
+internal class HUDManagerPatch
 {
     private static HUDElement? monsterHudElement;
 
@@ -50,10 +50,10 @@ public class HUDManagerPatch
         string enemyTypeName = behaviour.Enemy.enemyType.name;
 
         if (monsterIcon != null) 
-            monsterIcon.sprite = LethalMon.monstersSprites.TryGetValue(enemyTypeName.ToLower(), out var sprite) ? sprite : LethalMon.monstersSprites["unknown"];
+            monsterIcon.sprite = Registry.GetEnemySprite(enemyTypeName);
 
         if (monsterName != null)
-            monsterName.text = Data.CatchableMonsters[enemyTypeName].DisplayName;
+            monsterName.text = Registry.GetCatchableEnemy(enemyTypeName)!.DisplayName;
         
         // Bind cooldowns
         CooldownNetworkBehaviour[] cooldowns = behaviour.GetComponents<CooldownNetworkBehaviour>();

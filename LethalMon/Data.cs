@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
-using LethalMon.CatchableEnemy;
-using static LethalMon.Utils;
 
 namespace LethalMon;
 
 public static class Data
 {
-    public static readonly Random Random = new Random();
+    public static readonly Random Random = new();
     
     public static readonly float[][] CaptureProbabilities =
     {
@@ -25,23 +22,4 @@ public static class Data
     };
     
     public static readonly int[] DuplicationPrices = [30, 70, 120, 180, 250, 330, 420, 520, 630, 750];
-
-    public static readonly Dictionary<string, CatchableEnemy.CatchableEnemy> CatchableMonsters = new()
-    {
-        { Enemy.Flowerman.ToString(), new CatchableFlowerman() },
-        { Enemy.HoarderBug.ToString(), new CatchableHoarderBug() },
-        { Enemy.RedLocustBees.ToString(), new CatchableRedLocustBees() },
-        { Enemy.Puffer.ToString(), new CatchableSporeLizard() },
-        { Enemy.MouthDog.ToString(), new CatchableMouthDog() },
-        { Enemy.FlowerSnake.ToString(), new CatchableTulipSnake() },
-        { Enemy.DressGirl.ToString(), new CatchableGhostGirl() },
-        { Enemy.Nutcracker.ToString(), new CatchableNutcracker() },
-        { Enemy.Butler.ToString(), new CatchableButler() },
-        //{ Enemy.BushWolf.ToString(), new CatchableKidnapperFox() },
-        { Enemy.Crawler.ToString(), new CatchableCrawler() },
-        { Enemy.MaskedPlayerEnemy.ToString(), new CatchableMasked() },
-        { Enemy.BaboonHawk.ToString(), new CatchableBaboonHawk() },
-        { Enemy.SandSpider.ToString(), new CatchableSpider() },
-        { Enemy.Blob.ToString(), new CatchableBlob() }
-    };
 }

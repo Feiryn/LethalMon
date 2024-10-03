@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
-public class PC : NetworkBehaviour
+internal class PC : NetworkBehaviour
 {
     internal static GameObject? pcPrefab = null;
 

@@ -25,8 +25,8 @@ namespace LethalMon.Behaviours
         const float CleanUpTime = 5f;
         float _timeCleaning = 0f;
 
-        internal override bool CanDefend => false;
-        internal override TargetType Targets => TargetType.Dead;
+        public override bool CanDefend => false;
+        public override TargetType Targets => TargetType.Dead;
 
         #endregion
 
@@ -36,13 +36,13 @@ namespace LethalMon.Behaviours
             RunTowardsDeadEnemy = 1,
             CleanUpEnemy
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.RunTowardsDeadEnemy.ToString(), "Runs towards a dead enemy...", OnRunTowardsDeadEnemy),
             new (CustomBehaviour.CleanUpEnemy.ToString(), "Is cleaning up an enemy...", OnCleanUpEnemy)
         ];
 
-        internal override void InitCustomBehaviour(int behaviour)
+        public override void InitCustomBehaviour(int behaviour)
         {
             base.InitCustomBehaviour(behaviour);
 
@@ -205,7 +205,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
@@ -234,19 +234,19 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
             TargetNearestEnemy();
         }
 
-        internal override void OnFoundTarget()
+        public override void OnFoundTarget()
         {
             SwitchToCustomBehaviour((int)CustomBehaviour.RunTowardsDeadEnemy);
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -259,14 +259,14 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);
 
             Butler.CalculateAnimationDirection();
         }
 
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 

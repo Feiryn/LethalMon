@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace LethalMon.Behaviours;
 
-public class MouthDogTamedBehaviour : TamedEnemyBehaviour
+internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
     private MouthDogAI? _mouthDog = null; // Replace with enemy class
@@ -30,7 +30,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
     private MouthDogAI? _targetDog = null;
 
-    internal override string DefendingBehaviourDescription => "Runs away...";
+    public override string DefendingBehaviourDescription => "Runs away...";
     #endregion
     
     #region Custom behaviours
@@ -39,7 +39,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         Howl = 1
     }
     
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new (CustomBehaviour.Howl.ToString(), "Is howling!", OnHowl)
     ];
@@ -61,7 +61,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    internal override bool CanDefend => false;
+    public override bool CanDefend => false;
 
     #endregion
     
@@ -69,13 +69,13 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
     private const string HowlCooldownId = "mouthdog_howl";
     
-    internal override Cooldown[] Cooldowns => [new Cooldown(HowlCooldownId, "Howl", ModConfig.Instance.values.EyelessDogHowlCooldown)];
+    public override Cooldown[] Cooldowns => [new Cooldown(HowlCooldownId, "Howl", ModConfig.Instance.values.EyelessDogHowlCooldown)];
 
     private CooldownNetworkBehaviour? howlCooldown;
     #endregion
 
     #region Base Methods
-    internal override void Start()
+    public override void Start()
     {
         base.Start();
 
@@ -91,7 +91,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+    public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, false);
 
@@ -100,13 +100,13 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         MouthDog.previousPosition = position;
     }
     
-    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         if (Utils.IsHost)
             StartCoroutine(EscapedFromBallCoroutine(playerWhoThrewBall));
     }
 
-    internal override void OnTamedFollowing()
+    public override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
@@ -116,7 +116,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
     
-    internal override void OnTamedDefending()
+    public override void OnTamedDefending()
     {
         base.OnTamedDefending();
 
@@ -134,7 +134,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    public override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
         base.InitTamingBehaviour(behaviour);
         
@@ -151,7 +151,7 @@ public class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void InitCustomBehaviour(int behaviour)
+    public override void InitCustomBehaviour(int behaviour)
     {
         base.InitCustomBehaviour(behaviour);
 

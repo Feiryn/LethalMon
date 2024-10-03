@@ -16,44 +16,24 @@ namespace LethalMon.Behaviours;
 [DisallowMultipleComponent]
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
-    internal virtual bool Controllable => false;
+    public virtual bool Controllable => false;
 
-    internal enum TargetType
+    public enum TargetType
     {
         Any,
         Alive,
         Dead
     };
 
-    internal virtual TargetType Targets => TargetType.Alive;
-    internal virtual float TargetingRange => 10f;
-    internal virtual bool TargetOnlyKillableEnemies => false;
+    public virtual TargetType Targets => TargetType.Alive;
+    public virtual float TargetingRange => 10f;
+    public virtual bool TargetOnlyKillableEnemies => false;
 
-    internal virtual bool CanBlockOtherEnemies => false;
+    public virtual bool CanBlockOtherEnemies => false;
 
-    internal virtual Cooldown[] Cooldowns => [];
+    public virtual Cooldown[] Cooldowns => [];
     
-    internal static bool AlreadyAddedBehaviours = false;
-
-    // Add your custom behaviour classes here
-    internal static readonly Dictionary<Type, Type> BehaviourClassMapping = new()
-    {
-        { typeof(FlowermanAI),       typeof(FlowermanTamedBehaviour) },
-        { typeof(RedLocustBees),     typeof(RedLocustBeesTamedBehaviour) },
-        { typeof(HoarderBugAI),      typeof(HoarderBugTamedBehaviour) },
-        { typeof(PufferAI),          typeof(SporeLizardTamedBehaviour) },
-        { typeof(MouthDogAI),        typeof(MouthDogTamedBehaviour) },
-        { typeof(FlowerSnakeEnemy),  typeof(TulipSnakeTamedBehaviour) },
-        { typeof(DressGirlAI),       typeof(GhostGirlTamedBehaviour) },
-        { typeof(NutcrackerEnemyAI), typeof(NutcrackerTamedBehaviour) },
-        { typeof(ButlerEnemyAI),     typeof(ButlerTamedBehaviour) },
-        //{ typeof(BushWolfEnemy),     typeof(KidnapperFoxTamedBehaviour) },
-        { typeof(CrawlerAI),         typeof(CrawlerTamedBehaviour) },
-        { typeof(MaskedPlayerEnemy), typeof(MaskedTamedBehaviour) },
-        { typeof(BaboonBirdAI),      typeof(BaboonHawkTamedBehaviour) },
-        { typeof(SandSpiderAI),      typeof(SpiderTamedBehaviour) },
-        { typeof(BlobAI),            typeof(BlobTamedBehaviour) }
-    };
+    public static bool AlreadyAddedBehaviours = false;
 
     private EnemyAI? _enemy = null;
     
@@ -113,12 +93,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     public bool isDnaComplete = false;
     
-    internal string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? !string.IsNullOrEmpty(ForceEnemySkinRegistryId) ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
+    public string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? !string.IsNullOrEmpty(ForceEnemySkinRegistryId) ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
 
     internal string ForceEnemySkinRegistryId = string.Empty;
 
     // Following
-    internal const float TimeBeforeUsingEntrance = 4f;
+    public const float TimeBeforeUsingEntrance = 4f;
     private float _timeAtEntrance = 0f;
     private bool _usingEntrance = false;
     private bool _followingRequiresEntrance = false;
@@ -126,7 +106,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
-    internal int LastDefaultBehaviourIndex
+    public int LastDefaultBehaviourIndex
     {
         get
         {
@@ -136,7 +116,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal float targetNearestEnemyInterval = 0f;
+    public float targetNearestEnemyInterval = 0f;
     internal bool foundEnemiesInRangeInLastSearch = false;
 
     #region Behaviours
@@ -150,15 +130,15 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     private readonly Dictionary<int, Tuple<string, Action>> CustomBehaviours = []; // List of behaviour state indices and their custom handler
 
     // Override this to add more custom behaviours to your tamed enemy
-    internal virtual List<Tuple<string, string, Action>>? CustomBehaviourHandler => null;
+    public virtual List<Tuple<string, string, Action>>? CustomBehaviourHandler => null;
 
-    internal virtual string FollowingBehaviourDescription => "Follows you...";
+    public virtual string FollowingBehaviourDescription => "Follows you...";
     
-    internal virtual string DefendingBehaviourDescription => "Defends you!";
+    public virtual string DefendingBehaviourDescription => "Defends you!";
 
-    internal virtual bool CanDefend => true;
+    public virtual bool CanDefend => true;
 
-    internal virtual float MaxFollowDistance => 30f;
+    public virtual float MaxFollowDistance => 30f;
 
     public TamingBehaviour? CurrentTamingBehaviour
     {
@@ -177,8 +157,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
     }
-    internal virtual void InitTamingBehaviour(TamingBehaviour behaviour) {}
-    internal virtual void LeaveTamingBehaviour(TamingBehaviour behaviour) {}
+    public virtual void InitTamingBehaviour(TamingBehaviour behaviour) {}
+    public virtual void LeaveTamingBehaviour(TamingBehaviour behaviour) {}
 
     public void SwitchToCustomBehaviour(int behaviour)
     {
@@ -188,8 +168,8 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + TamedBehaviourCount + behaviour);
         Enemy.enabled = false;
     }
-    internal virtual void InitCustomBehaviour(int behaviour) {}
-    internal virtual void LeaveCustomBehaviour(int behaviour) {}
+    public virtual void InitCustomBehaviour(int behaviour) {}
+    public virtual void LeaveCustomBehaviour(int behaviour) {}
 
     public void SwitchToDefaultBehaviour(int behaviour)
     {
@@ -214,7 +194,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI) || enemyAI == null) continue;
 
             // Behaviour controller
-            var tamedBehaviourType = BehaviourClassMapping.GetValueOrDefault(enemyAI.GetType(), typeof(TamedEnemyBehaviour));
+            var tamedBehaviourType = Registry.GetTamedBehaviour(enemyAI.GetType());
             var tamedBehaviour = enemyType.enemyPrefab.gameObject.AddComponent(tamedBehaviourType) as TamedEnemyBehaviour;
             if (tamedBehaviour == null)
             {
@@ -274,14 +254,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.enemyBehaviourStates = behaviourStateList.ToArray();
     }
 
-    internal virtual void OnTamedFollowing()
+    public virtual void OnTamedFollowing()
     {
         if (StartOfRound.Instance.inShipPhase) return;
 
         FollowOwner();
     }
 
-    internal virtual void OnTamedDefending()
+    public virtual void OnTamedDefending()
     {
         if (StartOfRound.Instance.inShipPhase) return;
 
@@ -289,7 +269,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
     
-    internal virtual void OnCallFromBall()
+    public virtual void OnCallFromBall()
     {
         var scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
         if (scanNode != null)
@@ -300,7 +280,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void OnRetrieveInBall()
+    public virtual void OnRetrieveInBall()
     {
         if (IsOwnerPlayer)
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
@@ -308,7 +288,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         HideNameTag();
     }
 
-    internal virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
+    public virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
 
     internal string GetCurrentStateDescription()
     {
@@ -342,21 +322,21 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region ActionKeys
-    internal virtual void ActionKey1Pressed() { }
+    public virtual void ActionKey1Pressed() { }
 
-    internal class ActionKey
+    public class ActionKey
     {
-        internal InputAction? Key { get; set; } = null;
-        internal string Description { get; set; } = "";
-        internal bool Visible { get; set; } = false;
+        public InputAction? Key { get; set; } = null;
+        public string Description { get; set; } = "";
+        public bool Visible { get; set; } = false;
 
-        internal string Control => Key == null ? "" : Key.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
-        internal string ControlTip => $"{Description}: [{Control}]";
+        public string Control => Key == null ? "" : Key.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
+        public string ControlTip => $"{Description}: [{Control}]";
     }
 
-    internal virtual List<ActionKey> ActionKeys => [];
+    public virtual List<ActionKey> ActionKeys => [];
 
-    internal void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
+    public void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
     {
         var keys = ActionKeys.Where((ak) => ak.Key == actionKey);
         if (keys.Any())
@@ -366,7 +346,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal void ShowVisibleActionKeyControlTips()
+    public void ShowVisibleActionKeyControlTips()
     {
         HUDManager.Instance.ClearControlTips();
 
@@ -417,7 +397,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void OnUpdate(bool update = false, bool doAIInterval = true)
+    public virtual void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         if (StartOfRound.Instance.inShipPhase) return;
 
@@ -523,13 +503,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void LateUpdate()
+    public virtual void LateUpdate()
     {
         if (IsTamed)
             UpdateNameTag();
     }
 
-    internal virtual void Awake()
+    public virtual void Awake()
     {
         CooldownNetworkBehaviour[] cooldownComponents = GetComponents<CooldownNetworkBehaviour>();
         if (cooldownComponents.Length != Cooldowns.Length)
@@ -545,7 +525,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void Start()
+    public virtual void Start()
     {
         //LethalMon.Logger.LogInfo($"LastDefaultBehaviourIndex for {Enemy.name} is {LastDefaultBehaviourIndex}");
         AddCustomBehaviours();
@@ -569,7 +549,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             ScanNodeProperties scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
             if (scanNode != null)
             {
-                scanNode.subText = Data.CatchableMonsters.ContainsKey(Enemy.enemyType.name)
+                scanNode.subText = Registry.IsEnemyRegistered(Enemy.enemyType.name)
                     ? "Catchable"
                     : "Not catchable";
             }
@@ -582,7 +562,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal virtual void DoAIInterval()
+    public virtual void DoAIInterval()
     {
         Enemy.DoAIInterval();
     }
@@ -603,7 +583,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         HideNameTag();
     }
 
-    internal virtual void TurnTowardsPosition(Vector3 position)
+    public virtual void TurnTowardsPosition(Vector3 position)
     {
         Transform enemyTransform = Enemy.transform;
         Vector3 direction = position - enemyTransform.position;
@@ -671,7 +651,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
 
         _nameText.enabled = true;
-        _nameText.text = $"{ownerPlayer!.playerUsername}'s\n{Data.CatchableMonsters[Enemy.enemyType.name].DisplayName}";
+        _nameText.text = $"{ownerPlayer!.playerUsername}'s\n{Registry.GetCatchableEnemy(Enemy.enemyType.name)?.DisplayName}";
         UpdateNameTagFontSize();
         _nameText.autoSizeTextContainer = false;
         _nameText.enableWordWrapping = false;
@@ -791,9 +771,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         TurnTowardsPosition(targetPosition);
     }
 
-    internal void PlaceOnNavMesh() => PlaceEnemyOnNavMesh(Enemy);
+    public void PlaceOnNavMesh() => PlaceEnemyOnNavMesh(Enemy);
 
-    internal static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
+    public static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
     {
         if (enemyAI.agent != null && enemyAI.agent.enabled && !enemyAI.agent.isOnNavMesh)
         {
@@ -863,7 +843,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
 
-    internal virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
+    public virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
         if (Targets == TargetType.Dead && !enemyAI.isEnemyDead || Targets == TargetType.Alive && enemyAI.isEnemyDead) return false;
 
@@ -873,9 +853,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             !(enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour) && tamedBehaviour.IsOwnedByAPlayer());
     }
 
-    internal virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
+    public virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
 
-    internal void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
+    public void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         targetNearestEnemyInterval -= Time.deltaTime;
         if (targetNearestEnemyInterval > 0)
@@ -892,7 +872,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
+    public EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
         foundEnemiesInRangeInLastSearch = false;
         const int layerMask = 1 << (int) Utils.LayerMasks.Mask.Enemies;
@@ -968,7 +948,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    internal void DropBlood(Vector3 position, int minAmount = 3, int maxAmount = 7)
+    public void DropBlood(Vector3 position, int minAmount = 3, int maxAmount = 7)
     {
         if (ownerPlayer == null) return;
 

@@ -3,7 +3,7 @@ using LethalMon.Behaviours;
 
 namespace LethalMon.Patches;
 
-public class GameNetworkManagerPatch
+internal class GameNetworkManagerPatch
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]

@@ -4,10 +4,11 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace LethalMon.Behaviours
 {
-    internal class EnemyController : NetworkBehaviour
+    public class EnemyController : NetworkBehaviour
     {
         #region Properties
         private EnemyAI? _enemy = null;
@@ -17,48 +18,48 @@ namespace LethalMon.Behaviours
         // Stamina
         private float _controllingPlayerStamina = 0f;
         private Color _staminaDefaultColor;
-        internal float EnemyStamina { get; private set; } = 1f;
+        public float EnemyStamina { get; private set; } = 1f;
 
         private bool _inputsBinded = false;
 
-        internal bool IsSprinting { get; private set; } = false;
-        internal bool IsMoving { get; private set; } = false;
+        public bool IsSprinting { get; private set; } = false;
+        public bool IsMoving { get; private set; } = false;
 
         private Vector3 _lastDirection = Vector3.zero;
-        internal float CurrentSpeed { get; private set; } = 0f;
+        public float CurrentSpeed { get; private set; } = 0f;
 
-        internal bool IsPlayerControlled => playerControlledBy != null;
-        internal bool IsControlledByUs => IsPlayerControlled && playerControlledBy == Utils.CurrentPlayer || _inputsBinded;
+        public bool IsPlayerControlled => playerControlledBy != null;
+        public bool IsControlledByUs => IsPlayerControlled && playerControlledBy == Utils.CurrentPlayer || _inputsBinded;
 
         // Changeable variables
-        internal float EnemySpeedInside = 4f;
-        internal float EnemySpeedOutside = 6f;
-        internal float EnemyJumpForce = 10f;
-        internal float EnemyDuration = 5f; // General stamina duration
-        internal float EnemyStrength = 1f; // Defines how much the enemy stamina is affected by held items
-        internal bool EnemyCanJump = false;
-        internal bool EnemyCanFly = false;
-        internal float EnemyStaminaUseMultiplier = 1f;
-        internal Vector3 EnemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
+        public float enemySpeedInside = 4f;
+        public float enemySpeedOutside = 6f;
+        public float enemyJumpForce = 10f;
+        public float enemyDuration = 5f; // General stamina duration
+        public float enemyStrength = 1f; // Defines how much the enemy stamina is affected by held items
+        public bool enemyCanJump = false;
+        public bool enemyCanFly = false;
+        public float enemyStaminaUseMultiplier = 1f;
+        public Vector3 enemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
 
         private readonly InputAction _moveAction = IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move");
 
         // Trigger
-        internal virtual float ControlTriggerHoldTime => 1f;
+        public virtual float ControlTriggerHoldTime => 1f;
 
         private InteractTrigger? _controlTrigger = null;
         private GameObject? _triggerObject = null;
         #endregion
 
         #region Controlling methods
-        internal Action? OnStartControlling = null;
-        internal Action? OnStopControlling = null;
-        internal Func<Vector2, Vector3> OnCalculateMovementVector;
-        internal Action<Vector3> OnMove;
+        public Action? OnStartControlling = null;
+        public Action? OnStopControlling = null;
+        public Func<Vector2, Vector3> OnCalculateMovementVector;
+        public Action<Vector3> OnMove;
         //internal Action? OnStartMoving;
         //internal Action? OnStopMoving;
-        internal Action OnJump;
-        internal Action OnCrouch;
+        public Action OnJump;
+        public Action OnCrouch;
         #endregion
 
         public EnemyController()
@@ -111,19 +112,19 @@ namespace LethalMon.Behaviours
             playerControlledBy = player;
 
             _enemy!.moveTowardsDestination = false;
-            if (EnemyCanFly)
+            if (enemyCanFly)
                 _enemy!.agent.enabled = false;
 
             player.disableMoveInput = true;
 
-            _enemy!.transform.localPosition += EnemyOffsetWhileControlling;
-            player.transform.position = _enemy!.transform.position - EnemyOffsetWhileControlling;
+            _enemy!.transform.localPosition += enemyOffsetWhileControlling;
+            player.transform.position = _enemy!.transform.position - enemyOffsetWhileControlling;
             player.transform.rotation = _enemy!.transform.rotation;
 
             if (IsControlledByUs)
             {
                 // Reposition on navMesh
-                if (!EnemyCanFly)
+                if (!enemyCanFly)
                 {
                     _enemy.agent.Warp(enemyPos);
                     _enemy.agent.enabled = false;
@@ -159,7 +160,7 @@ namespace LethalMon.Behaviours
         }
         #endregion
 
-        internal void StopControlling(bool beingDestroyed = false)
+        public void StopControlling(bool beingDestroyed = false)
         {
             if (playerControlledBy != null)
             {
@@ -169,9 +170,9 @@ namespace LethalMon.Behaviours
                     Physics.IgnoreCollision(collider, playerControlledBy.playerCollider, false);
             }
 
-            _enemy!.transform.localPosition -= EnemyOffsetWhileControlling;
+            _enemy!.transform.localPosition -= enemyOffsetWhileControlling;
 
-            if (EnemyCanFly)
+            if (enemyCanFly)
             {
                 if (Physics.Raycast(_enemy.transform.position + Vector3.up, -Vector3.up, out var hitInfo, 50f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
                 {
@@ -208,7 +209,7 @@ namespace LethalMon.Behaviours
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled += SprintStop;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started += Crouch;
 
-            if (EnemyCanJump)
+            if (enemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started += Jump;
 
             _inputsBinded = true;
@@ -223,7 +224,7 @@ namespace LethalMon.Behaviours
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").canceled -= SprintStop;
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").started -= Crouch;
 
-            if (EnemyCanJump)
+            if (enemyCanJump)
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump").started -= Jump;
 
             _inputsBinded = false;
@@ -241,7 +242,7 @@ namespace LethalMon.Behaviours
                 if (_inputsBinded)
                 {
                     // Controlling player
-                    playerControlledBy!.transform.position = _enemy!.transform.position - EnemyOffsetWhileControlling;
+                    playerControlledBy!.transform.position = _enemy!.transform.position - enemyOffsetWhileControlling;
                     playerControlledBy!.ResetFallGravity();
 
                     if (_moveAction.IsPressed())
@@ -270,7 +271,7 @@ namespace LethalMon.Behaviours
                 else
                 {
                     // Other clients
-                    _enemy!.transform.position = playerControlledBy!.transform.position + EnemyOffsetWhileControlling;
+                    _enemy!.transform.position = playerControlledBy!.transform.position + enemyOffsetWhileControlling;
                 }
 
                 _enemy!.transform.rotation = playerControlledBy!.transform.rotation;
@@ -286,11 +287,11 @@ namespace LethalMon.Behaviours
             {
                 // Controlled
                 if (IsMoving)
-                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * (IsSprinting ? 4f : 1f) * EnemyStaminaUseMultiplier / EnemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
-                else if (EnemyCanFly && !playerControlledBy!.IsPlayerNearGround())
-                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / EnemyStrength) * EnemyStaminaUseMultiplier / EnemyDuration / 5f, 0f, 1f); // Player is standing mid-air
+                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / enemyStrength) * (IsSprinting ? 4f : 1f) * enemyStaminaUseMultiplier / enemyDuration, 0f, 1f); // Take stamina while moving, more if sprinting
+                else if (enemyCanFly && !playerControlledBy!.IsPlayerNearGround())
+                    EnemyStamina = Mathf.Clamp(EnemyStamina - Time.deltaTime / playerControlledBy!.sprintTime * (playerControlledBy.carryWeight / enemyStrength) * enemyStaminaUseMultiplier / enemyDuration / 5f, 0f, 1f); // Player is standing mid-air
                 else
-                    EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f) * EnemyStaminaUseMultiplier, 0f, 1f); // Gain stamina if grounded and not moving
+                    EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / (playerControlledBy!.sprintTime + 1f) * enemyStaminaUseMultiplier, 0f, 1f); // Gain stamina if grounded and not moving
 
                 _controllingPlayerStamina = Mathf.Clamp(_controllingPlayerStamina + Time.deltaTime / (playerControlledBy.sprintTime + 2f), 0f, 1f);
 
@@ -306,18 +307,18 @@ namespace LethalMon.Behaviours
             else
             {
                 // Not controlled
-                EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / 5f / EnemyDuration, 0f, 1f);
+                EnemyStamina = Mathf.Clamp(EnemyStamina + Time.deltaTime / 5f / enemyDuration, 0f, 1f);
             }
 
             //LethalMon.Log($"Stamina player {(int)(100f*controllingPlayerStamina)}%, enemy{(int)(100f * enemyStamina)}%");
         }
 
         // Simplify abstract method parameter
-        internal void Jump(InputAction.CallbackContext callbackContext) => OnJump();
-        internal void SprintStart(InputAction.CallbackContext callbackContext) => IsSprinting = true;
-        internal void SprintStop(InputAction.CallbackContext callbackContext) => IsSprinting = false;
+        public void Jump(InputAction.CallbackContext callbackContext) => OnJump();
+        public void SprintStart(InputAction.CallbackContext callbackContext) => IsSprinting = true;
+        public void SprintStop(InputAction.CallbackContext callbackContext) => IsSprinting = false;
         
-        internal void Crouch(InputAction.CallbackContext callbackContext) => OnCrouch();
+        public void Crouch(InputAction.CallbackContext callbackContext) => OnCrouch();
 
         // Virtual methods
         internal Vector3 CalculateMovementVector(Vector2 moveInputVector)
@@ -328,7 +329,7 @@ namespace LethalMon.Behaviours
             var forwardVector = baseVector * moveInputVector.y;
             var directionVector = leftrightVector + forwardVector;
 
-            if (!EnemyCanFly)
+            if (!enemyCanFly)
                 directionVector.y = 0f;
 
             return directionVector * Time.deltaTime;
@@ -340,7 +341,7 @@ namespace LethalMon.Behaviours
 
             if (IsMoving)
             {
-                float maxSpeed = playerControlledBy!.isInsideFactory && StartOfRound.Instance.testRoom == null ? EnemySpeedInside : EnemySpeedOutside;
+                float maxSpeed = playerControlledBy!.isInsideFactory && StartOfRound.Instance.testRoom == null ? enemySpeedInside : enemySpeedOutside;
                 if (IsSprinting)
                     maxSpeed *= 2.25f;
 
@@ -351,7 +352,7 @@ namespace LethalMon.Behaviours
 
             direction *= CurrentSpeed;
 
-            if (EnemyCanFly)
+            if (enemyCanFly)
             {
                 // Collision checking
                 var raycastForward = direction;
@@ -376,12 +377,12 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal virtual void Crouching()
+        public virtual void Crouching()
         {
             StopControllingServerRpc();
         }
         
-        internal virtual void Jumping()
+        public virtual void Jumping()
         {
 
         }

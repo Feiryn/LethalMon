@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
-public class DexApp : PCApp
+internal class DexApp : PCApp
 {
     #region AppComponents
 
@@ -46,7 +46,7 @@ public class DexApp : PCApp
         _monsterImage = screen.transform.Find("Window/DexMenu/RightColumn/MonsterImage").GetComponent<Image>();
         _rightColumn = screen.transform.Find("Window/DexMenu/RightColumn").gameObject;
 
-        _enemies = Data.CatchableMonsters.OrderBy(kvp => kvp.Value.DisplayName).Select(entry => entry.Key).ToArray();
+        _enemies = Registry.CatchableEnemies.OrderBy(kvp => kvp.Value.DisplayName).Select(entry => entry.Key).ToArray();
         
         _nextPageButton.onClick.AddListener(NextPage);
         _previousPageButton.onClick.AddListener(PreviousPage);
@@ -68,18 +68,18 @@ public class DexApp : PCApp
         
         if (unlockedDexEntries.Contains(enemyName))
         {
-            CatchableEnemy.CatchableEnemy catchableEnemy = Data.CatchableMonsters[enemyName];
+            CatchableEnemy.CatchableEnemy catchableEnemy = Registry.GetCatchableEnemy(enemyName)!;
             _monsterName.text = catchableEnemy.DisplayName;
             _captureRates.text = $"Pokeball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(0) * 100)}%\n\nGreat ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(1) * 100)}%\n\nUltra ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(2) * 100)}%\n\nMaster ball: {Mathf.Floor(catchableEnemy.GetCaptureProbability(3) * 100)}%";
             _behaviourDescription.text = catchableEnemy.BehaviourDescription;
-            _monsterImage.sprite = LethalMon.monstersSprites[enemyName.ToLower()];
+            _monsterImage.sprite = Registry.GetEnemySprite(enemyName);
         }
         else
         {
             _monsterName.text = "??????";
             _captureRates.text = $"Pokeball: ???%\n\nGreat ball: ???%\n\nUltra ball: ???%\n\nMaster ball: ???%";
             _behaviourDescription.text = "??????";
-            _monsterImage.sprite = LethalMon.monstersSprites["unknown"];
+            _monsterImage.sprite = Registry.FallbackSprite;
         }
     }
 
@@ -101,7 +101,7 @@ public class DexApp : PCApp
                 UpdateMonsterInfo(_enemies[index]);
                 PC.Instance.LoadDexEntryServerRpc(_enemies[index]);
             });
-            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = unlockedDexEntries.Contains(_enemies[index]) ? Data.CatchableMonsters[_enemies[index]].DisplayName : "??????";
+            _monstersButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = unlockedDexEntries.Contains(_enemies[index]) ? Registry.GetCatchableEnemy(_enemies[index])!.DisplayName : "??????";
         }
     }
 

@@ -1,6 +1,6 @@
 namespace LethalMon.Compatibility;
 
-public class SnatchingBrackenCompatibility() : ModCompatibility("Ovchinikov.SnatchinBracken.Main")
+internal class SnatchingBrackenCompatibility() : ModCompatibility("Ovchinikov.SnatchinBracken.Main")
 {
     public static SnatchingBrackenCompatibility Instance { get; } = new();
 

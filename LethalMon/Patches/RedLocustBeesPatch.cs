@@ -5,7 +5,7 @@ using LethalMon.Behaviours;
 
 namespace LethalMon.Patches;
 
-public class RedLocustBeesPatch
+internal class RedLocustBeesPatch
 {
     public static readonly Dictionary<int, DateTime> AngryUntil = new();
     

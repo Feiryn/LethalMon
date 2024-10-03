@@ -54,22 +54,22 @@ namespace LethalMon.Behaviours
         internal EnemyAI? lastHitEnemy = null;
         internal int enemyHitTimes = 0;
 
-        internal override string DefendingBehaviourDescription => "Hits an enemy with its tongue!";
+        public override string DefendingBehaviourDescription => "Hits an enemy with its tongue!";
 
-        internal override bool CanDefend => tongueCooldown != null && tongueCooldown.IsFinished();
+        public override bool CanDefend => tongueCooldown != null && tongueCooldown.IsFinished();
 
         #endregion
 
         #region Cooldowns
         private const string TongueCooldownId = "fox_tongue";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown)];
+        public override Cooldown[] Cooldowns => [new Cooldown(TongueCooldownId, "Tongue hit", ModConfig.Instance.values.FoxTongueHitCooldown)];
 
         private CooldownNetworkBehaviour? tongueCooldown;
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -79,7 +79,7 @@ namespace LethalMon.Behaviours
                 Fox.transform.localScale *= 0.75f;
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // OWNER ONLY
             base.InitTamingBehaviour(behaviour);
@@ -88,7 +88,7 @@ namespace LethalMon.Behaviours
                 ShootTongueAtEnemy();
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             // OWNER ONLY
             base.OnTamedFollowing();
@@ -114,7 +114,7 @@ namespace LethalMon.Behaviours
                 TargetNearestEnemy();
         }
 
-        internal override void OnTamedDefending()
+        public override void OnTamedDefending()
         {
             // OWNER ONLY
             if (!HasTargetEnemy || targetEnemy!.isEnemyDead)
@@ -135,7 +135,7 @@ namespace LethalMon.Behaviours
             base.OnTamedDefending();
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -145,7 +145,7 @@ namespace LethalMon.Behaviours
             Fox.SwitchToBehaviourStateOnLocalClient(2);
         }
 
-        internal override void OnCallFromBall()
+        public override void OnCallFromBall()
         {
             base.OnCallFromBall();
 
@@ -167,13 +167,13 @@ namespace LethalMon.Behaviours
             return base.RetrieveInBall(position);
         }
 
-        internal override void TurnTowardsPosition(Vector3 position)
+        public override void TurnTowardsPosition(Vector3 position)
         {
             //base.TurnTowardsPosition(position);
             Fox.LookAtPosition(position);
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);
             

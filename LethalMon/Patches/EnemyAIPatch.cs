@@ -5,7 +5,7 @@ using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
 
-public class EnemyAIPatch
+internal class EnemyAIPatch
 {
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnDestroy))]
     [HarmonyPrefix]

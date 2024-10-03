@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace LethalMon.Patches;
 
-public class StartOfRoundPatch
+internal class StartOfRoundPatch
 {
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.ShipHasLeft))]
     [HarmonyPrefix]
@@ -58,5 +58,7 @@ public class StartOfRoundPatch
     private static void OnResetShipFurniturePostFix()
     {
         Utils.UnlockPCIfNotUnlocked();
+
+        Registry.LoadAndCalculateMissingIds();
     }
 }

@@ -8,7 +8,7 @@ namespace LethalMon.CatchableEnemy;
 /// <summary>
 /// An enemy that can be catched
 /// </summary>
-public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty, string behaviourDescription)
+public abstract class CatchableEnemy(string displayName, int catchDifficulty, string behaviourDescription)
 {
     private readonly int _baseCatchDifficulty = catchDifficulty;
     
@@ -26,12 +26,6 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
     /// The display name of the monster
     /// </summary>
     public string DisplayName { private set; get; } = displayName;
-
-    /// <summary>
-    /// The ID of the monster (used to save the monster in the ball when the game is closed). Must be unique across the mod
-    /// todo Replace because there can be collisions
-    /// </summary>
-    public int Id { get; } = id;
     
     public string BehaviourDescription { get; } = behaviourDescription;
 

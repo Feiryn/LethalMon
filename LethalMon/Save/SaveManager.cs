@@ -115,7 +115,7 @@ public class SaveManager
     #if DEBUG
     public static void DebugUnlockAll()
     {
-        foreach (var entry in Data.CatchableMonsters)
+        foreach (var entry in Registry.CatchableEnemies)
         {
             Save.unlockedDexEntries.Add(entry.Key);
             Save.unlockedDna.Add(entry.Key);

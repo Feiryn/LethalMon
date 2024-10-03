@@ -20,7 +20,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override bool Controllable => true;
+        public override bool Controllable => true;
         private InteractTrigger? _flyingTrigger = null;
 
         internal bool IsFlying => CurrentCustomBehaviour == (int)CustomBehaviour.Flying;
@@ -33,7 +33,7 @@ namespace LethalMon.Behaviours
         {
             Flying = 1,
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new Tuple<string, string, Action>(CustomBehaviour.Flying.ToString(), "Is flying with you...", WhileFlying),
         ];
@@ -92,7 +92,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
             
@@ -103,7 +103,7 @@ namespace LethalMon.Behaviours
             }
         }
         
-        internal override void Awake()
+        public override void Awake()
         {
             base.Awake();
 
@@ -113,21 +113,21 @@ namespace LethalMon.Behaviours
                 _controller.OnStopControlling = OnStopFlying;
                 _controller.OnMove = OnMove;
                 
-                _controller.EnemyCanFly = true;
+                _controller.enemyCanFly = true;
                 _controller.OnJump = OnJump;
-                _controller.EnemySpeedOutside = 8f;
-                _controller.EnemyDuration = 3f;
-                _controller.EnemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
-                _controller.EnemyStaminaUseMultiplier = 1.5f;
+                _controller.enemySpeedOutside = 8f;
+                _controller.enemyDuration = 3f;
+                _controller.enemyOffsetWhileControlling = new Vector3(0f, 2.4f, 0f);
+                _controller.enemyStaminaUseMultiplier = 1.5f;
             }
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, !IsFlying); // Don't attempt to SetDestination in Riding mode
         }
 
-        internal override void OnCallFromBall()
+        public override void OnCallFromBall()
         {
             base.OnCallFromBall();
 
@@ -137,14 +137,14 @@ namespace LethalMon.Behaviours
             _controller!.SetControlTriggerVisible();
         }
 
-        internal override void OnRetrieveInBall()
+        public override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
             
             _controller!.SetControlTriggerVisible(false);
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
@@ -159,7 +159,7 @@ namespace LethalMon.Behaviours
             TulipSnake.DoChuckleOnInterval();
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 

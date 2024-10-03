@@ -68,9 +68,9 @@ namespace LethalMon.Behaviours
 
         private static readonly int SpeedMultiplier = Animator.StringToHash("speedMultiplier");
 
-        internal override float MaxFollowDistance => 150f;
+        public override float MaxFollowDistance => 150f;
 
-        internal override bool CanDefend => false;
+        public override bool CanDefend => false;
 
         #endregion
         
@@ -87,7 +87,7 @@ namespace LethalMon.Behaviours
             AfraidOfTurret = 7,
             FollowEnemy = 8
         }
-        internal override List<Tuple<string, string, Action>> CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>> CustomBehaviourHandler =>
         [
             new (CustomBehaviour.OpenSmallDoor.ToString(), "Smashes a closed door!", OpenSmallDoor),
             new (CustomBehaviour.OpenBigDoor.ToString(), "Smashes a secured door!", OnOpenBigDoor),
@@ -231,7 +231,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -247,7 +247,7 @@ namespace LethalMon.Behaviours
             Crawler.creatureAnimator.Play("Base Layer.CrawlSlow");
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             if (Crawler.agent != null)
             {
@@ -261,7 +261,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void InitCustomBehaviour(int behaviour)
+        public override void InitCustomBehaviour(int behaviour)
         {
             base.InitCustomBehaviour(behaviour);
 
@@ -278,7 +278,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             // OWNER ONLY
             base.OnTamedFollowing();
@@ -291,7 +291,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
@@ -299,7 +299,7 @@ namespace LethalMon.Behaviours
             Crawler.SetDestinationToPosition(playerWhoThrewBall.transform.position);
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
             base.OnUpdate(update, doAIInterval);

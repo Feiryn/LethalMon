@@ -21,7 +21,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override bool Controllable => true;
+        public override bool Controllable => true;
         internal const float RidingTriggerHoldTime = 1f;
 
         private readonly InteractTrigger? _ridingTrigger = null;
@@ -38,7 +38,7 @@ namespace LethalMon.Behaviours
         {
             Riding = 1,
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new Tuple<string, string, Action>(CustomBehaviour.Riding.ToString(), "Is being rode...", WhileRiding),
         ];
@@ -89,7 +89,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Awake()
+        public override void Awake()
         {
             base.Awake();
 
@@ -100,18 +100,18 @@ namespace LethalMon.Behaviours
                 _controller.OnMove = OnMove;
                 _controller.OnJump = OnJump;
                 
-                _controller.EnemyCanJump = true;
-                _controller.EnemyStrength = 3f;
+                _controller.enemyCanJump = true;
+                _controller.enemyStrength = 3f;
             }
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             if(!IsRiding)
                 base.OnUpdate(); // Don't attempt to SetDestination in Riding mode
         }
 
-        internal override void OnCallFromBall()
+        public override void OnCallFromBall()
         {
             base.OnCallFromBall();
 
@@ -121,21 +121,21 @@ namespace LethalMon.Behaviours
             _controller!.SetControlTriggerVisible();
         }
 
-        internal override void OnRetrieveInBall()
+        public override void OnRetrieveInBall()
         {
             base.OnRetrieveInBall();
             
             _controller!.SetControlTriggerVisible(false);
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
             SporeLizard.CalculateAnimationDirection();
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 

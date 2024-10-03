@@ -13,13 +13,13 @@ using UnityEngine.InputSystem;
 
 namespace LethalMon.Patches;
 
-public class PlayerControllerBPatch
+internal class PlayerControllerBPatch
 {
     private static bool lastTestPressed = false;
 
     private static int currentTestEnemyTypeIndex = 0;
 
-    private static readonly string[] testEnemyTypes = new List<string>(Data.CatchableMonsters.Keys).ToArray();
+    private static string[]? testEnemyTypes;
     
     private static bool SentBallScanTip = false;
     
@@ -157,6 +157,11 @@ public class PlayerControllerBPatch
                         PokeballItem pokeballItem = heldItem.GetComponent<PokeballItem>();
                         if (pokeballItem != null)
                         {
+                            if (testEnemyTypes == null)
+                            {
+                                testEnemyTypes = new List<string>(Registry.CatchableEnemies.Keys).ToArray();
+                            }
+                            
                             EnemyType enemyType = Resources.FindObjectsOfTypeAll<EnemyType>().First(enemyType =>
                                 enemyType.name == testEnemyTypes[currentTestEnemyTypeIndex]);
                             pokeballItem.SetCaughtEnemyServerRpc(enemyType.name, string.Empty);
@@ -201,12 +206,12 @@ public class PlayerControllerBPatch
             var isControlled = tamedBehaviour.TryGetComponent(out EnemyController controller) && controller.IsPlayerControlled;
             if(isControlled)
             {
-                position += controller.EnemyOffsetWhileControlling;
+                position += controller.enemyOffsetWhileControlling;
                 position.y += __instance.transform.localScale.y;
             }
             tamedBehaviour.Enemy.transform.position = position;
 
-            if(controller == null || !controller.EnemyCanFly)
+            if(controller == null || !controller.enemyCanFly)
                 tamedBehaviour.Enemy.agent.enabled = true;
             tamedBehaviour.Enemy.serverPosition = position;
             tamedBehaviour.isOutside = !__instance.isInsideFactory;

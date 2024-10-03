@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LethalMon.PC;
 
-public abstract class PCApp
+internal abstract class PCApp
 {
     #region MenuComponents
 

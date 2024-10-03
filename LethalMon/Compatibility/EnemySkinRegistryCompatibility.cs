@@ -6,7 +6,7 @@ using LethalMon.Behaviours;
 
 namespace LethalMon.Compatibility;
 
-public class EnemySkinRegistryCompatibility() : ModCompatibility("antlershed.lethalcompany.enemyskinregistry")
+internal class EnemySkinRegistryCompatibility() : ModCompatibility("antlershed.lethalcompany.enemyskinregistry")
 {
     public static EnemySkinRegistryCompatibility Instance { get; } = new();
 

@@ -23,15 +23,15 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
+        public override string DefendingBehaviourDescription => "You can change the displayed text when the enemy is defending by something more precise... Or remove this line to use the default one";
 
-        internal override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
+        public override bool CanDefend => false; // You can return false to prevent the enemy from switching to defend mode in some cases (if already doing another action or if the enemy can't defend at all)
         #endregion
 
         #region Cooldowns
         private const string CooldownId = "monstername_cooldownname";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
+        public override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Display text", 20f)];
 
         private CooldownNetworkBehaviour? cooldown;
         #endregion
@@ -41,12 +41,12 @@ namespace LethalMon.Behaviours
         {
             TestBehavior = 1
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.TestBehavior.ToString(), "Behaviour description text", OnTestBehavior)
         ];
 
-        internal override void InitCustomBehaviour(int behaviour)
+        public override void InitCustomBehaviour(int behaviour)
         {
             // ANY CLIENT
             base.InitCustomBehaviour(behaviour);
@@ -74,9 +74,9 @@ namespace LethalMon.Behaviours
         [
             new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Action description here" }
         ];
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        public override List<ActionKey> ActionKeys => _actionKeys;
 
-        internal override void ActionKey1Pressed()
+        public override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
 
@@ -87,14 +87,14 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
             cooldown = GetCooldownWithId(CooldownId);
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             // ANY CLIENT
             base.InitTamingBehaviour(behaviour);
@@ -111,31 +111,31 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             // OWNER ONLY
             base.OnTamedFollowing();
         }
 
-        internal override void OnTamedDefending()
+        public override void OnTamedDefending()
         {
             // OWNER ONLY
             base.OnTamedDefending();
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             // ANY CLIENT
             base.OnEscapedFromBall(playerWhoThrewBall);
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             // ANY CLIENT
             base.OnUpdate(update, doAIInterval);
         }
 
-        internal override void DoAIInterval()
+        public override void DoAIInterval()
         {
             // ANY CLIENT, every EnemyAI.updateDestinationInterval, if OnUpdate.doAIInterval = true
             base.DoAIInterval();

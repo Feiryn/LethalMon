@@ -199,7 +199,11 @@ public class Utils
         var enemyName = enemy.ToString();
         return EnemyTypes.Where(e => e.name == enemyName).ToArray();
     }
-
+    
+    public static EnemyType? GetFirstEnemyType(string enemy)
+    {
+        return EnemyTypes.FirstOrDefault(e => e.name == enemy);
+    }
     public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
     {
         Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
