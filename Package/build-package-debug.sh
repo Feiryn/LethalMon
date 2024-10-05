@@ -50,7 +50,7 @@ echo -e "../LethalMon/bin/Debug/netstandard2.1/LethalMon.dll found and has been 
 read -rp "" < /dev/tty
 
 # Version
-version='debug'
+version='0.0.0'
 
 # Create build folder and subfolders only if not exists
 mkdir -p build
