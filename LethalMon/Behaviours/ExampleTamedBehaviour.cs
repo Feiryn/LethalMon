@@ -21,7 +21,7 @@ namespace LethalMon.Behaviours
          * - n+2: TamedDefending (when the monster is defending the player). The monster turns to this state automatically when the player is attacked, and the <cref="TamedEnemyBehaviour.targetEnemy"/> is updated
          * - n+3..: Custom behaviours defined in addition to the following and defending behaviours
          *
-         * The corresponding methods are called when the monster is in the corresponding state (OnTamedFollowing, OnTamedDefending, or the custom behaviour methods).
+         * The corresponding methods are called at each Update() when the monster is in the corresponding state (OnTamedFollowing, OnTamedDefending, or the custom behaviour methods).
          *
          * Please note that the enemy can still switch to the default behaviours. So the original EnemyAI can switch the behaviour to the default ones.
          * You may need to patch the original EnemyAI to prevent the enemy from switching to the default behaviours in some cases.
