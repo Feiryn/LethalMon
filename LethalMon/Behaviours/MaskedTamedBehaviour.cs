@@ -675,7 +675,7 @@ namespace LethalMon.Behaviours
             maskedObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
 
             MaskedPlayerEnemy maskedEnemy = maskedObject.GetComponent<MaskedPlayerEnemy>();
-            isOutside = Masked.isOutside;
+            IsOutside = Masked.isOutside;
 
             return maskedEnemy;
         }

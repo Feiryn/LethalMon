@@ -13,11 +13,22 @@ using UnityEngine.InputSystem;
 
 namespace LethalMon.Behaviours;
 
+/// <summary>
+/// A base class for tamed enemy behaviours.
+/// </summary>
 [DisallowMultipleComponent]
 public class TamedEnemyBehaviour : NetworkBehaviour
 {
+    /// <summary>
+    /// Determines whether the enemy can be controlled by the player.
+    /// It automatically adds an <see cref="EnemyController"/> component to the enemy if set to <see langword="true"/>.
+    /// </summary>
     public virtual bool Controllable => false;
 
+    /// <summary>
+    /// The type of targets the enemy can target.
+    /// It is used for example by the Butler to target dead enemies.
+    /// </summary>
     public enum TargetType
     {
         Any,
@@ -25,18 +36,42 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Dead
     };
 
+    /// <summary>
+    /// The type of targets the enemy can target.
+    /// It is used for example by the Butler to target dead enemies.
+    /// </summary>
     public virtual TargetType Targets => TargetType.Alive;
+    
+    /// <summary>
+    /// The range at which the enemy can target enemies.
+    /// </summary>
     public virtual float TargetingRange => 10f;
+    
+    /// <summary>
+    /// Determines whether the enemy can only target killable enemies.
+    /// </summary>
     public virtual bool TargetOnlyKillableEnemies => false;
 
+    /// <summary>
+    /// Determines whether the enemy can block other enemies.
+    /// It can be used to make an enemy that can block other enemies from passing through.
+    /// </summary>
     public virtual bool CanBlockOtherEnemies => false;
 
+    /// <summary>
+    /// The cooldowns for the enemy.
+    /// </summary>
     public virtual Cooldown[] Cooldowns => [];
     
-    public static bool AlreadyAddedBehaviours = false;
+
+    private static bool _alreadyAddedBehaviours = false;
 
     private EnemyAI? _enemy = null;
     
+    /// <summary>
+    /// The enemy AI component of the monster.
+    /// It is recommended to store this field in a cast variable for easier access.
+    /// </summary>
     public EnemyAI Enemy
     {
         get
@@ -64,49 +99,95 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     private float _timeSinceNameTagVisible = 0f;
 
     // Owner
+    /// <summary>
+    /// The player that owns the enemy.
+    /// </summary>
     public PlayerControllerB? ownerPlayer = null;
+    
+    /// <summary>
+    /// The ID of the player that owns the enemy.
+    /// </summary>
     public ulong OwnerID => ownerPlayer != null ? ownerPlayer.playerClientId : ulong.MaxValue;
+    
+    /// <summary>
+    /// Determines whether the enemy is tamed.
+    /// </summary>
     public bool IsTamed => ownerPlayer != null;
+    
+    /// <summary>
+    /// Determines whether the owner of the enemy is the local player.
+    /// </summary>
     public bool IsOwnerPlayer => ownerPlayer == Utils.CurrentPlayer;
+    
+    /// <summary>
+    /// The distance to the owner.
+    /// </summary>
     public float DistanceToOwner => ownerPlayer != null ? Vector3.Distance(Enemy.transform.position, ownerPlayer.transform.position) : 0f;
 
     // Target enemy
+    /// <summary>
+    /// The target enemy of the enemy.
+    /// </summary>
     public EnemyAI? targetEnemy = null;
+    
+    /// <summary>
+    /// Determines whether the enemy has a target enemy.
+    /// </summary>
     public bool HasTargetEnemy => targetEnemy != null && targetEnemy.gameObject.activeSelf;
+    
+    /// <summary>
+    /// The distance to the target enemy.
+    /// </summary>
     public float DistanceToTargetEnemy => HasTargetEnemy ? Vector3.Distance(Enemy.transform.position, targetEnemy!.transform.position) : 0f;
+    
+    /// <summary>
+    /// Determines whether the enemy is colliding with the target enemy.
+    /// </summary>
     public bool IsCollidingWithTargetEnemy => HasTargetEnemy ? targetEnemy!.meshRenderers.Any(meshRendererTarget => Enemy.meshRenderers.Any(meshRendererSelf => meshRendererSelf.bounds.Intersects(meshRendererTarget.bounds))) : false;
 
     // Target player
+    /// <summary>
+    /// The target player of the enemy.
+    /// </summary>
     public PlayerControllerB? targetPlayer = null;
+    
+    /// <summary>
+    /// The distance to the target player.
+    /// </summary>
     public float DistanceToTargetPlayer => targetPlayer != null ? Vector3.Distance(Enemy.transform.position, targetPlayer.transform.position) : 0f;
 
     // Ball
-    public BallType ballType;
+    internal BallType BallType;
 
-    public int ballValue;
+    internal int BallValue;
 
-    public bool scrapPersistedThroughRounds;
+    internal bool ScrapPersistedThroughRounds;
 
-    public bool alreadyCollectedThisRound;
+    internal bool AlreadyCollectedThisRound;
 
-    public bool hasBeenRetrieved = false;
+    internal bool HasBeenRetrieved = false;
 
-    public bool isDnaComplete = false;
-    
-    public string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? !string.IsNullOrEmpty(ForceEnemySkinRegistryId) ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
+    internal bool IsDnaComplete = false;
+
+    private string EnemySkinRegistryId => EnemySkinRegistryCompatibility.Instance.Enabled ? !string.IsNullOrEmpty(ForceEnemySkinRegistryId) ? ForceEnemySkinRegistryId : EnemySkinRegistryCompatibility.GetEnemySkinId(Enemy) : string.Empty;
 
     internal string ForceEnemySkinRegistryId = string.Empty;
 
     // Following
+    /// <summary>
+    /// The time before the enemy uses the entrance.
+    /// Used only if the enemy can't be teleported.
+    /// </summary>
     public const float TimeBeforeUsingEntrance = 4f;
+    
     private float _timeAtEntrance = 0f;
     private bool _usingEntrance = false;
     private bool _followingRequiresEntrance = false;
-    internal bool isOutside = false; // We use our own isOutside because we don't want other mods that messes up with the original isOutside to affect our mod
+    internal bool IsOutside = false; // We use our own isOutside because we don't want other mods that messes up with the original isOutside to affect our mod
 
     // Behaviour
     private int _lastDefaultBehaviourIndex = -1;
-    public int LastDefaultBehaviourIndex
+    internal int LastDefaultBehaviourIndex
     {
         get
         {
@@ -115,31 +196,54 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return _lastDefaultBehaviourIndex;
         }
     }
-
-    public float targetNearestEnemyInterval = 0f;
-    internal bool foundEnemiesInRangeInLastSearch = false;
+    
+    private float _targetNearestEnemyInterval = 0f;
+    private bool _foundEnemiesInRangeInLastSearch = false;
 
     #region Behaviours
+    /// <summary>
+    /// The base taming behaviour of the enemy.
+    /// </summary>
     public enum TamingBehaviour
     {
         TamedFollowing = 1,
         TamedDefending = 2
     }
-    public static readonly int TamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
+    
+    internal static readonly int TamedBehaviourCount = Enum.GetNames(typeof(TamingBehaviour)).Length;
 
-    private readonly Dictionary<int, Tuple<string, Action>> CustomBehaviours = []; // List of behaviour state indices and their custom handler
+    private readonly Dictionary<int, Tuple<string, Action>> _customBehaviours = []; // List of behaviour state indices and their custom handler
 
-    // Override this to add more custom behaviours to your tamed enemy
+    /// <summary>
+    /// Override this to add more custom behaviours to your tamed enemy.
+    /// </summary>
     public virtual List<Tuple<string, string, Action>>? CustomBehaviourHandler => null;
 
+    /// <summary>
+    /// The text shown in the HUD when the enemy is following you.
+    /// </summary>
     public virtual string FollowingBehaviourDescription => "Follows you...";
     
+    /// <summary>
+    /// The text shown in the HUD when the enemy is defending you.
+    /// </summary>
     public virtual string DefendingBehaviourDescription => "Defends you!";
 
+    /// <summary>
+    /// Determines whether the enemy can defend the player.
+    /// This value can be the result of a function.
+    /// If the enemy can defend, it will switch to the defending state when the owner is attacked.
+    /// </summary>
     public virtual bool CanDefend => true;
 
+    /// <summary>
+    /// The maximum distance the enemy can follow the owner. If the owner is further away, the enemy will teleport behind the owner.
+    /// </summary>
     public virtual float MaxFollowDistance => 30f;
 
+    /// <summary>
+    /// Gets the current taming behaviour of the enemy. Returns <see langword="null"/> if the enemy is not in a custom taming state (so following, defending, or a base game behaviour).
+    /// </summary>
     public TamingBehaviour? CurrentTamingBehaviour
     {
         get
@@ -148,7 +252,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return Enum.IsDefined(typeof(TamingBehaviour), index) ? (TamingBehaviour)index : null;
         }
     }
+    
+    /// <summary>
+    /// Gets the current custom behaviour of the enemy. Returns a negative value if the enemy is not in a custom state.
+    /// </summary>
     public int CurrentCustomBehaviour => Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount;
+    
+    /// <summary>
+    /// Makes the enemy switch to a taming behaviour.
+    /// </summary>
+    /// <param name="behaviour">The new behaviour</param>
     public void SwitchToTamingBehaviour(TamingBehaviour behaviour)
     {
         if (CurrentTamingBehaviour == behaviour) return;
@@ -157,9 +270,23 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + (int)behaviour);
         Enemy.enabled = false;
     }
+    
+    /// <summary>
+    /// Function called when the enemy switches to a taming behaviour.
+    /// </summary>
+    /// <param name="behaviour">The new behaviour (following or defending)</param>
     public virtual void InitTamingBehaviour(TamingBehaviour behaviour) {}
+    
+    /// <summary>
+    /// Function called when the enemy leaves a taming behaviour.
+    /// </summary>
+    /// <param name="behaviour">The old behaviour  (following or defending)</param>
     public virtual void LeaveTamingBehaviour(TamingBehaviour behaviour) {}
 
+    /// <summary>
+    /// Makes the enemy switch to a custom behaviour.
+    /// </summary>
+    /// <param name="behaviour">Custom behaviour index</param>
     public void SwitchToCustomBehaviour(int behaviour)
     {
         if (CurrentCustomBehaviour == behaviour) return;
@@ -168,9 +295,23 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Enemy.SwitchToBehaviourState(LastDefaultBehaviourIndex + TamedBehaviourCount + behaviour);
         Enemy.enabled = false;
     }
+    
+    /// <summary>
+    /// Function called when the enemy switches to a custom behaviour.
+    /// </summary>
+    /// <param name="behaviour">The new custom behaviour index</param>
     public virtual void InitCustomBehaviour(int behaviour) {}
+    
+    /// <summary>
+    /// Function called when the enemy leaves a custom behaviour.
+    /// </summary>
+    /// <param name="behaviour">The old custom behaviour index</param>
     public virtual void LeaveCustomBehaviour(int behaviour) {}
 
+    /// <summary>
+    /// Makes the enemy switch to a default behaviour.
+    /// </summary>
+    /// <param name="behaviour"></param>
     public void SwitchToDefaultBehaviour(int behaviour)
     {
         Enemy.SwitchToBehaviourState(behaviour);
@@ -178,14 +319,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
 
     // The last vanilla behaviour index for each enemy type
-    public static Dictionary<int, int> LastDefaultBehaviourIndices = [];
+    private static readonly Dictionary<int, int> LastDefaultBehaviourIndices = [];
 
     // Adds the enemy behaviour classes and custom behaviours to each enemy prefab
     [HarmonyPostfix, HarmonyPatch(typeof(Terminal), nameof(Terminal.Awake))]
-    public static void AddTamingBehaviours()
+    internal static void AddTamingBehaviours()
     {
-        if (AlreadyAddedBehaviours) return;
-        AlreadyAddedBehaviours = true;
+        if (_alreadyAddedBehaviours) return;
+        _alreadyAddedBehaviours = true;
         
         int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
         foreach (var enemyType in Utils.EnemyTypes)
@@ -240,7 +381,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         LethalMon.Logger.LogInfo($"Added {addedDefaultCustomBehaviours} more custom default behaviours. {addedBehaviours}/{enemyCount} enemy behaviours were added.");
     }
 
-    internal void AddCustomBehaviours()
+    private void AddCustomBehaviours()
     {
         if (CustomBehaviourHandler == null || CustomBehaviourHandler.Count == 0) return;
 
@@ -248,12 +389,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         foreach (var customBehaviour in CustomBehaviourHandler)
         {
             behaviourStateList.Add(new EnemyBehaviourState() { name = customBehaviour.Item1 });
-            CustomBehaviours.Add(CustomBehaviours.Count + 1, new Tuple<string, Action>(customBehaviour.Item2, customBehaviour.Item3));
-            LethalMon.Log($"Added custom behaviour {CustomBehaviours.Count} with handler {customBehaviour.Item3.Method.Name}");
+            _customBehaviours.Add(_customBehaviours.Count + 1, new Tuple<string, Action>(customBehaviour.Item2, customBehaviour.Item3));
+            LethalMon.Log($"Added custom behaviour {_customBehaviours.Count} with handler {customBehaviour.Item3.Method.Name}");
         }
         Enemy.enemyBehaviourStates = behaviourStateList.ToArray();
     }
 
+    /// <summary>
+    /// Function called at each update when the enemy is following the owner.
+    /// By default, it makes the enemy follow the owner by calling <see cref="FollowOwner"/>.
+    /// </summary>
     public virtual void OnTamedFollowing()
     {
         if (StartOfRound.Instance.inShipPhase) return;
@@ -261,6 +406,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         FollowOwner();
     }
 
+    /// <summary>
+    /// Function called at each update when the enemy is defending the owner.
+    /// By default, it only makes the enemy switch to the following state if it lost its target (<see cref="HasTargetEnemy"/> is false or <see cref="targetPlayer"/> is null).
+    /// </summary>
     public virtual void OnTamedDefending()
     {
         if (StartOfRound.Instance.inShipPhase) return;
@@ -269,6 +418,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
     
+    /// <summary>
+    /// Function called when the enemy is called from the ball.
+    /// </summary>
     public virtual void OnCallFromBall()
     {
         var scanNode = Enemy.GetComponentInChildren<ScanNodeProperties>();
@@ -280,6 +432,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Function called when the enemy is retrieved in the ball.
+    /// </summary>
     public virtual void OnRetrieveInBall()
     {
         if (IsOwnerPlayer)
@@ -288,6 +443,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         HideNameTag();
     }
 
+    /// <summary>
+    /// Function called when the capture of the enemy fails. It basically makes the enemy aggressive.
+    /// </summary>
+    /// <param name="playerWhoThrewBall">The player who threw the ball</param>
     public virtual void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall) { } // Host only
 
     internal string GetCurrentStateDescription()
@@ -312,9 +471,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             return DefendingBehaviourDescription;
         }
         
-        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex + TamedBehaviourCount + CustomBehaviours.Count)
+        if (Enemy.currentBehaviourStateIndex <= LastDefaultBehaviourIndex + TamedBehaviourCount + _customBehaviours.Count)
         {
-            return CustomBehaviours[Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount].Item1;
+            return _customBehaviours[Enemy.currentBehaviourStateIndex - LastDefaultBehaviourIndex - TamedBehaviourCount].Item1;
         }
 
         return "Unknown behaviour";
@@ -322,20 +481,52 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region ActionKeys
+    /// <summary>
+    /// Function called when the action key 1 is pressed.
+    /// </summary>
     public virtual void ActionKey1Pressed() { }
 
+    /// <summary>
+    /// Action key class.
+    /// </summary>
     public class ActionKey
     {
+        /// <summary>
+        /// Action key to bind.
+        /// </summary>
         public InputAction? Key { get; set; } = null;
+        
+        /// <summary>
+        /// Description of the action key.
+        /// </summary>
         public string Description { get; set; } = "";
+        
+        /// <summary>
+        /// Determines whether the action key control tip is visible.
+        /// </summary>
         public bool Visible { get; set; } = false;
 
+        /// <summary>
+        /// The name of the control.
+        /// </summary>
         public string Control => Key == null ? "" : Key.bindings[StartOfRound.Instance.localPlayerUsingController ? 1 : 0].path.Split("/").Last();
+        
+        /// <summary>
+        /// The control tip to show (description + control).
+        /// </summary>
         public string ControlTip => $"{Description}: [{Control}]";
     }
 
+    /// <summary>
+    /// The action keys of the enemy.
+    /// </summary>
     public virtual List<ActionKey> ActionKeys => [];
 
+    /// <summary>
+    /// Enables or disables the action key control tip.
+    /// </summary>
+    /// <param name="actionKey">The action key to enable or disable</param>
+    /// <param name="enable">Whether to enable or disable the action key control tip</param>
     public void EnableActionKeyControlTip(InputAction actionKey, bool enable = true)
     {
         var keys = ActionKeys.Where((ak) => ak.Key == actionKey);
@@ -346,6 +537,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Make the actions keys control tip visible.
+    /// </summary>
     public void ShowVisibleActionKeyControlTips()
     {
         HUDManager.Instance.ClearControlTips();
@@ -373,12 +567,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             if (customBehaviour > TamedBehaviourCount)
             {
                 customBehaviour -= TamedBehaviourCount;
-                if (CustomBehaviours.ContainsKey(customBehaviour) && CustomBehaviours[customBehaviour] != null)
-                    CustomBehaviours[customBehaviour].Item2();
+                if (_customBehaviours.ContainsKey(customBehaviour) && _customBehaviours[customBehaviour] != null)
+                    _customBehaviours[customBehaviour].Item2();
                 else
                 {
                     LethalMon.Logger.LogWarning($"Custom state {customBehaviour} has no handler.");
-                    foreach (var b in CustomBehaviours)
+                    foreach (var b in _customBehaviours)
                         LethalMon.Log($"Behaviour found {b.Key} with handler {b.Value.Item2.Method.Name}");
                 }
                 return;
@@ -397,6 +591,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Function called at each update.
+    /// This function calculates movement and rotation, opens doors, syncs positions etc.
+    /// </summary>
+    /// <param name="update">Determines whether the base enemy AI Update() should be called</param>
+    /// <param name="doAIInterval">Determines whether the base enemy AI DoAIInterval() should be called</param>
     public virtual void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         if (StartOfRound.Instance.inShipPhase) return;
@@ -533,7 +733,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if (IsTamed)
         {
             Enemy.Start();
-            isOutside = Utils.IsEnemyOutside(Enemy);
+            IsOutside = Utils.IsEnemyOutside(Enemy);
             Enemy.creatureAnimator?.SetBool("inSpawningAnimation", value: false);
 
             if (!CanBlockOtherEnemies && Enemy.agent != null)
@@ -583,6 +783,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         HideNameTag();
     }
 
+    /// <summary>
+    /// Makes the enemy turn progressively towards a position.
+    /// </summary>
+    /// <param name="position">The position to turn towards</param>
     public virtual void TurnTowardsPosition(Vector3 position)
     {
         Transform enemyTransform = Enemy.transform;
@@ -592,16 +796,25 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         enemyTransform.rotation = Quaternion.Slerp(enemyTransform.rotation, targetRotation, Time.deltaTime);
     }
 
+    /// <summary>
+    /// Makes the enemy move towards a position.
+    /// </summary>
+    /// <param name="position">The position to move towards</param>
     public virtual void MoveTowards(Vector3 position)
     {
         Enemy.SetDestinationToPosition(position);
     }
 
+    /// <summary>
+    /// Function called when the enemy is retrieved in the ball.
+    /// </summary>
+    /// <param name="position">The position to spawn the ball</param>
+    /// <returns>The ball item</returns>
     public virtual PokeballItem? RetrieveInBall(Vector3 position)
     {
-        hasBeenRetrieved = true;
+        HasBeenRetrieved = true;
         
-        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(ballType);
+        GameObject? spawnPrefab = BallTypeMethods.GetPrefab(BallType);
         if (spawnPrefab == null)
         {
             LethalMon.Log("Pokeball prefabs not loaded correctly.", LethalMon.LogType.Error);
@@ -616,13 +829,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         if(cooldowns.Any())
             pokeballItem.cooldowns = cooldowns.ToDictionary(item => item.Id!.Value.Value, item => new Tuple<float, DateTime>(item.CurrentTimer, now));
         pokeballItem.fallTime = 0f;
-        pokeballItem.scrapPersistedThroughRounds = scrapPersistedThroughRounds || alreadyCollectedThisRound;
-        pokeballItem.SetScrapValue(ballValue);
+        pokeballItem.scrapPersistedThroughRounds = ScrapPersistedThroughRounds || AlreadyCollectedThisRound;
+        pokeballItem.SetScrapValue(BallValue);
         ball.GetComponent<NetworkObject>().Spawn(false);
         if (EnemySkinRegistryCompatibility.Instance.Enabled)
             pokeballItem.enemySkinRegistryId = EnemySkinRegistryId;
         pokeballItem.SetCaughtEnemyServerRpc(Enemy.enemyType.name, pokeballItem.enemySkinRegistryId);
-        pokeballItem.isDnaComplete = isDnaComplete;
+        pokeballItem.isDnaComplete = IsDnaComplete;
         pokeballItem.FallToGround();
 
         OnRetrieveInBall();
@@ -739,6 +952,10 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     #endregion
 
     #region Methods
+    /// <summary>
+    /// Makes the enemy follow a position.
+    /// </summary>
+    /// <param name="targetPosition">The position to follow</param>
     public void FollowPosition(Vector3 targetPosition)
     {
         if (Vector3.Distance(Enemy.destination, targetPosition) > 2f)
@@ -771,9 +988,13 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         TurnTowardsPosition(targetPosition);
     }
 
+    /// <summary>
+    /// Places the enemy on the closer navMesh.
+    /// </summary>
     public void PlaceOnNavMesh() => PlaceEnemyOnNavMesh(Enemy);
 
-    public static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
+    
+    private static void PlaceEnemyOnNavMesh(EnemyAI enemyAI)
     {
         if (enemyAI.agent != null && enemyAI.agent.enabled && !enemyAI.agent.isOnNavMesh)
         {
@@ -786,18 +1007,21 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Makes the enemy follow the owner.
+    /// </summary>
     public void FollowOwner()
     {
         if (ownerPlayer == null) return;
         
-        var entranceTeleportRequired = ownerPlayer.isInsideFactory == isOutside;
+        var entranceTeleportRequired = ownerPlayer.isInsideFactory == IsOutside;
         if(entranceTeleportRequired != _followingRequiresEntrance)
         {
             _followingRequiresEntrance = entranceTeleportRequired;
             HUDManagerPatch.UpdateTamedMonsterAction(GetCurrentStateDescription());
         }
 
-        if(ownerPlayer.isInsideFactory == isOutside)
+        if(ownerPlayer.isInsideFactory == IsOutside)
         {
             if(CanBeTeleported() || !EntranceTeleportPatch.HasTeleported)
             {
@@ -843,6 +1067,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         Teleport(Utils.GetPositionBehindPlayer(ownerPlayer), true, true);
     }
 
+    /// <summary>
+    /// Checks if the enemy meets the targeting conditions towards the specified enemy.
+    /// This function is used to determine if the enemy can switch to the defending state by targeting the specified enemy.
+    /// </summary>
+    /// <param name="enemyAI">The enemy to check</param>
+    /// <returns>Whether the enemy meets the targeting conditions</returns>
     public virtual bool EnemyMeetsTargetingConditions(EnemyAI enemyAI)
     {
         if (Targets == TargetType.Dead && !enemyAI.isEnemyDead || Targets == TargetType.Alive && enemyAI.isEnemyDead) return false;
@@ -853,15 +1083,27 @@ public class TamedEnemyBehaviour : NetworkBehaviour
             !(enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour) && tamedBehaviour.IsOwnedByAPlayer());
     }
 
+    /// <summary>
+    /// Function called when the enemy finds a target.
+    /// By default, it makes the enemy switch to the defending state.
+    /// </summary>
     public virtual void OnFoundTarget() => SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
 
+    /// <summary>
+    /// Targets the nearest enemy if one is found.
+    /// This function is skipped if called too frequently, to avoid performance issues.
+    /// It is called every 0.5 second if an enemy was found in the last search, otherwise every 1 second.
+    /// </summary>
+    /// <param name="requireLOS">If true, the enemy must be in line of sight to be targeted</param>
+    /// <param name="fromOwnerPerspective">If true, the search is done from the owner's perspective</param>
+    /// <param name="angle">The angle in which the enemy must be in line of sight</param>
     public void TargetNearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
-        targetNearestEnemyInterval -= Time.deltaTime;
-        if (targetNearestEnemyInterval > 0)
+        _targetNearestEnemyInterval -= Time.deltaTime;
+        if (_targetNearestEnemyInterval > 0)
             return;
 
-        targetNearestEnemyInterval = foundEnemiesInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
+        _targetNearestEnemyInterval = _foundEnemiesInRangeInLastSearch ? 0.5f : 1f; // More frequent search if enemy that met the conditions was in range
         
         var target = NearestEnemy(requireLOS, fromOwnerPerspective, angle);
         if(target != null)
@@ -872,9 +1114,16 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Get the nearest targetable enemy.
+    /// </summary>
+    /// <param name="requireLOS">If true, the enemy must be in line of sight to be targeted</param>
+    /// <param name="fromOwnerPerspective">If true, the search is done from the owner's perspective</param>
+    /// <param name="angle">The angle in which the enemy must be in line of sight</param>
+    /// <returns>The nearest targetable enemy</returns>
     public EnemyAI? NearestEnemy(bool requireLOS = true, bool fromOwnerPerspective = true, float angle = 180f)
     {
-        foundEnemiesInRangeInLastSearch = false;
+        _foundEnemiesInRangeInLastSearch = false;
         const int layerMask = 1 << (int) Utils.LayerMasks.Mask.Enemies;
         EnemyAI? target = null;
         float distance = float.MaxValue;
@@ -891,7 +1140,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
 
             if (enemyInRange == Enemy || !EnemyMeetsTargetingConditions(enemyInRange)) continue;
 
-            foundEnemiesInRangeInLastSearch = true;
+            _foundEnemiesInRangeInLastSearch = true;
             
             if (requireLOS && !OptimizedCheckLineOfSightForPosition(startTransform.position, enemyInRange.transform.position, startTransform.forward, angle)) continue;
 
@@ -906,7 +1155,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         return target;
     }
     
-    internal static bool OptimizedCheckLineOfSightForPosition(Vector3 startPosition, Vector3 targetPosition, Vector3 forward, float angle)
+    private static bool OptimizedCheckLineOfSightForPosition(Vector3 startPosition, Vector3 targetPosition, Vector3 forward, float angle)
     {
         if (!Physics.Linecast(startPosition, targetPosition, out var _, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
         {
@@ -920,7 +1169,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         return false;
     }
 
-    public static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
+    private static bool FindRaySphereIntersections(Vector3 rayOrigin, Vector3 rayDirection, Vector3 sphereCenter, float sphereRadius, out Vector3 intersection1, out Vector3 intersection2)
     {
         intersection1 = Vector3.zero;
         intersection2 = Vector3.zero;
@@ -948,6 +1197,12 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Drops a random blood amount at the specified position.
+    /// </summary>
+    /// <param name="position">The position to drop blood</param>
+    /// <param name="minAmount">The minimum amount of blood to drop</param>
+    /// <param name="maxAmount">The maximum amount of blood to drop</param>
     public void DropBlood(Vector3 position, int minAmount = 3, int maxAmount = 7)
     {
         if (ownerPlayer == null) return;
@@ -974,7 +1229,7 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
-    public void SetCooldownTimers(Dictionary<string, Tuple<float, DateTime>> cooldownsTimers)
+    internal void SetCooldownTimers(Dictionary<string, Tuple<float, DateTime>> cooldownsTimers)
     {
         DateTime now = SystemClock.now;
         foreach (KeyValuePair<string, Tuple<float, DateTime>> cooldownTimer in cooldownsTimers)
@@ -983,16 +1238,30 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Gets a <see cref="CooldownNetworkBehaviour"/> from its id.
+    /// </summary>
+    /// <param name="id">The id of the cooldown</param>
+    /// <returns>The cooldown network behaviour</returns>
     public CooldownNetworkBehaviour GetCooldownWithId(string id)
     {
         return GetComponents<CooldownNetworkBehaviour>().FirstOrDefault(cooldown => cooldown.Id != null && cooldown.Id.Value.Value == id);
     }
     
+    /// <summary>
+    /// Check if the enemy is owned by a player (= tamed).
+    /// </summary>
+    /// <returns>Whether the enemy is owned by a player</returns>
     public bool IsOwnedByAPlayer()
     {
         return ownerPlayer != null;
     }
 
+    /// <summary>
+    /// Check if the current behaviour is the specified taming behaviour.
+    /// </summary>
+    /// <param name="behaviour">The taming behaviour to check</param>
+    /// <returns>Whether the current behaviour is the specified taming behaviour</returns>
     public bool IsCurrentBehaviourTaming(TamingBehaviour behaviour)
     {
         return Enemy.currentBehaviourStateIndex == LastDefaultBehaviourIndex + (int) behaviour;
@@ -1016,8 +1285,21 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         }
     };
 
+    /// <summary>
+    /// Teleports the enemy to the specified position.
+    /// </summary>
+    /// <param name="position">The position to teleport the enemy</param>
+    /// <param name="placeOnNavMesh">Whether to place the enemy on the navMesh</param>
+    /// <param name="syncPosition">Whether to sync the position to clients</param>
     public void Teleport(Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false) => TeleportEnemy(Enemy, position, placeOnNavMesh, syncPosition);
 
+    /// <summary>
+    /// Teleports the specified enemy to the specified position.
+    /// </summary>
+    /// <param name="enemyAI">The enemy to teleport</param>
+    /// <param name="position">The position to teleport the enemy</param>
+    /// <param name="placeOnNavMesh">Whether to place the enemy on the navMesh</param>
+    /// <param name="syncPosition">Whether to sync the position to clients</param>
     public static void TeleportEnemy(EnemyAI enemyAI, Vector3 position, bool placeOnNavMesh = false, bool syncPosition = false)
     {
         if (!(Utils.IsHost || enemyAI.IsOwner) || enemyAI?.agent == null) return;
@@ -1040,10 +1322,14 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         
         if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedBehaviour))
         {
-            tamedBehaviour.isOutside = Utils.IsEnemyOutside(enemyAI);
+            tamedBehaviour.IsOutside = Utils.IsEnemyOutside(enemyAI);
         }
     }
 
+    /// <summary>
+    /// Function called to check if the enemy can be teleported.
+    /// </summary>
+    /// <returns>Whether the enemy can be teleported</returns>
     public virtual bool CanBeTeleported()
     {
         return true;

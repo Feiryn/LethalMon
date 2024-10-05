@@ -296,7 +296,7 @@ public class Utils
         var enemyAI = gameObject.GetComponent<EnemyAI>();
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
         if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
-            tamedEnemyBehaviour.isOutside = IsEnemyOutside(enemyAI);
+            tamedEnemyBehaviour.IsOutside = IsEnemyOutside(enemyAI);
 
         return enemyAI;
     }

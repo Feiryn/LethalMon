@@ -216,16 +216,16 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             }
 
             LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
-            tamedBehaviour.ballType = this.ballType;
-            tamedBehaviour.ballValue = this.scrapValue;
-            tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-            tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+            tamedBehaviour.BallType = this.ballType;
+            tamedBehaviour.BallValue = this.scrapValue;
+            tamedBehaviour.ScrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+            tamedBehaviour.AlreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
             tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
             var enemyPosition = tamedBehaviour.Enemy.transform.position;
             tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
             tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
             tamedBehaviour.SetCooldownTimers(cooldowns);
-            tamedBehaviour.isDnaComplete = isDnaComplete;
+            tamedBehaviour.IsDnaComplete = isDnaComplete;
             tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
 
             gameObject.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);

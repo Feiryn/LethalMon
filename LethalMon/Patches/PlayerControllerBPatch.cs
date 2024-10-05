@@ -214,7 +214,7 @@ internal class PlayerControllerBPatch
             if(controller == null || !controller.enemyCanFly)
                 tamedBehaviour.Enemy.agent.enabled = true;
             tamedBehaviour.Enemy.serverPosition = position;
-            tamedBehaviour.isOutside = !__instance.isInsideFactory;
+            tamedBehaviour.IsOutside = !__instance.isInsideFactory;
         }
     }
     
@@ -224,7 +224,7 @@ internal class PlayerControllerBPatch
     {
         TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
         
-        if (tamedBehaviour != null && Utils.IsHost && !tamedBehaviour.hasBeenRetrieved)
+        if (tamedBehaviour != null && Utils.IsHost && !tamedBehaviour.HasBeenRetrieved)
         {
             LethalMon.Log("Owner is dead, go back to the ball");
             tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);

@@ -24,11 +24,21 @@ public static class Registry
     
     private static int _currentId;
     
+    /// <summary>
+    /// Get the enemy type id from the enemy type name.
+    /// </summary>
+    /// <param name="enemyType">The enemy type name</param>
+    /// <returns>The enemy type id</returns>
     public static int? GetEnemyTypeId(string enemyType)
     {
         return _enemiesTypesIds.GetValueOrDefault(enemyType);
     }
     
+    /// <summary>
+    /// Get the enemy sprite from the enemy type name.
+    /// </summary>
+    /// <param name="enemyType">The enemy type name</param>
+    /// <returns>The enemy sprite</returns>
     public static Sprite GetEnemySprite(string enemyType)
     {
         return EnemiesSprites.GetValueOrDefault(enemyType, FallbackSprite);
@@ -39,6 +49,14 @@ public static class Registry
         return EnemiesTamedBehaviours.GetValueOrDefault(enemyType, typeof(TamedEnemyBehaviour));
     }
     
+    /// <summary>
+    /// Register a new catchable enemy.
+    /// </summary>
+    /// <param name="enemyTypeName">The enemy type name. It is the one used in <see cref="EnemyType.name"/></param>
+    /// <param name="catchableEnemy">The catchable enemy instance</param>
+    /// <param name="originalEnemyAiType">The original enemy AI type to patch</param>
+    /// <param name="tamedBehaviourClassType">The tamed behaviour class type</param>
+    /// <param name="sprite">The enemy sprite used in the HUD or the PC. It must be a square sprite (for example 256x256 is good enough)</param>
     public static void RegisterEnemy(string enemyTypeName, CatchableEnemy.CatchableEnemy catchableEnemy, Type originalEnemyAiType, Type tamedBehaviourClassType, Sprite sprite)
     {
         if (CatchableEnemies.ContainsKey(enemyTypeName))
@@ -65,11 +83,21 @@ public static class Registry
         }
     }
     
+    /// <summary>
+    /// Check if an enemy type is registered.
+    /// </summary>
+    /// <param name="enemyTypeName">The enemy type name</param>
+    /// <returns></returns>
     public static bool IsEnemyRegistered(string enemyTypeName)
     {
         return CatchableEnemies.ContainsKey(enemyTypeName);
     }
     
+    /// <summary>
+    /// Get the catchable enemy instance from the enemy type name.
+    /// </summary>
+    /// <param name="enemyTypeName">The enemy type name</param>
+    /// <returns>The catchable enemy instance</returns>
     public static CatchableEnemy.CatchableEnemy? GetCatchableEnemy(string enemyTypeName)
     {
         return CatchableEnemies.GetValueOrDefault(enemyTypeName);
@@ -85,6 +113,10 @@ public static class Registry
         return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds[cm.Key] == enemyTypeId).Key;
     }
     
+    /// <summary>
+    /// Remove an enemy type from the registry.
+    /// </summary>
+    /// <param name="enemyTypeName">The enemy type name</param>
     public static void RemoveEnemy(string enemyTypeName)
     {
         if (CatchableEnemies.ContainsKey(enemyTypeName))
