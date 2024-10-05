@@ -24,9 +24,13 @@ namespace LethalMon.Behaviours
          * Please note that the enemy can still switch to the default behaviours. So the original EnemyAI can switch the behaviour to the default ones.
          * You may need to patch the original EnemyAI to prevent the enemy from switching to the default behaviours in some cases.
          *
-         * You can still use the original EnemyAI to control the monster when it is tamed.
+         * You can still use the original EnemyAI instance to control the monster when it is tamed.
          *
          * The original enemy AI is not called when the monster is tamed.
+         *
+         * Check the public methods and properties of the TamedEnemyBehaviour class to see what you can override and use. There are many useful methods and properties.
+         *
+         * Also check already implemented monsters to see how to use the TamedEnemyBehaviour class.
          */
         
         #region Properties
