@@ -36,7 +36,6 @@ namespace LethalMon.Behaviours
          */
         
         #region Properties
-        // Replace with the enemy class in Start()
         private TestEnemy? _testEnemy = null;
         internal TestEnemy TestEnemy
         {
@@ -153,9 +152,6 @@ namespace LethalMon.Behaviours
 
             // Store the cooldown network behaviour
             cooldown = GetCooldownWithId(CooldownId);
-
-            // Store the cast enemy
-            _testEnemy = (TestEnemy) Enemy;
 
             if (IsOwnedByAPlayer())
             {
