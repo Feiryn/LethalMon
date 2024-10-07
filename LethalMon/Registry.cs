@@ -130,6 +130,7 @@ public static class Registry
     {
         RegisterEnemy(Utils.Enemy.BaboonHawk.ToString(), new CatchableBaboonHawk(), typeof(BaboonBirdAI), typeof(BaboonHawkTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/BaboonHawk.png"));
         RegisterEnemy(Utils.Enemy.Blob.ToString(), new CatchableBlob(), typeof(BlobAI), typeof(BlobTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/Blob.png"));
+        RegisterEnemy(Utils.Enemy.BushWolf.ToString(), new CatchableKidnapperFox(), typeof(BushWolfEnemy), typeof(KidnapperFoxTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/BushWolf.png"));
         RegisterEnemy(Utils.Enemy.Butler.ToString(), new CatchableButler(), typeof(ButlerEnemyAI), typeof(ButlerTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/Butler.png"));
         RegisterEnemy(Utils.Enemy.Crawler.ToString(), new CatchableCrawler(), typeof(CrawlerAI), typeof(CrawlerTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/Crawler.png"));
         RegisterEnemy(Utils.Enemy.Flowerman.ToString(), new CatchableFlowerman(), typeof(FlowermanAI), typeof(FlowermanTamedBehaviour), assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/Flowerman.png"));
