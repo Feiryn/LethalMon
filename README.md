@@ -100,6 +100,8 @@ The complete documentation is not finished yet, but you can register your own mo
 
 All public methods and fields are documented in the code, so you can take a look at it to understand how to use the API.
 
+You can change the monster in the ball if you enable the test room (with LethalDevMode for example) and pressing 'O'.
+
 If you need help with implementing your own monster, you can ask for help in the LethalMon thread on the LC discord modding server https://discord.com/invite/lcmod
 
 ## Bug reports
