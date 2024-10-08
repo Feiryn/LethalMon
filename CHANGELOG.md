@@ -1,3 +1,10 @@
+# 0.6.5
+
+- Refactored the code, changed access modifiers and added a lot of documentation for modders that want to add their own monsters (public API)
+- Added Kidnapper Fox back (it can be found in balls in the dungeon, or can be captured if re-enabled with some mods like YesFox)
+- Completely new Eyeless Dog behaviour
+- Players are now sitting on Spore Lizard and Eyeless Dog instead of standing through them
+
 # 0.6.4
 
 - Fixed PC not respawning after players got fired

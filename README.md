@@ -91,6 +91,7 @@ You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.i
 
 We also got you covered with additional mods that add up on this one:
 - [LethalMonReservedSlot](https://thunderstore.io/c/lethal-company/p/Niro/LethalMonReservedSlot/) - A reserved slot for the first pokeball you pick up!
+- Kidnapper Fox can be captured if re-enabled with [YesFox](https://thunderstore.io/c/lethal-company/p/Dev1A3/YesFox/) or other mods that re-enable it
 
 ## API
 
