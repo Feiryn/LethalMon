@@ -26,6 +26,14 @@ public class Utils
         action();
     }
     
+    public static void CallAfterTime(Action action, float time) => GameNetworkManager.Instance.StartCoroutine(CallAfterTimeCoroutine(action, time));
+    
+    public static IEnumerator CallAfterTimeCoroutine(Action action, float time)
+    {
+        yield return new WaitForSeconds(time);
+        action();
+    }
+    
     public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
     {
         return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.IsTamed && tamedBehaviour.ownerPlayer == player);

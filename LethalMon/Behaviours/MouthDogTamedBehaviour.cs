@@ -101,11 +101,7 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
     
     private void OnStopSprinting()
     {
-        MouthDog.creatureAnimator.SetTrigger("Lunge");
-        _controller!.enemyCanSprint = false;
-        _controller!.forceMoveForward = true;
-        Utils.PlaySoundAtPosition(MouthDog.transform.position, MouthDog.screamSFX);
-        _lungeCoroutine = StartCoroutine(StopLungeCoroutine());
+        LungeServerRpc();
     }
     
     internal void OnStartRiding()
@@ -152,11 +148,18 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
     public override void OnCallFromBall()
     {
         base.OnCallFromBall();
-
+        
         if(IsOwnerPlayer)
-            Utils.CallNextFrame(() => _controller!.AddTrigger("Ride"));
+            Utils.CallAfterTime(() => _controller!.AddTrigger("Ride"), 0.1f);
 
         _controller!.SetControlTriggerVisible();
+    }
+    
+    public override void OnRetrieveInBall()
+    {
+        base.OnRetrieveInBall();
+            
+        _controller!.SetControlTriggerVisible(false);
     }
 
     public override void InitTamingBehaviour(TamingBehaviour behaviour)
@@ -209,15 +212,20 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
         _controller!.StopSprinting(false);
         enemyAI.agent.enabled = true;
         enemyAI.enabled = true;
-        enemyAI.HitEnemyOnLocalClient(2, default, ownerPlayer);
+        if (IsOwnerPlayer)
+        {
+            enemyAI.HitEnemyOnLocalClient(2, default, ownerPlayer);
+        }
+
         enemyAI.SetEnemyStunned(true, 1f, ownerPlayer);
         
-        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+        if (Utils.IsHost)
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     private void DamageEnemy(EnemyAI enemyAI)
     {
-        _controller!.StopControllingServerRpc();
+        _controller!.StopControlling();
         
         SwitchToCustomBehaviour((int) CustomBehaviour.DamageEnemy);
         
@@ -238,26 +246,28 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
 
     public override void OnCollideWithEnemy(Collider other, EnemyAI collidedEnemy)
     {
-        if (enemyBeingDamaged != null || !_controller!.forceMoveForward || collidedEnemy.isEnemyDead || !collidedEnemy.enemyType.canDie)
+        if (!IsOwnerPlayer || enemyBeingDamaged != null || !_controller!.forceMoveForward || collidedEnemy.isEnemyDead || !collidedEnemy.enemyType.canDie)
         {
             return;
         }
         
         TamedEnemyBehaviour tamedEnemyBehaviour = collidedEnemy.GetComponent<TamedEnemyBehaviour>();
-        if (tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed)
+        NetworkObject networkObject = collidedEnemy.GetComponent<NetworkObject>();
+        if ((tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed) && networkObject != null)
         {
-            DamageEnemy(collidedEnemy);
+            enemyBeingDamaged = collidedEnemy;
+            DamageEnemyServerRpc(networkObject);
         }
     }
 
     public override void OnCollideWithPlayer(Collider other)
     {
-        if (!_controller!.forceMoveForward)
+        if (!IsOwnerPlayer || !_controller!.forceMoveForward)
         {
             return;
         }
         
-        PlayerControllerB playerControllerB = MouthDog.MeetsStandardPlayerCollisionConditions(other);
+        PlayerControllerB playerControllerB = other.GetComponent<PlayerControllerB>();
         if (playerControllerB == null || playerControllerB == ownerPlayer)
         {
             return;
@@ -292,7 +302,26 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
     [ClientRpc]
     private void LungeClientRpc()
     {
-
+        MouthDog.creatureAnimator.SetTrigger("Lunge");
+        _controller!.enemyCanSprint = false;
+        _controller!.forceMoveForward = true;
+        Utils.PlaySoundAtPosition(MouthDog.transform.position, MouthDog.screamSFX);
+        _lungeCoroutine = StartCoroutine(StopLungeCoroutine());
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    private void DamageEnemyServerRpc(NetworkObjectReference enemyAI)
+    {
+        DamageEnemyClientRpc(enemyAI);
+    }
+    
+    [ClientRpc]
+    private void DamageEnemyClientRpc(NetworkObjectReference enemyAI)
+    {
+        if (enemyAI.TryGet(out NetworkObject enemyObject) && enemyObject.TryGetComponent(out EnemyAI enemy))
+        {
+            DamageEnemy(enemy);
+        }
     }
     #endregion
 }
