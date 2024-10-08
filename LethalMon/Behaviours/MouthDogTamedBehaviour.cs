@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using GameNetcodeStuff;
+using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace LethalMon.Behaviours;
 
@@ -22,73 +24,100 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    private float _cumulatedCheckDogsSeconds = 0f;
+    public override bool Controllable => true;
     
-    private const float CheckDogsSecondsInterval = 1f;
-
-    private float _howlTimer = 0f;
-
-    private MouthDogAI? _targetDog = null;
-
-    public override string DefendingBehaviourDescription => "Runs away...";
+    public override bool CanDefend => false;
+    
+    private EnemyController? _controller = null;
+    
+    private Coroutine? _lungeCoroutine = null;
+    
+    public EnemyAI? enemyBeingDamaged = null;
     #endregion
-    
+
     #region Custom behaviours
-    internal enum CustomBehaviour
+    private enum CustomBehaviour
     {
-        Howl = 1
+        Riding = 1,
+        DamageEnemy = 2,
+        KillingPlayer = 3,
     }
-    
     public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
-        new (CustomBehaviour.Howl.ToString(), "Is howling!", OnHowl)
+        new Tuple<string, string, Action>(CustomBehaviour.Riding.ToString(), "Is being rode...", () => {}),
+        new Tuple<string, string, Action>(CustomBehaviour.DamageEnemy.ToString(), "Is attacking an enemy...", () => {}),
+        new Tuple<string, string, Action>(CustomBehaviour.KillingPlayer.ToString(), "Is killing a player...", () => {}),
     ];
+    #endregion
+    
+    #region Base Methods
 
-    public void OnHowl()
+    public override void Awake()
     {
-        if (_howlTimer > 0f)
-        {
-            _howlTimer -= Time.deltaTime;
-            return;
-        }
+        base.Awake();
         
-        if (_targetDog != null)
+        if (TryGetComponent(out _controller) && _controller != null)
         {
-            _targetDog.suspicionLevel = 0;
-            _targetDog = null;
+            _controller.OnStartControlling = OnStartRiding;
+            _controller.OnStopControlling = OnStopRiding;
+            
+            _controller.OnStopSprinting = OnStopSprinting;
+            _controller.OnStartSprinting = OnStartSprinting;
+            _controller.enemySpeedOutside = 10f;
+            _controller.enemySpeedInside = 2f;
+                
+            _controller.enemyCanJump = false;
+            _controller.enemyStrength = 0.5f;
+            _controller.enemyStaminaUseMultiplier = 1.5f;
         }
-        
-        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
-    public override bool CanDefend => false;
-
-    #endregion
-    
-    #region Cooldowns
-
-    private const string HowlCooldownId = "mouthdog_howl";
-    
-    public override Cooldown[] Cooldowns => [new Cooldown(HowlCooldownId, "Howl", ModConfig.Instance.values.EyelessDogHowlCooldown)];
-
-    private CooldownNetworkBehaviour? howlCooldown;
-    #endregion
-
-    #region Base Methods
     public override void Start()
     {
         base.Start();
 
-        howlCooldown = GetCooldownWithId(HowlCooldownId);
-
         if (IsTamed)
         {
-            MouthDog.gameObject.transform.localScale = new Vector3(0.28f, 0.28f, 0.28f);
+            MouthDog.gameObject.transform.localScale = Vector3.one * 0.4f;
             MouthDog.creatureSFX.volume = 0f;
             MouthDog.creatureVoice.pitch = 1.4f;
             MouthDog.breathingSFX = null;
-            WalkMode();
         }
+    }
+    
+    private IEnumerator StopLungeCoroutine()
+    {
+        yield return new WaitForSeconds(1.5f);
+        MouthDog.creatureAnimator.SetTrigger("EndLungeNoKill");
+        _controller!.enemyCanSprint = true;
+        _controller!.forceMoveForward = false;
+        _controller!.StopSprinting(false);
+    }
+
+    private void OnStartSprinting()
+    {
+        MouthDog.creatureAnimator.Play("Base Layer.Chase");
+    }
+    
+    private void OnStopSprinting()
+    {
+        MouthDog.creatureAnimator.SetTrigger("Lunge");
+        _controller!.enemyCanSprint = false;
+        _controller!.forceMoveForward = true;
+        Utils.PlaySoundAtPosition(MouthDog.transform.position, MouthDog.screamSFX);
+        _lungeCoroutine = StartCoroutine(StopLungeCoroutine());
+    }
+    
+    internal void OnStartRiding()
+    {
+        if (Utils.IsHost)
+            SwitchToCustomBehaviour((int)CustomBehaviour.Riding);
+    }
+
+    internal void OnStopRiding()
+    {
+        if(Utils.IsHost)
+            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
 
     public override void OnUpdate(bool update = false, bool doAIInterval = true)
@@ -105,61 +134,58 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
         if (Utils.IsHost)
             StartCoroutine(EscapedFromBallCoroutine(playerWhoThrewBall));
     }
-
-    public override void OnTamedFollowing()
+    
+    public override void OnDestroy()
     {
-        base.OnTamedFollowing();
+        _controller!.StopControlling(true);
+        Destroy(_controller!);
 
-        if (howlCooldown != null && howlCooldown.IsFinished())
+        if (enemyBeingDamaged != null)
         {
-            DefendOwnerFromCloseDogs();
+            enemyBeingDamaged.agent.enabled = true;
+            enemyBeingDamaged.enabled = true;
         }
+            
+        base.OnDestroy();
     }
     
-    public override void OnTamedDefending()
+    public override void OnCallFromBall()
     {
-        base.OnTamedDefending();
+        base.OnCallFromBall();
 
-        if (_targetDog == null) return;
+        if(IsOwnerPlayer)
+            Utils.CallNextFrame(() => _controller!.AddTrigger("Ride"));
 
-        if (Vector3.Distance(MouthDog.transform.position, MouthDog.destination) < 1f)
-        {
-            _howlTimer = MouthDog.screamSFX.length;
-            howlCooldown?.Reset();
-            var noisePosition = MouthDog.transform.position;
-            _targetDog.lastHeardNoisePosition = noisePosition;
-            _targetDog.DetectNoise(noisePosition, float.MaxValue);
-            
-            SwitchToCustomBehaviour((int) CustomBehaviour.Howl);
-        }
+        _controller!.SetControlTriggerVisible();
     }
 
     public override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
         base.InitTamingBehaviour(behaviour);
-        
-        switch (behaviour)
+
+        if (behaviour == TamingBehaviour.TamedFollowing)
         {
-            case TamingBehaviour.TamedFollowing:
-                WalkMode();
-                break;
-            case TamingBehaviour.TamedDefending:
-                ChaseMode();
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(behaviour), behaviour, null);
+            if (MouthDog != null)
+            {
+                if (MouthDog.agent != null)
+                {
+                    MouthDog.agent.speed = 8f;
+                }
+                MouthDog.creatureAnimator.Play("Base Layer.Idle1");
+            }
         }
     }
 
     public override void InitCustomBehaviour(int behaviour)
     {
         base.InitCustomBehaviour(behaviour);
-
-        if (behaviour == (int)CustomBehaviour.Howl)
-            Howl();
+        
+        if (behaviour == (int) CustomBehaviour.DamageEnemy)
+        {
+            MouthDog.creatureAnimator.Play("Base Layer.LungeKill");
+        }
     }
 
-    public override bool CanBeTeleported() => !IsCurrentBehaviourTaming(TamingBehaviour.TamedDefending);
     #endregion
 
     #region Methods
@@ -174,107 +200,99 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
         }
     }
     
-    private void DefendOwnerFromCloseDogs()
+    private IEnumerator DamageEnemyCoroutine(EnemyAI enemyAI)
     {
-        _cumulatedCheckDogsSeconds += Time.deltaTime;
+        yield return new WaitForSeconds(5f);
+        enemyBeingDamaged = null;
+        _controller!.enemyCanSprint = true;
+        _controller!.forceMoveForward = false;
+        _controller!.StopSprinting(false);
+        enemyAI.agent.enabled = true;
+        enemyAI.enabled = true;
+        enemyAI.HitEnemyOnLocalClient(2, default, ownerPlayer);
+        enemyAI.SetEnemyStunned(true, 1f, ownerPlayer);
         
-        if (_cumulatedCheckDogsSeconds < CheckDogsSecondsInterval) return;
-
-        _cumulatedCheckDogsSeconds = 0f;
-
-        var mouthDogAIs = FindObjectsOfType<MouthDogAI>();
-        foreach (var mouthDogAI in mouthDogAIs)
-        {
-            if (mouthDogAI == MouthDog || mouthDogAI.isEnemyDead || Vector3.Distance(mouthDogAI.transform.position, ownerPlayer!.transform.position) > 20f) continue;
-
-            TamedEnemyBehaviour? tamedEnemyBehaviour = mouthDogAI.GetComponentInParent<TamedEnemyBehaviour>();
-            if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsOwnedByAPlayer()) continue;
-            
-            bool foundPath = false;
-            for (float i = 15f; i > 7f && !foundPath; i--)
-            {
-                Vector3[] farPositions = GetPositionsFarFromOwner(mouthDogAI, i);
-                foreach (Vector3 farPosition in farPositions)
-                {
-                    if (MouthDog.SetDestinationToPosition(farPosition, true))
-                    {
-                        foundPath = true;
-                        break;
-                    }
-                }
-            }
-
-            if (foundPath)
-            {
-                _targetDog = mouthDogAI;
-                _howlTimer = 0f;
-                SwitchToTamingBehaviour(TamingBehaviour.TamedDefending);
-                return;
-            }
-        }
+        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
     }
-    
-    private Vector3[] GetPositionsFarFromOwner(MouthDogAI enemyToDefendFrom, float distance)
-    {
-        const int sidesPoints = 10;
-        const float sidesPointsDistance = 0.5f;
 
-        Vector3 enemyPosition = enemyToDefendFrom.transform.position;
-        Vector3 direction = Vector3.Normalize(enemyPosition - ownerPlayer!.transform.position);
-        Vector3 destinationPoint = enemyPosition + direction * distance;
+    private void DamageEnemy(EnemyAI enemyAI)
+    {
+        _controller!.StopControllingServerRpc();
         
-        Vector3[] positionsArray = new Vector3[1 + sidesPoints * 2];
-        positionsArray[0] = destinationPoint;
-
-        Vector2 projectedDirectionOnXY = new(direction.x, direction.y);
-        Vector2 perpendicular = Vector2.Perpendicular(projectedDirectionOnXY);
-
-        for (int i = 1; i <= sidesPoints; ++i)
+        SwitchToCustomBehaviour((int) CustomBehaviour.DamageEnemy);
+        
+        if (_lungeCoroutine != null)
         {
-            positionsArray[1 + (i - 1) * 2] = new Vector3(destinationPoint.x + perpendicular.x * sidesPointsDistance * i, destinationPoint.y + perpendicular.y * sidesPointsDistance * i, destinationPoint.z);
-            positionsArray[2 + (i - 1) * 2] = new Vector3(destinationPoint.x - perpendicular.x * sidesPointsDistance * i, destinationPoint.y - perpendicular.y * sidesPointsDistance * i, destinationPoint.z);
+            StopCoroutine(_lungeCoroutine);
+            _lungeCoroutine = null;
         }
+        
+        enemyBeingDamaged = enemyAI;
+        
+        if (enemyAI.agent != null)
+            enemyAI.enabled = false;
+        enemyAI.enabled = false;
+        
+        StartCoroutine(DamageEnemyCoroutine(enemyAI));
+    }
 
-        for (int i = 0; i < positionsArray.Length; ++i)
+    public override void OnCollideWithEnemy(Collider other, EnemyAI collidedEnemy)
+    {
+        if (enemyBeingDamaged != null || !_controller!.forceMoveForward || collidedEnemy.isEnemyDead || !collidedEnemy.enemyType.canDie)
         {
-            if (Physics.Raycast(new Ray(positionsArray[i], Vector3.down), out RaycastHit hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
-            {
-                positionsArray[i] = hitInfo.point;
-            }
-            else if (Physics.Raycast(new Ray(positionsArray[i], Vector3.up), out hitInfo, 30f, 268437761, QueryTriggerInteraction.Ignore))
-            {
-                positionsArray[i] = hitInfo.point;
-            }
+            return;
         }
+        
+        TamedEnemyBehaviour tamedEnemyBehaviour = collidedEnemy.GetComponent<TamedEnemyBehaviour>();
+        if (tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed)
+        {
+            DamageEnemy(collidedEnemy);
+        }
+    }
 
-        return positionsArray;
+    public override void OnCollideWithPlayer(Collider other)
+    {
+        if (!_controller!.forceMoveForward)
+        {
+            return;
+        }
+        
+        PlayerControllerB playerControllerB = MouthDog.MeetsStandardPlayerCollisionConditions(other);
+        if (playerControllerB == null || playerControllerB == ownerPlayer)
+        {
+            return;
+        }
+        
+        _controller!.forceMoveForward = false;
+        
+        SwitchToCustomBehaviour((int) CustomBehaviour.KillingPlayer);
+        
+        MouthDog.KillPlayerServerRpc((int) playerControllerB.playerClientId);
+    }
+
+    public override void LateUpdate()
+    {
+        base.LateUpdate();
+        
+        if (enemyBeingDamaged != null)
+        {
+            enemyBeingDamaged.transform.position = MouthDog.mouthGrip.position;
+        }
+    }
+    #endregion
+    
+    #region RPCs
+
+    [ServerRpc(RequireOwnership = false)]
+    private void LungeServerRpc()
+    {
+        LungeClientRpc();
     }
     
-    private void WalkMode()
+    [ClientRpc]
+    private void LungeClientRpc()
     {
-        if (MouthDog != null)
-        {
-            if (MouthDog.agent != null)
-            {
-                MouthDog.agent.speed = 5f;
-            }
-            MouthDog.creatureAnimator.Play("Base Layer.Idle1");
-        }
-    }
-    
-    private void ChaseMode()
-    {
-        if (MouthDog.agent != null)
-        {
-            MouthDog.agent.speed = 13f;
-        }
-        MouthDog.creatureAnimator.Play("Base Layer.Chase");
-    }
 
-    private void Howl()
-    {
-        MouthDog.creatureAnimator.Play("Base Layer.ChaseHowl");
-        MouthDog.creatureVoice.PlayOneShot(MouthDog.screamSFX);
     }
     #endregion
 }

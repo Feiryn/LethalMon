@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
@@ -111,6 +113,42 @@ internal class EnemyAIPatch
     {
         TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
         return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithEnemy))]
+    [HarmonyPostfix]
+    private static void OnCollideWithEnemyPostfix(EnemyAI __instance, Collider other, EnemyAI collidedEnemy = null)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
+        {
+            tamedEnemyBehaviour.OnCollideWithEnemy(other, collidedEnemy);
+        }
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithPlayer))]
+    [HarmonyPrefix]
+    private static bool OnCollideWithPlayerPrefix(EnemyAI __instance, Collider other)
+    {
+        PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(player);
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsTamed && tamedEnemyBehaviour is MouthDogTamedBehaviour mouthDogTamedBehaviour)
+        {
+            return mouthDogTamedBehaviour.enemyBeingDamaged == null;
+        }
+
+        return true;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithPlayer))]
+    [HarmonyPostfix]
+    private static void OnCollideWithPlayerPostfix(EnemyAI __instance, Collider other)
+    {
+        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
+        {
+            tamedEnemyBehaviour.OnCollideWithPlayer(other);
+        }
     }
     
     #if DEBUG

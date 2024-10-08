@@ -13,6 +13,41 @@ namespace LethalMon.Behaviours
     /// </summary>
     public class EnemyController : NetworkBehaviour
     {
+        #region Animations
+
+        private static readonly float shinLRotationX = 125f;
+        
+        private static readonly float shinLRotationY = -0.289f;
+        
+        private static readonly float shinLRotationZ = -0.987f;
+        
+        private static readonly float shinRRotationX = 125f;
+        
+        private static readonly float shinRRotationY = 0.289f;
+        
+        private static readonly float shinRRotationZ = 0.987f;
+
+        private static readonly float thighLRotationX = 69.399f;
+        
+        private static readonly float thighLRotationY = -22.43f;
+        
+        private static readonly float thighLRotationZ = -3f;
+        
+        private static readonly float thighRRotationX = 75.226f;
+        
+        private static readonly float thighRRotationY = 0.293f;
+        
+        private static readonly float thighRRotationZ = -20.61f;
+        
+        private Transform _shinL = null;
+        
+        private Transform _shinR = null;
+        
+        private Transform _thighL = null;
+        
+        private Transform _thighR = null;
+        #endregion
+        
         #region Properties
         private EnemyAI? _enemy = null;
 
@@ -81,6 +116,21 @@ namespace LethalMon.Behaviours
         public float enemyStaminaUseMultiplier = 1f;
         
         /// <summary>
+        /// Defines if the enemy can sprint.
+        /// </summary>
+        public bool enemyCanSprint = true;
+
+        /// <summary>
+        /// Defines if the enemy should move forward even if the player is not moving.
+        /// </summary>
+        public bool forceMoveForward = false;
+        
+        /// <summary>
+        /// Defines if the enemy should sprint even if the player is not sprinting.
+        /// </summary>
+        public bool forceSprint = false;
+        
+        /// <summary>
         /// Vector offset of the enemy while being controlled.
         /// </summary>
         public Vector3 enemyOffsetWhileControlling = Vector3.zero; // TODO: transform parenting
@@ -110,6 +160,16 @@ namespace LethalMon.Behaviours
         public Action? OnStopControlling = null;
         
         private readonly Func<Vector2, Vector3> _onCalculateMovementVector;
+        
+        /// <summary>
+        /// Method called when starting to sprint.
+        /// </summary>
+        public Action? OnStartSprinting = null;
+        
+        /// <summary>
+        /// Method called when stopping to sprint.
+        /// </summary>
+        public Action? OnStopSprinting = null;
         
         /// <summary>
         /// Method called when moving the enemy.
@@ -199,6 +259,15 @@ namespace LethalMon.Behaviours
             player.transform.position = _enemy!.transform.position - enemyOffsetWhileControlling;
             player.transform.rotation = _enemy!.transform.rotation;
 
+            var spineTransform = player.transform
+                .Find("ScavengerModel")
+                .Find("metarig")
+                .Find("spine");
+            _thighL = spineTransform.Find("thigh.L");
+            _thighR = spineTransform.Find("thigh.R");
+            _shinL = _thighL.Find("shin.L");
+            _shinR = _thighR.Find("shin.R");
+
             if (IsControlledByUs)
             {
                 // Reposition on navMesh
@@ -216,6 +285,16 @@ namespace LethalMon.Behaviours
 
                 SetControlTriggerVisible(false);
                 BindInputs();
+                
+                HUDManager.Instance.ClearControlTips();
+                
+                HUDManager.Instance.ChangeControlTipMultiple(
+                    [
+                        $"Dismount: [{IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch").bindings[0].effectivePath}]",
+                        $"Sprint: [{IngamePlayerSettings.Instance.playerInput.actions.FindAction("Sprint").bindings[0].effectivePath}]"
+                    ],
+                    holdingItem: Utils.CurrentPlayer.currentlyHeldObjectServer != null,
+                    Utils.CurrentPlayer.currentlyHeldObjectServer?.itemProperties);
             }
 
             if (_enemy!.TryGetComponent(out Collider collider))
@@ -267,6 +346,7 @@ namespace LethalMon.Behaviours
 
             if (IsControlledByUs)
             {
+                HUDManager.Instance.ClearControlTips();
                 SetControlTriggerVisible(true);
                 UnbindInputs();
                 playerControlledBy!.sprintMeter = _controllingPlayerStamina;
@@ -315,6 +395,14 @@ namespace LethalMon.Behaviours
         void LateUpdate()
         {
             UpdateStamina();
+
+            if (playerControlledBy != null)
+            {
+                _shinL.localRotation = Quaternion.Euler(shinLRotationX, shinLRotationY, shinLRotationZ);
+                _shinR.localRotation = Quaternion.Euler(shinRRotationX, shinRRotationY, shinRRotationZ);
+                _thighL.localRotation = Quaternion.Euler(thighLRotationX, thighLRotationY, thighLRotationZ);
+                _thighR.localRotation = Quaternion.Euler(thighRRotationX, thighRRotationY, thighRRotationZ);
+            }
         }
 
         void Update()
@@ -327,7 +415,13 @@ namespace LethalMon.Behaviours
                     playerControlledBy!.transform.position = _enemy!.transform.position - enemyOffsetWhileControlling;
                     playerControlledBy!.ResetFallGravity();
 
-                    if (_moveAction.IsPressed())
+                    if (forceSprint && !_isSprinting)
+                    {
+                        _isSprinting = true;
+                        OnStartSprinting?.Invoke();
+                    }
+                    
+                    if (_moveAction.IsPressed() || forceMoveForward)
                     {
                         // Actively moving
                         if (!_isMoving)
@@ -335,7 +429,7 @@ namespace LethalMon.Behaviours
                             //OnStartMoving?.Invoke();
                             _isMoving = true;
                         }
-                        Moving(_onCalculateMovementVector(_moveAction.ReadValue<Vector2>()));
+                        MoveEnemy(!forceMoveForward ? _onCalculateMovementVector(_moveAction.ReadValue<Vector2>()) : _onCalculateMovementVector(Vector2.up));
                     }
                     else
                     {
@@ -347,7 +441,7 @@ namespace LethalMon.Behaviours
                         }
 
                         if (_currentSpeed > 0.1f)
-                            Moving(_lastDirection);
+                            MoveEnemy(_lastDirection);
                     }
                 }
                 else
@@ -397,9 +491,24 @@ namespace LethalMon.Behaviours
 
         // Simplify abstract method parameter
         private void Jump(InputAction.CallbackContext callbackContext) => OnJump();
-        private void SprintStart(InputAction.CallbackContext callbackContext) => _isSprinting = true;
-        private void SprintStop(InputAction.CallbackContext callbackContext) => _isSprinting = false;
-        
+        private void SprintStart(InputAction.CallbackContext callbackContext)
+        {
+            if (enemyCanSprint || forceSprint)
+            {
+                _isSprinting = true;
+                OnStartSprinting?.Invoke();
+            }
+        }
+
+        private void SprintStop(InputAction.CallbackContext callbackContext)
+        {
+            if (_isSprinting && !forceSprint)
+            {
+                _isSprinting = false;
+                OnStopSprinting?.Invoke();
+            }
+        }
+
         private void Crouch(InputAction.CallbackContext callbackContext) => OnCrouch();
 
         // Virtual methods
@@ -417,7 +526,14 @@ namespace LethalMon.Behaviours
             return directionVector * Time.deltaTime;
         }
 
-        private void Moving(Vector3 direction)
+        public void StopSprinting(bool callCallback = true)
+        {
+            _isSprinting = false;
+            if (callCallback)
+                OnStopSprinting?.Invoke();
+        }
+
+        private void MoveEnemy(Vector3 direction)
         {
             _lastDirection = direction;
 
@@ -473,6 +589,11 @@ namespace LethalMon.Behaviours
         public virtual void Jumping()
         {
 
+        }
+
+        public virtual void Moving(Vector3 direction)
+        {
+            
         }
         
         public override void OnDestroy()

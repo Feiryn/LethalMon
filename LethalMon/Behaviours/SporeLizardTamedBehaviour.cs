@@ -22,7 +22,6 @@ namespace LethalMon.Behaviours
         }
 
         public override bool Controllable => true;
-        internal const float RidingTriggerHoldTime = 1f;
 
         private readonly InteractTrigger? _ridingTrigger = null;
 
@@ -102,6 +101,16 @@ namespace LethalMon.Behaviours
                 
                 _controller.enemyCanJump = true;
                 _controller.enemyStrength = 3f;
+            }
+        }
+        
+        public override void Start()
+        {
+            base.Start();
+
+            if (IsTamed)
+            {
+                SporeLizard.gameObject.transform.localScale = Vector3.one * 0.8f;
             }
         }
 
