@@ -80,6 +80,7 @@ public class LethalMon : BaseUnityPlugin
         Utils.LoadSeeThroughShader(assetBundle);
         Utils.LoadWireframeMaterial(assetBundle);
 
+        ClaySurgeonTamedBehaviour.LoadAssets(assetBundle);
         MaskedTamedBehaviour.LoadGhostAudio(assetBundle);
         BaboonHawkTamedBehaviour.LoadAudio(assetBundle);
         HoarderBugTamedBehaviour.LoadAudio(assetBundle);

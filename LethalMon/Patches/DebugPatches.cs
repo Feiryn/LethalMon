@@ -8,6 +8,7 @@ using LethalMon.Items;
 using LethalMon.CustomPasses;
 using System;
 using System.Linq;
+using LethalMon.Behaviours;
 using LethalMon.Save;
 
 namespace LethalMon.Patches
@@ -62,12 +63,30 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.CaveDweller);
+                var tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
+                if (tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                {
+                    if (claySurgeon.WallCrack != null)
+                    {
+                        Transform crackA = claySurgeon.WallCrack.transform.Find("CrackA");
+                        crackA.position = Utils.CurrentPlayer.transform.position + Vector3.up * 2f;
+                        crackA.rotation = Quaternion.Euler(crackA.rotation.eulerAngles.x, Utils.CurrentPlayer.transform.rotation.eulerAngles.y, crackA.rotation.eulerAngles.z);
+                    }
+                }
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler, 0.5f);
+                var tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
+                if (tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                {
+                    if (claySurgeon.WallCrack != null)
+                    {
+                        Transform crackB = claySurgeon.WallCrack.transform.Find("CrackB");
+                        crackB.position = Utils.CurrentPlayer.transform.position + Vector3.up * 2f;
+                        crackB.rotation = Quaternion.Euler(crackB.rotation.eulerAngles.x, Utils.CurrentPlayer.transform.rotation.eulerAngles.y, crackB.rotation.eulerAngles.z);
+                    }
+                }
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
