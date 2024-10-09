@@ -63,6 +63,7 @@ Here are the monsters that can be captured:
 - Ghost Girl
 - Hoarding Bug
 - Hygrodere
+- Kidnapper Fox
 - Masked
 - Nutcracker
 - Spider

@@ -40,13 +40,11 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
     {
         Riding = 1,
         DamageEnemy = 2,
-        KillingPlayer = 3,
     }
     public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new Tuple<string, string, Action>(CustomBehaviour.Riding.ToString(), "Is being rode...", () => {}),
-        new Tuple<string, string, Action>(CustomBehaviour.DamageEnemy.ToString(), "Is attacking an enemy...", () => {}),
-        new Tuple<string, string, Action>(CustomBehaviour.KillingPlayer.ToString(), "Is killing a player...", () => {}),
+        new Tuple<string, string, Action>(CustomBehaviour.DamageEnemy.ToString(), "Is attacking an enemy...", () => {})
     ];
     #endregion
     
@@ -258,26 +256,6 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
             enemyBeingDamaged = collidedEnemy;
             DamageEnemyServerRpc(networkObject);
         }
-    }
-
-    public override void OnCollideWithPlayer(Collider other)
-    {
-        if (!IsOwnerPlayer || !_controller!.forceMoveForward)
-        {
-            return;
-        }
-        
-        PlayerControllerB playerControllerB = other.GetComponent<PlayerControllerB>();
-        if (playerControllerB == null || playerControllerB == ownerPlayer)
-        {
-            return;
-        }
-        
-        _controller!.forceMoveForward = false;
-        
-        SwitchToCustomBehaviour((int) CustomBehaviour.KillingPlayer);
-        
-        MouthDog.KillPlayerServerRpc((int) playerControllerB.playerClientId);
     }
 
     public override void LateUpdate()
