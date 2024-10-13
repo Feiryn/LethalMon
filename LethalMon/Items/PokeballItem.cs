@@ -256,41 +256,59 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
     {
         base.GetItemDataToSave();
 
-        if (!this.enemyCaptured || this.enemyType == null)
+        try
         {
-            return -1;
-        }
-        else
-        {
-            var enemyTypeId = Registry.GetEnemyTypeId(this.enemyType.name);
-            if (enemyTypeId != null)
+            if (!this.enemyCaptured || this.enemyType == null)
             {
-                return enemyTypeId.Value;
+                return -1;
             }
             else
             {
-                LethalMon.Log($"Cannot save ball content: enemy type ID of {this.enemyType.name} not found in registry", LethalMon.LogType.Error);
-                return -1;
+                var enemyTypeId = Registry.GetEnemyTypeId(this.enemyType.name);
+                if (enemyTypeId != null)
+                {
+                    return enemyTypeId.Value;
+                }
+                else
+                {
+                    LethalMon.Log(
+                        $"Cannot save ball content: enemy type ID of {this.enemyType.name} not found in registry",
+                        LethalMon.LogType.Error);
+                    return -1;
+                }
             }
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log($"Error while saving ball content: {e.Message}", LethalMon.LogType.Error);
+            return -1;
         }
     }
 
     public override void LoadItemSaveData(int saveData)
     {
         base.LoadItemSaveData(saveData);
-        
-        var catchable = Registry.GetCatchableEnemy(saveData);
-        if (saveData != 0 && !this.enemyCaptured && catchable != null)
+
+        try
         {
-            var type = GetFirstEnemyType(Registry.GetEnemyTypeName(saveData));
-            if (type != null)
+            var catchable = Registry.GetCatchableEnemy(saveData);
+            if (saveData != 0 && !this.enemyCaptured && catchable != null)
             {
-                this.SetCaughtEnemy(type, string.Empty);
+                var type = GetFirstEnemyType(Registry.GetEnemyTypeName(saveData));
+                if (type != null)
+                {
+                    this.SetCaughtEnemy(type, string.Empty);
+                }
+                else
+                {
+                    LethalMon.Log($"Cannot load ball content: enemy type with ID {saveData} not found in registry",
+                        LethalMon.LogType.Error);
+                }
             }
-            else
-            {
-                LethalMon.Log($"Cannot load ball content: enemy type with ID {saveData} not found in registry", LethalMon.LogType.Error);
-            }
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log($"Error while loading ball content: {e.Message}", LethalMon.LogType.Error);
         }
     }
 #endregion
@@ -549,20 +567,35 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
     public object GetAdvancedItemDataToSave()
     {
-        return new PokeballSaveData
+        try
         {
-            enemyType = enemyType?.name,
-            isDnaComplete = isDnaComplete,
-            enemySkinRegistryId = enemySkinRegistryId
-        };
+            return new PokeballSaveData
+            {
+                enemyType = enemyType?.name,
+                isDnaComplete = isDnaComplete,
+                enemySkinRegistryId = enemySkinRegistryId
+            };
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log($"Error while saving advanced ball content: {e.Message}", LethalMon.LogType.Error);
+            return new object();
+        }
     }
 
     public void LoadAdvancedItemData(object data)
     {
-        if (data is PokeballSaveData { enemyType: not null } saveData)
+        try
         {
-            SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), saveData.enemySkinRegistryId);
-            isDnaComplete = saveData.isDnaComplete;
+            if (data is PokeballSaveData { enemyType: not null } saveData)
+            {
+                SetCaughtEnemy(EnemyTypes.First(type => type.name == saveData.enemyType), saveData.enemySkinRegistryId);
+                isDnaComplete = saveData.isDnaComplete;
+            }
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log($"Error while loading advanced ball content: {e.Message}", LethalMon.LogType.Error);
         }
     }
 }

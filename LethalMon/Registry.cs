@@ -105,12 +105,12 @@ public static class Registry
     
     internal static CatchableEnemy.CatchableEnemy? GetCatchableEnemy(int enemyTypeId)
     {
-        return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds[cm.Key] == enemyTypeId).Value;
+        return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds.GetValueOrDefault(cm.Key) == enemyTypeId).Value;
     }
     
     internal static string GetEnemyTypeName(int enemyTypeId)
     {
-        return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds[cm.Key] == enemyTypeId).Key;
+        return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds.GetValueOrDefault(cm.Key) == enemyTypeId).Key;
     }
     
     /// <summary>
