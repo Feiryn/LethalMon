@@ -1,3 +1,8 @@
+# 0.6.6
+
+- Greatly improved performances by caching a lot of things and reducing the number of AI calculations
+- Fixed a bug that made the content of the balls not loaded properly and prevented other items from being loaded
+
 # 0.6.5
 
 - Refactored the code, changed access modifiers and added a lot of documentation for modders that want to add their own monsters (public API)
