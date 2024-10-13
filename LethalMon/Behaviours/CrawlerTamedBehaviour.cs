@@ -71,6 +71,12 @@ namespace LethalMon.Behaviours
         public override float MaxFollowDistance => 150f;
 
         public override bool CanDefend => false;
+        
+        private DoorLock[]? _smallDoors = null;
+        
+        private TerminalAccessibleObject[]? _bigDoors = null;
+        
+        private Turret[]? _turrets = null;
 
         #endregion
         
@@ -371,10 +377,14 @@ namespace LethalMon.Behaviours
             TerminalAccessibleObject? closestBigDoor = null;
             Turret? closestTurret = null;
             
-            var smallDoors = FindObjectsOfType<DoorLock>();
-            foreach (var door in smallDoors)
+            if (_smallDoors == null)
+                _smallDoors = FindObjectsOfType<DoorLock>();
+            foreach (var door in _smallDoors)
             {
-                var doorComponent = door.GetComponent<AnimatedObjectTrigger>();
+                var doorComponent = Cache.GetDoorAnimatedObjectTrigger(door);
+                if (doorComponent == null)
+                    continue;
+                
                 var doorPosition = doorComponent.transform.position;
                 if (!door.isDoorOpened)
                 {
@@ -390,10 +400,11 @@ namespace LethalMon.Behaviours
                 }
             }
             
-            var bigDoors = FindObjectsOfType<TerminalAccessibleObject>();
-            foreach (var door in bigDoors)
+            if (_bigDoors == null)
+                _bigDoors = FindObjectsOfType<TerminalAccessibleObject>();
+            foreach (var door in _bigDoors)
             {
-                var doorCollider = door.GetComponentInParent<Collider>();
+                var doorCollider = Cache.GetTerminalAccessibleObjectCollider(door);
                 if (doorCollider == null)
                     continue;
 
@@ -416,8 +427,9 @@ namespace LethalMon.Behaviours
                 }
             }
             
-            var turrets = FindObjectsOfType<Turret>();
-            foreach (var turret in turrets)
+            if (_turrets == null)
+                _turrets = FindObjectsOfType<Turret>();
+            foreach (var turret in _turrets)
             {
                 var turretPosition = turret.transform.position;
                 if (turret.turretActive)
@@ -440,13 +452,13 @@ namespace LethalMon.Behaviours
             if (closestSmallDoor != null)
             {
                 _targetSmallDoor = closestSmallDoor;
-                _targetPos = closestSmallDoor.GetComponent<AnimatedObjectTrigger>().transform.position;
+                _targetPos = Cache.GetDoorAnimatedObjectTrigger(closestSmallDoor)!.transform.position;
                 SwitchToCustomBehaviour((int)CustomBehaviour.GoToSmallDoor);
             }
             else if (closestBigDoor != null)
             {
                 _targetBigDoor = closestBigDoor;
-                _targetPos = closestBigDoor.GetComponentInParent<Collider>().transform.position;
+                _targetPos = Cache.GetTerminalAccessibleObjectCollider(closestBigDoor)!.transform.position;
                 SwitchToCustomBehaviour((int)CustomBehaviour.GoToBigDoor);
             }
             else if (closestTurret != null)

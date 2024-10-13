@@ -33,11 +33,6 @@ public class Utils
         yield return new WaitForSeconds(time);
         action();
     }
-    
-    public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
-    {
-        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.IsTamed && tamedBehaviour.ownerPlayer == player);
-    }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)
     {
@@ -217,8 +212,8 @@ public class Utils
         Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
         foreach (Collider collider in colliders)
         {
-            DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
-            if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
+            var doorLock = Cache.GetDoorLockFromCollider(collider);
+            if (doorLock != null && doorLock is { isDoorOpened: false, isLocked: false })
             {
                 LethalMon.Log("Door opened at " + position);
                 if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))

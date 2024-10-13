@@ -58,11 +58,10 @@ internal class PlayerControllerBPatch
             LethalMon.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
             
             PlayerControllerB player = (PlayerControllerB) target;
-            TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(player);
 
-            if (tamedEnemyBehaviour != null)
+            if (Cache.GetPlayerPet(player, out var tamedEnemyBehaviour))
             {
-                PetRetrieve(player, tamedEnemyBehaviour);
+                PetRetrieve(player, tamedEnemyBehaviour!);
             }
             else
             {
@@ -107,6 +106,7 @@ internal class PlayerControllerBPatch
         ModConfig.Instance.RetrieveBallKey.performed -= RetrieveBallKeyPressed;
         ModConfig.Instance.ActionKey1.performed -= ActionKey1Pressed;
         HUDManagerPatch.EnableHUD(false);
+        Cache.ClearPlayerPets();
         if (!ModConfig.Instance.values.PcGlobalSave)
         {
             SaveManager.ClearSave();
@@ -118,9 +118,8 @@ internal class PlayerControllerBPatch
         if (Utils.IsHost)
         {
             LethalMon.Log("RetrieveBallKeyPressed");
-            TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
 
-            if (tamedEnemyBehaviour != null)
+            if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour))
             {
                 PetRetrieve(Utils.CurrentPlayer, tamedEnemyBehaviour);
             }
@@ -133,10 +132,11 @@ internal class PlayerControllerBPatch
     internal static void ActionKey1Pressed(InputAction.CallbackContext dashContext)
     {
         LethalMon.Log("ActionKey1Pressed");
-        Utils.GetPlayerPet(Utils.CurrentPlayer)?.ActionKey1Pressed();
+        if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour))
+            tamedEnemyBehaviour!.ActionKey1Pressed();
     }
 
-
+#if DEBUG
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.Update))]
     [HarmonyPostfix]
     private static void UpdatePostfix(PlayerControllerB __instance)
@@ -184,7 +184,6 @@ internal class PlayerControllerBPatch
         }
     }
 
-#if DEBUG
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
     [HarmonyPrefix]
     private static void TeleportPlayerPrefix(PlayerControllerB __instance, Vector3 pos)
@@ -197,9 +196,7 @@ internal class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void TeleportPlayer(PlayerControllerB __instance, Vector3 pos)
     {
-        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
-
-        if (tamedBehaviour != null && tamedBehaviour.CanBeTeleported())
+        if (Cache.GetPlayerPet(__instance, out var tamedBehaviour) && tamedBehaviour!.CanBeTeleported())
         {
             var position = pos;
             LethalMon.Log("Teleport tamed enemy to " + position);
@@ -222,9 +219,7 @@ internal class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void KillPlayerServerRpcPostfix(PlayerControllerB __instance)
     {
-        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
-        
-        if (tamedBehaviour != null && Utils.IsHost && !tamedBehaviour.HasBeenRetrieved)
+        if (Cache.GetPlayerPet(__instance, out var tamedBehaviour) && Utils.IsHost && !tamedBehaviour!.HasBeenRetrieved)
         {
             LethalMon.Log("Owner is dead, go back to the ball");
             tamedBehaviour.RetrieveInBall(tamedBehaviour.Enemy.transform.position);
@@ -235,9 +230,7 @@ internal class PlayerControllerBPatch
     [HarmonyPostfix]
     private static void DamagePlayerPostfix(PlayerControllerB __instance/*, int damageNumber, bool hasDamageSFX, bool callRPC, CauseOfDeath causeOfDeath, int deathAnimation, bool fallDamage, Vector3 force*/)
     {
-        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
-
-        if (tamedBehaviour != null && tamedBehaviour.CanDefend)
+        if (Cache.GetPlayerPet(__instance, out var tamedBehaviour) && tamedBehaviour!.CanDefend)
         {
             EnemyAI? enemyAI = Utils.GetMostProbableAttackerEnemy(__instance, new StackTrace());
             if (enemyAI != null && enemyAI != tamedBehaviour.Enemy)
@@ -261,10 +254,8 @@ internal class PlayerControllerBPatch
         {
             return;
         }
-
-        TamedEnemyBehaviour? tamedBehaviour = Utils.GetPlayerPet(__instance);
-
-        if (tamedBehaviour != null && (__instance.IsServer || __instance.IsHost) && tamedBehaviour.CanDefend)
+        
+        if ((__instance.IsServer || __instance.IsHost) && Cache.GetPlayerPet(__instance, out var tamedBehaviour) && tamedBehaviour!.CanDefend)
         {
             PlayerControllerB playerWhoHitControllerB = StartOfRound.Instance.allPlayerScripts[playerWhoHit];
             LethalMon.Log($"Player {playerWhoHitControllerB.playerUsername} hit {__instance.playerUsername}");

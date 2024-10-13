@@ -148,7 +148,7 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
         base.OnCallFromBall();
         
         if(IsOwnerPlayer)
-            Utils.CallAfterTime(() => _controller!.AddTrigger("Ride"), 0.1f);
+            Utils.CallAfterTime(() => _controller!.AddTrigger("Ride"), 0.5f);
 
         _controller!.SetControlTriggerVisible();
     }
@@ -249,7 +249,7 @@ internal class MouthDogTamedBehaviour : TamedEnemyBehaviour
             return;
         }
         
-        TamedEnemyBehaviour tamedEnemyBehaviour = collidedEnemy.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(collidedEnemy);
         NetworkObject networkObject = collidedEnemy.GetComponent<NetworkObject>();
         if ((tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed) && networkObject != null)
         {

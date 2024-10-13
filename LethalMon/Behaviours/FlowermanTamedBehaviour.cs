@@ -93,6 +93,9 @@ internal class FlowermanTamedBehaviour : TamedEnemyBehaviour
 
     public override string DefendingBehaviourDescription => "Saw an enemy to drag away!";
 
+    private const float CheckDestinationInterval = 0.5f;
+    
+    private float _checkDestinationTimer = 0f;
     #endregion
     
     #region Custom behaviours
@@ -116,35 +119,49 @@ internal class FlowermanTamedBehaviour : TamedEnemyBehaviour
             return;
         }
         
-        if (Vector3.Distance(Bracken.transform.position, Bracken.destination) < 2f || DistanceToOwner > MaximumDistanceTowardsOwner)
+        _checkDestinationTimer += Time.deltaTime;
+        if (_checkDestinationTimer >= CheckDestinationInterval)
         {
-            LethalMon.Log("Enemy brought to destination or far enough away from owner, release it. Distance to owner: " + DistanceToOwner);
+            _checkDestinationTimer = 0;
+            if (Vector3.Distance(Bracken.transform.position, Bracken.destination) < 2f ||
+                DistanceToOwner > MaximumDistanceTowardsOwner)
+            {
+                LethalMon.Log(
+                    "Enemy brought to destination or far enough away from owner, release it. Distance to owner: " +
+                    DistanceToOwner);
 
-            ReleaseEnemy();
-            ReleaseEnemyServerRpc();
+                ReleaseEnemy();
+                ReleaseEnemyServerRpc();
 
-            SwitchToCustomBehaviour((int) CustomBehaviour.GoesBackToOwner);
+                SwitchToCustomBehaviour((int)CustomBehaviour.GoesBackToOwner);
+            }
+            else
+            {
+                // As the Bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
+                Utils.OpenDoorsAsEnemyAroundPosition(GrabbedEnemyAi.transform.position);
+            }
         }
-        else
-        {
-            // As the Bracken cannot get too close of the door as it has an enemy in its arm, we also open doors around the grabbed enemy
-            Utils.OpenDoorsAsEnemyAroundPosition(GrabbedEnemyAi.transform.position);
-        }
-
-        //LethalMon.Log("Enemy already grabbed and moving, skip AI interval");
     }
 
     public void OnWalkBackToOwner()
     {
-        if (ownerPlayer == null || ownerPlayer.isPlayerDead
-                                || DistanceToOwner < 8f // Reached owner
-                                || !ownerPlayer.isInsideFactory)
+        _checkDestinationTimer += Time.deltaTime;
+
+        if (_checkDestinationTimer >= CheckDestinationInterval)
         {
-            SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-            return;
+            _checkDestinationTimer = 0;
+            
+            if (ownerPlayer == null || ownerPlayer.isPlayerDead
+                || DistanceToOwner < 8f // Reached owner
+                || !ownerPlayer.isInsideFactory)
+            {
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                return;
+            }
+            
         }
         
-        Bracken.SetDestinationToPosition(ownerPlayer.transform.position);
+        Bracken.SetDestinationToPosition(ownerPlayer!.transform.position);
     }
     
     public override void InitCustomBehaviour(int behaviour)

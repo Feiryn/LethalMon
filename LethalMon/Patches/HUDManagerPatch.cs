@@ -34,8 +34,6 @@ internal class HUDManagerPatch
     private static TextMeshProUGUI? cooldownTime2;
     
     private static TextMeshProUGUI? cooldownName2;
-
-    // todo ping HUD
     
     public static void UpdatePressKeyTip()
     {

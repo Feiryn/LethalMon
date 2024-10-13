@@ -486,7 +486,8 @@ namespace LethalMon.Behaviours
 
             private void OnTriggerEnter(Collider other)
             {
-                if (!other.gameObject.TryGetComponent(out PlayerControllerB player) || player != Utils.CurrentPlayer)
+                PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
+                if (player != Utils.CurrentPlayer)
                     return;
 
                 foreach (var hidingPlayer in hidingPlayers)
@@ -512,7 +513,8 @@ namespace LethalMon.Behaviours
 
             private void OnTriggerExit(Collider other)
             {
-                if (!other.gameObject.TryGetComponent(out PlayerControllerB player) || player != Utils.CurrentPlayer)
+                PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
+                if (player != Utils.CurrentPlayer)
                     return;
 
                 localPlayerInsideMold = false;

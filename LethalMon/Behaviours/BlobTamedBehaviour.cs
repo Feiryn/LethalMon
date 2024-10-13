@@ -86,7 +86,7 @@ namespace LethalMon.Behaviours
             {
                 if (enemyType.enemyPrefab == null)
                 {
-                    LethalMon.Log("Unable to get blob prefab.", LethalMon.LogType.Error);
+                    LethalMon.Log("Unable to get blob prefab.");
                     continue;
                 }
 

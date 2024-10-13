@@ -13,7 +13,7 @@ internal class EnemyAIPatch
     [HarmonyPrefix]
     private static void OnDestroyPreFix(EnemyAI __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             LethalMon.Log("Destroying TamedEnemyBehaviour component");
@@ -28,7 +28,7 @@ internal class EnemyAIPatch
     [HarmonyPrefix]
     private static void SwitchToBehaviourStateOnLocalClientPrefix(EnemyAI __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             if (__instance.currentBehaviourStateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
@@ -49,7 +49,7 @@ internal class EnemyAIPatch
     [HarmonyPostfix]
     private static void SwitchToBehaviourStateOnLocalClientPostfix(EnemyAI __instance, int stateIndex)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             if (stateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
@@ -79,48 +79,48 @@ internal class EnemyAIPatch
     [HarmonyPrefix]
     private static bool HitEnemyPrefix(EnemyAI __instance/*, int force = -1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemy))]
     [HarmonyPrefix]
     private static bool KillEnemyPrefix(EnemyAI __instance/*, bool destroy = false*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyClientRpc))]
     [HarmonyPrefix]
     private static bool KillEnemyClientRpcPrefix(EnemyAI __instance/*, bool destroy*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyServerRpc))]
     [HarmonyPrefix]
     private static bool KillEnemyServerRpcPrefix(EnemyAI __instance/*, bool destroy*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyOnOwnerClient))]
     [HarmonyPrefix]
     private static bool KillEnemyOnOwnerClientPrefix(EnemyAI __instance/*, bool overrideDestroy = false*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithEnemy))]
     [HarmonyPostfix]
     private static void OnCollideWithEnemyPostfix(EnemyAI __instance, Collider other, EnemyAI collidedEnemy = null)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsTamed)
         {
             tamedEnemyBehaviour.OnCollideWithEnemy(other, collidedEnemy);
         }
@@ -130,9 +130,8 @@ internal class EnemyAIPatch
     [HarmonyPrefix]
     private static bool OnCollideWithPlayerPrefix(EnemyAI __instance, Collider other)
     {
-        PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
-        TamedEnemyBehaviour? tamedEnemyBehaviour = Utils.GetPlayerPet(player);
-        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsTamed && tamedEnemyBehaviour is MouthDogTamedBehaviour mouthDogTamedBehaviour)
+        PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
+        if (player != null && Cache.GetPlayerPet(player, out var tamedEnemyBehaviour) && tamedEnemyBehaviour!.IsTamed && tamedEnemyBehaviour is MouthDogTamedBehaviour mouthDogTamedBehaviour)
         {
             return mouthDogTamedBehaviour.enemyBeingDamaged == null;
         }
@@ -140,23 +139,12 @@ internal class EnemyAIPatch
         return true;
     }
     
-    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithPlayer))]
-    [HarmonyPostfix]
-    private static void OnCollideWithPlayerPostfix(EnemyAI __instance, Collider other)
-    {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
-        {
-            tamedEnemyBehaviour.OnCollideWithPlayer(other);
-        }
-    }
-    
     #if DEBUG
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.SwitchToBehaviourState))]
     [HarmonyPrefix]
     private static void SwitchToBehaviourStatePrefix(EnemyAI __instance, int stateIndex)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
 
         if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
         {

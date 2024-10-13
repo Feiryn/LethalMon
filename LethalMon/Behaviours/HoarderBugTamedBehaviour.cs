@@ -139,7 +139,7 @@ internal class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
             foreach (Collider collider in colliders)
             {
-                GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
+                GrabbableObject? grabbable = Cache.GetGrabbableObjectFromCollider(collider);
                 if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer!.transform.position) < 8f || _alreadyGrabbedItems.Contains(grabbable.GetInstanceID())) continue;
 
                 // Check LOS

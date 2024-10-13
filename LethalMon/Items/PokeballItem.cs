@@ -188,9 +188,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
 
         if (!this.enemyCaptured || this.playerThrownBy == null) return;
         
-        TamedEnemyBehaviour? playerPet = Utils.GetPlayerPet(this.playerThrownBy);
-        
-        if (playerPet != null)
+        if (Cache.GetPlayerPet(playerThrownBy, out _))
         {
             if (this.playerThrownBy == Utils.CurrentPlayer)
             {
@@ -523,6 +521,8 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
         tamedBehaviour.OnCallFromBall();
+        
+        Cache.SetPlayerPet(ownerPlayer, tamedBehaviour);
     }
 
     [ServerRpc(RequireOwnership = false)]

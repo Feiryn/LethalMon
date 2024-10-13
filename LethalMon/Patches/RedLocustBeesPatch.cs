@@ -34,7 +34,7 @@ internal class RedLocustBeesPatch
     [HarmonyPrefix]
     public static bool SpawnHiveNearEnemyPrefix(RedLocustBees __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
 
         return !(tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsOwnedByAPlayer());
     }

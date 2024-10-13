@@ -11,6 +11,6 @@ internal class MouthDogPatch
     private static bool ReactToOtherDogHowlPreFix(MouthDogAI __instance/*, Vector3 howlPosition*/)
     {
         // Ignore other dogs howl if the dog is tamed
-        return !(__instance.GetComponentInParent<MouthDogTamedBehaviour>()?.ownerPlayer != null);
+        return !(Cache.GetTamedEnemyBehaviour(__instance)?.IsTamed ?? false);
     }
 }

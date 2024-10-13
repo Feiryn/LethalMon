@@ -11,7 +11,7 @@ internal class FlowermanAIPatch
     [HarmonyPrefix]
     private static bool HitEnemyPrefix(FlowermanAI __instance/*, int force = -1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
     }
 
@@ -19,7 +19,7 @@ internal class FlowermanAIPatch
     [HarmonyPrefix]
     private static bool OnCollideWithPlayerPrefix(FlowermanAI __instance/*, Collider other*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
     }
 }

@@ -18,7 +18,7 @@ namespace LethalMon.Patches
             if (lastColliderIDs.GetValueOrDefault(__instance.GetInstanceID(), -1) == other.GetInstanceID()) return; // Don't re-run this patch every frame
             lastColliderIDs[__instance.GetInstanceID()] = other.GetInstanceID();
 
-            PlayerControllerB player = other.gameObject.GetComponent<PlayerControllerB>();
+            PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
             if (player == null) return; // For mod compatibility purposes return true
 
             if (!__instance.TryGetComponent(out MaskedTamedBehaviour tamedBehaviour) || tamedBehaviour.targetPlayer == null) return;

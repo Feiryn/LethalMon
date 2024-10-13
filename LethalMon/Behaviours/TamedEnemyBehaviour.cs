@@ -771,6 +771,9 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     {
         base.OnDestroy();
 
+        if (ownerPlayer != null)
+            Cache.RemovePlayerPet(ownerPlayer);
+        
         foreach (var cooldown in GetComponents<CooldownNetworkBehaviour>())
             cooldown.OnDestroy();
 
@@ -1341,14 +1344,6 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     /// <param name="other">The collider of the enemy</param>
     /// <param name="collidedEnemy">The enemy that collided with this tamed enemy</param>
     public virtual void OnCollideWithEnemy(Collider other, EnemyAI collidedEnemy)
-    {
-    }
-
-    /// <summary>
-    /// Function called when the enemy collides with a player.
-    /// </summary>
-    /// <param name="other">The collider of the player</param>
-    public virtual void OnCollideWithPlayer(Collider other)
     {
     }
     #endregion

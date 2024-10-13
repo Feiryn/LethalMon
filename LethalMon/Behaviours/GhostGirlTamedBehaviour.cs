@@ -45,6 +45,10 @@ namespace LethalMon.Behaviours
         private CooldownNetworkBehaviour? teleportCooldown;
 
         public override bool CanDefend => teleportCooldown != null && teleportCooldown.IsFinished();
+        
+        private const float CheckDestinationInterval = 0.5f;
+        
+        private float _checkDestinationTimer = 0f;
         #endregion
         
         #region Custom behaviours
@@ -175,20 +179,25 @@ namespace LethalMon.Behaviours
 
         public void OnRunningBackToOwner()
         {
-            //LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
+            _checkDestinationTimer += Time.deltaTime;
 
             if(ownerPlayer == Utils.CurrentPlayer)
                 AnimateWalking();
 
-            if (ownerPlayer == null || ownerPlayer.isPlayerDead
-                || DistanceToOwner < 8f // Reached owner
-                || _ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+            if (_checkDestinationTimer >= CheckDestinationInterval)
             {
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-                return;
+                _checkDestinationTimer = 0f;
+                
+                if (ownerPlayer == null || ownerPlayer.isPlayerDead
+                                        || DistanceToOwner < 8f // Reached owner
+                                        || _ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+                {
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+                    return;
+                }
             }
-
+            
             if (GhostGirl.agent != null)
             {
                 GhostGirl.agent.speed = 8f;
