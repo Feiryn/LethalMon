@@ -63,28 +63,22 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                var tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
-                if (tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour) && tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
                 {
-                    if (claySurgeon.WallCrack != null)
+                    if (claySurgeon.WallCrackA != null)
                     {
-                        Transform crackA = claySurgeon.WallCrack.transform.Find("CrackA");
-                        crackA.position = Utils.CurrentPlayer.transform.position + Vector3.up * 2f;
-                        crackA.rotation = Quaternion.Euler(crackA.rotation.eulerAngles.x, Utils.CurrentPlayer.transform.rotation.eulerAngles.y, crackA.rotation.eulerAngles.z);
+                        Utils.CurrentPlayer.TeleportPlayer(claySurgeon.WallCrackA.transform.position + claySurgeon.WallCrackA.transform.forward);
                     }
                 }
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                var tamedEnemyBehaviour = Utils.GetPlayerPet(Utils.CurrentPlayer);
-                if (tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour) && tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
                 {
-                    if (claySurgeon.WallCrack != null)
+                    if (claySurgeon.WallCrackB != null)
                     {
-                        Transform crackB = claySurgeon.WallCrack.transform.Find("CrackB");
-                        crackB.position = Utils.CurrentPlayer.transform.position + Vector3.up * 2f;
-                        crackB.rotation = Quaternion.Euler(crackB.rotation.eulerAngles.x, Utils.CurrentPlayer.transform.rotation.eulerAngles.y, crackB.rotation.eulerAngles.z);
+                        Utils.CurrentPlayer.TeleportPlayer(claySurgeon.WallCrackB.transform.position + claySurgeon.WallCrackB.transform.forward);
                     }
                 }
             }
