@@ -84,6 +84,8 @@ namespace LethalMon
             public float SpiderWebCooldown { get; set; }
             
             public bool PcGlobalSave { get; set; }
+            
+            public float BarberCutWallCooldown { get; set; }
         }
 
         public ConfigValues values = new();
@@ -164,6 +166,7 @@ namespace LethalMon
             values.MaskedLendCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "MaskedLendCooldown", 7f, "Mask lending cooldown time in seconds for the masked").Value;
             values.BeesStunCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BeesStunCooldown", 10f, "Stunning cooldown time in seconds for the bees").Value;
             values.SpiderWebCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "SpiderWebCooldown", 8f, "Web shooting cooldown time in seconds for the spider").Value;
+            values.BarberCutWallCooldown = LethalMon.Instance.Config.Bind("Cooldowns", "BarberCutWallCooldown", 30f, "Cutting wall cooldown time in seconds for the barber").Value;
 
             // Behaviours
             values.MaskedEffectDistance = LethalMon.Instance.Config.Bind("Behaviours", "MaskedEffectDistance", 20f, "Distance till which enemies can be seen through walls.").Value;

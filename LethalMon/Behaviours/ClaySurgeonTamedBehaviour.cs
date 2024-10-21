@@ -1,18 +1,17 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using DunGen;
 using GameNetcodeStuff;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LethalMon.Behaviours;
 
 internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
 {
-    private static GameObject? WallCrackPrefab = null;
-
-    private static List<Tuple<Vector3, Vector3, Vector3>>? WallPositionsRanges = null;
+    private static GameObject? _wallCrackPrefab = null;
+    
+    private static AudioClip? _teleportSfx = null;
     
     internal static List<Tuple<Vector3, Quaternion>>? WallPositions = null;
     #region Properties
@@ -35,16 +34,23 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     internal GameObject? WallCrackA = null;
     
     internal GameObject? WallCrackB = null;
+    
+    private Vector3? _cutWallPosition;
+    
+    private Tuple<Vector3, Quaternion>? _cutWallClosest;
+    
+    private Tuple<Vector3, Quaternion>? _cutWallRandom;
+    
+    private static readonly int Snip = Animator.StringToHash("snip");
     #endregion
 
     #region Cooldowns
 
     private const string CooldownId = "claysurgeon_cutwall";
 
-    public override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Cut wall", 1f)];
+    public override Cooldown[] Cooldowns => [new Cooldown(CooldownId, "Cut wall", ModConfig.Instance.values.BarberCutWallCooldown)];
 
-    private CooldownNetworkBehaviour? cooldown;
-
+    private CooldownNetworkBehaviour? _cooldown;
     #endregion
 
     #region Custom behaviours
@@ -54,7 +60,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
         CutWall = 1
     }
 
-    public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    public override List<Tuple<string, string, Action>> CustomBehaviourHandler =>
     [
         new(CustomBehaviour.CutWall.ToString(), "Is cutting a wall...", OnCutWall)
     ];
@@ -69,7 +75,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
 
     private readonly List<ActionKey> _actionKeys =
     [
-        new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Cut wall" }
+        new ActionKey { Key = ModConfig.Instance.ActionKey1, Description = "Cut wall" }
     ];
 
     public override List<ActionKey> ActionKeys => _actionKeys;
@@ -78,11 +84,16 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     {
         base.ActionKey1Pressed();
 
-        if (WallCrackA != null || WallCrackB || CurrentCustomBehaviour == (int)CustomBehaviour.CutWall)
+        if (!_cooldown!.IsFinished() || CurrentTamingBehaviour != TamingBehaviour.TamedFollowing || WallPositions == null || WallPositions.Count == 0)
             return;
         
+        _cutWallClosest = WallPositions!.OrderBy(wallPosition => Vector3.Distance(wallPosition.Item1, ownerPlayer!.transform.position)).First();
+        _cutWallRandom = WallPositions!.OrderBy(_ => UnityEngine.Random.value).First();
+        
+        _cutWallPosition = RoundManager.Instance.GetNavMeshPosition( _cutWallClosest.Item1);
+        MoveTowards(_cutWallPosition!.Value);
+        
         SwitchToCustomBehaviour((int)CustomBehaviour.CutWall);
-        StartCoroutine(CutWallCoroutine());
     }
 
     #endregion
@@ -93,12 +104,34 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     {
         base.Start();
 
-        cooldown = GetCooldownWithId(CooldownId);
+        _cooldown = GetCooldownWithId(CooldownId);
 
         if (IsTamed)
         {
-            // InitWallRanges();
-            // InitWallPositions();
+            // ClaySurgeon doesn't have any behaviour state, so it doesn't switch to following when invoked, and the AI is disabled by SwitchToTamingBehaviour
+            // So it needs to be done manually
+            ClaySurgeon.enabled = false;
+            ClaySurgeon.agent.speed = 0f;
+            ClaySurgeon.transform.localScale *= 0.8f;
+        }
+        else
+        {
+            // The collider is only on the scissors, so a new one is added
+            // Collision detection is on the mesh container, so it can be added to the root object
+            var boxCollider = ClaySurgeon.gameObject.AddComponent<BoxCollider>();
+            boxCollider.center = Vector3.up * 1.7f;
+            boxCollider.size = new Vector3(2.24f, 3.4f, 1.66f);
+            boxCollider.isTrigger = true;
+            boxCollider.providesContacts = false;
+            
+            // A rigid must also be added to the root object to detect collisions
+            var rigidBody = ClaySurgeon.gameObject.AddComponent<Rigidbody>();
+            rigidBody.isKinematic = false;
+            rigidBody.useGravity = false;
+            rigidBody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            
+            // Set the door speed to 0, so it can't open doors with its new rigidbody
+            ClaySurgeon.openDoorSpeedMultiplier = 0f;
         }
     }
 
@@ -109,7 +142,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
         if (behaviour == TamingBehaviour.TamedFollowing)
         {
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1,
-                true); // todo montrer que quand le cooldown est terminé
+                true);
         }
     }
 
@@ -127,12 +160,59 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     {
         // ANY CLIENT
         base.OnEscapedFromBall(playerWhoThrewBall);
+
+        foreach (var claySurgeonAI in FindObjectsByType<ClaySurgeonAI>(FindObjectsSortMode.None))
+        {
+            claySurgeonAI.currentInterval = claySurgeonAI.endingInterval / 3f;
+        }
     }
 
     public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
-        // ANY CLIENT
-        base.OnUpdate(update, doAIInterval);
+        base.OnUpdate(update, false);
+        
+        if (ClaySurgeon.isJumping)
+        {
+            ClaySurgeon.jumpTimer -= Time.deltaTime;
+            if (ClaySurgeon.jumpTimer <= 0f)
+            {
+                ClaySurgeon.isJumping = false;
+                ClaySurgeon.agent.speed = 0f;
+            }
+            else
+            {
+                ClaySurgeon.agent.speed = ClaySurgeon.jumpSpeed;
+            }
+        }
+        
+        if (ClaySurgeon.beatTimer <= 0f)
+        {
+            ClaySurgeon.beatTimer = ClaySurgeon.endingInterval; // Changed from vanilla => always max speed
+            
+            if (ClaySurgeon.agent.destination != ClaySurgeon.transform.position)
+            {
+                ClaySurgeon.DanceBeat();
+            }
+        }
+        else
+        {
+            ClaySurgeon.beatTimer -= Time.deltaTime;
+        }
+        
+        if (Utils.IsHost && CurrentCustomBehaviour == (int)CustomBehaviour.CutWall)
+        {
+            if (_cutWallPosition == null)
+            {
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                return;
+            }
+            
+            if (Vector3.Distance(ClaySurgeon.transform.position, _cutWallPosition.Value) < 3f)
+            {
+                CutWallServerRpc(_cutWallClosest!.Item1, _cutWallClosest!.Item2, _cutWallRandom!.Item1, _cutWallRandom!.Item2);
+                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+            }
+        }
     }
 
     public override bool CanBeTeleported()
@@ -144,191 +224,117 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
 
     public override void OnDestroy()
     {
-        /*
-        if (WallCrack != null)
-            Destroy(WallCrack);
-            */
+        if (WallCrackA != null)
+            Destroy(WallCrackA);
+        
+        if (WallCrackB != null)
+            Destroy(WallCrackB);
         
         base.OnDestroy();
     }
 
     #region Methods
-
-    private static void InitWallPositions()
+    private void CutWalls(Vector3 positionA, Quaternion rotationA, Vector3 positionB, Quaternion rotationB)
     {
-        /*
-        Tile[] tiles = FindObjectsOfType<Tile>();
+        if (Utils.IsHost)
+            _cooldown!.Reset();
         
-        WallPositions = new();
-
-        foreach (Tile tile in tiles)
-        {
-            var doorways = tile.UnusedDoorways;
-
-            foreach (var doorway in doorways)
-            {
-                LethalMon.Log("Blockers count: " + doorway.BlockerSceneObjects.Count);
-                foreach (var blocker in doorway.BlockerSceneObjects)
-                {
-                    LethalMon.Log("    Blocker: " + blocker.name);
-                }
-                WallPositions.Add(new Tuple<Vector3, Quaternion>(doorway.transform.position + doorway.transform.up * 1.5f - doorway.transform.forward * 0.05f, Quaternion.Euler(doorway.transform.rotation.x, doorway.transform.rotation.y + 270f, doorway.transform.rotation.z)));
-            }
-        }
+        ClaySurgeon.creatureAnimator.SetTrigger(Snip);
+        ClaySurgeon.creatureSFX.PlayOneShot(ClaySurgeon.snipScissors);
         
-        // Log
-        foreach (Tuple<Vector3, Quaternion> wallPosition in WallPositions)
-        {
-            LethalMon.Log($"Wall position: {wallPosition.Item1} (dir: {wallPosition.Item2})");
-        }*/
+        if (WallCrackA != null)
+            Destroy(WallCrackA);
+        if (WallCrackB != null)
+            Destroy(WallCrackB);
         
-        GlobalProp[] globalProps = FindObjectsOfType<GlobalProp>();
-        
-        WallPositions = new();
-        
-        foreach (GlobalProp globalProp in globalProps)
-        {
-            LethalMon.Log("Global prop: " + globalProp.name + ", group: " + globalProp.PropGroupID);
-            if (globalProp.PropGroupID == 5) // vent
-            {
-                var rotation = globalProp.transform.eulerAngles;
-                WallPositions.Add(new Tuple<Vector3, Quaternion>(globalProp.transform.position + Vector3.up, Quaternion.Euler(rotation.x - 90f, rotation.y - 90f, rotation.z)));
-            }
-        }
-        
-        foreach (Tuple<Vector3, Quaternion> wallPosition in WallPositions)
-        {
-            LethalMon.Log($"Wall position: {wallPosition.Item1} (dir: {wallPosition.Item2})");
-        }
-    }
-
-    private static void InitWallRanges()
-    {
-        Tile[] tiles = FindObjectsOfType<Tile>();
-
-        WallPositionsRanges = new();
-        
-        foreach (Tile tile in tiles)
-        {
-            Doorway[] doorways = tile.GetComponentsInChildren<Doorway>();
-            SpawnSyncedObject[] spawnSyncedObjects = tile.GetComponentsInChildren<SpawnSyncedObject>();
-            
-            Vector3 maxTile = tile.Bounds.max;
-            Vector3 minTile = tile.Bounds.min;
-
-            // Doorways walls are on x and y, z doesn't move
-            foreach (Doorway doorway in doorways)
-            {
-                Vector3 localSpaceTileMax = doorway.transform.InverseTransformPoint(maxTile);
-                Vector3 localSpaceTileMin = doorway.transform.InverseTransformPoint(minTile);
-                Vector3 localTilePosition = doorway.transform.InverseTransformPoint(tile.transform.position);
-                
-                Vector3 min = doorway.transform.TransformPoint(new Vector3(localSpaceTileMin.x + 1, Mathf.Max(localSpaceTileMin.y, localTilePosition.y), 0)); // Don't go under the floor level
-                Vector3 max = doorway.transform.TransformPoint(new Vector3(localSpaceTileMax.x - 1, Mathf.Min(localSpaceTileMax.y, localTilePosition.y + 2), 0));
-                
-                var lineRenderer1 = new GameObject("Line").AddComponent<LineRenderer>();
-                lineRenderer1.startColor = Color.red;
-                lineRenderer1.endColor = Color.red;
-                lineRenderer1.startWidth = 0.01f;
-                lineRenderer1.endWidth = 0.01f;
-                lineRenderer1.positionCount = 5;
-                lineRenderer1.useWorldSpace = true;    
-                lineRenderer1.SetPosition(0, new Vector3(min.x, min.y, min.z));
-                lineRenderer1.SetPosition(1, new Vector3(max.x, min.y, min.z));
-                lineRenderer1.SetPosition(2, new Vector3(max.x, max.y, min.z));
-                lineRenderer1.SetPosition(3, new Vector3(min.x, max.y, min.z));
-                lineRenderer1.SetPosition(4, new Vector3(min.x, min.y, min.z));
-                
-                // We need enough space to cut the wall
-                if (min.y + 1 > max.y - 1 || min.x + 1 > max.x - 1)
-                    continue;
-                
-                // The direction is on the minus z axis
-                Vector3 direction = doorway.transform.TransformDirection(Vector3.back);
-                
-                WallPositionsRanges.Add(new Tuple<Vector3, Vector3, Vector3>(min, max, direction));
-            }
-            
-            // SpawnSyncedObjects walls are on y and z, x doesn't move
-            foreach (SpawnSyncedObject spawnSyncedObject in spawnSyncedObjects)
-            {
-                Vector3 localSpaceTileMax = spawnSyncedObject.transform.InverseTransformPoint(maxTile);
-                Vector3 localSpaceTileMin = spawnSyncedObject.transform.InverseTransformPoint(minTile);
-                Vector3 localTilePosition = spawnSyncedObject.transform.InverseTransformPoint(tile.transform.position);
-                
-                Vector3 min = spawnSyncedObject.transform.TransformPoint(new Vector3(0, Mathf.Max(localSpaceTileMin.y, localTilePosition.y), localSpaceTileMin.z + 1)); // Don't go under the floor level
-                Vector3 max = spawnSyncedObject.transform.TransformPoint(new Vector3(0, Mathf.Min(localSpaceTileMax.y, localTilePosition.y + 2), localSpaceTileMax.z - 1));
-                
-                // We need enough space to cut the wall
-                if (min.y + 1 > max.y - 1 || min.z + 1 > max.z - 1)
-                    continue;
-                
-                // The direction is on the minus x axis
-                Vector3 direction = spawnSyncedObject.transform.TransformDirection(Vector3.left);
-                
-                WallPositionsRanges.Add(new Tuple<Vector3, Vector3, Vector3>(min, max, direction));
-            }
-        }
-        
-        // Log
-        foreach (Tuple<Vector3, Vector3, Vector3> wallPositionRange in WallPositionsRanges)
-        {
-            LethalMon.Log($"Wall position range: {wallPositionRange.Item1} - {wallPositionRange.Item2} (dir: {wallPositionRange.Item3})");
-        }
-    }
-    
-    private IEnumerator CutWallCoroutine()
-    {
-        /*
-        var closestWall = WallPositionsRanges!.OrderBy(wallPositionRange => Vector3.Distance(wallPositionRange.Item1, ClaySurgeon.transform.position)).First();
-        var randomWall = WallPositionsRanges!.OrderBy(wallPositionRange => UnityEngine.Random.value).First();
-        
-        Vector3 closestRandomPosition = new Vector3(UnityEngine.Random.Range(closestWall.Item1.x, randomWall.Item2.x), transform.position.y, UnityEngine.Random.Range(closestWall.Item1.z, randomWall.Item2.z));
-        Vector3 randomRandomPosition = new Vector3(UnityEngine.Random.Range(randomWall.Item1.x, randomWall.Item2.x), UnityEngine.Random.Range(randomWall.Item1.y + 2, randomWall.Item2.y - 2), UnityEngine.Random.Range(randomWall.Item1.z, randomWall.Item2.z));
-        
-        WallCrackA = Instantiate(WallCrackPrefab!, closestRandomPosition, Quaternion.Euler(closestWall.Item3));
-        WallCrackB = Instantiate(WallCrackPrefab!, randomRandomPosition, Quaternion.Euler(randomWall.Item3));
-        */
-        
-        var closest = WallPositions!.OrderBy(wallPosition => Vector3.Distance(wallPosition.Item1, ClaySurgeon.transform.position)).First();
-        var random = WallPositions!.OrderBy(wallPosition => UnityEngine.Random.value).First();
-        
-        WallCrackA = Instantiate(WallCrackPrefab!, closest.Item1, closest.Item2);
-        WallCrackB = Instantiate(WallCrackPrefab!, random.Item1, random.Item2);
-        
-        LethalMon.Log("Placed wall cracks at " + WallCrackA.transform.position + " and " + WallCrackB.transform.position);
+        WallCrackA = Instantiate(_wallCrackPrefab!, positionA - Vector3.up, rotationA);
+        WallCrackB = Instantiate(_wallCrackPrefab!, positionB- Vector3.up, rotationB);
 
         var wallCrackAScript = WallCrackA.AddComponent<WallCrack>();
         var wallCrackBScript = WallCrackB.AddComponent<WallCrack>();
         
-        wallCrackAScript.otherWallCrack = wallCrackBScript;
-        wallCrackBScript.otherWallCrack = wallCrackAScript;
-        
-        SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-        yield return null;
+        wallCrackAScript.OtherWallCrack = wallCrackBScript;
+        wallCrackBScript.OtherWallCrack = wallCrackAScript;
     }
 
     internal static void LoadAssets(AssetBundle assetBundle)
     {
-        WallCrackPrefab = assetBundle.LoadAsset<GameObject>("Assets/Enemies/Barber/WallCrack.prefab");
+        _wallCrackPrefab = assetBundle.LoadAsset<GameObject>("Assets/Enemies/Barber/WallCrack.prefab");
+        _teleportSfx = assetBundle.LoadAsset<AudioClip>("Assets/Enemies/Barber/TeleportSound.ogg");
+    }
+    #endregion
+    
+    #region RPCs
+
+    [ServerRpc(RequireOwnership = false)]
+    private void CutWallServerRpc(Vector3 positionA, Quaternion rotationA, Vector3 positionB, Quaternion rotationB)
+    {
+        CutWallClientRpc(positionA, rotationA, positionB, rotationB);
+    }
+    
+    [ClientRpc]
+    private void CutWallClientRpc(Vector3 positionA, Quaternion rotationA, Vector3 positionB, Quaternion rotationB)
+    {
+        CutWalls(positionA, rotationA, positionB, rotationB);
     }
     #endregion
 
     internal class WallCrack : MonoBehaviour
     {
-        internal WallCrack? otherWallCrack;
+        internal WallCrack? OtherWallCrack;
+        
+        private AudioSource? _audioSource;
+        
+        private readonly HashSet<int> _preventEnemiesTp = [];
+        
+        private bool _preventPlayerTp = false;
+
+        private void Start()
+        {
+            _audioSource = gameObject.GetComponent<AudioSource>();
+        }
+
+        private void PlayTeleportSound()
+        {
+            _audioSource!.PlayOneShot(_teleportSfx);
+        }
         
         private void OnTriggerEnter(Collider other)
         {
-            LethalMon.Log("Wall crack trigger enter");
+            if (OtherWallCrack == null)
+                return;
             
             PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
-            if (player != null && player == Utils.CurrentPlayer && otherWallCrack != null)
+            if (player != null && player == Utils.CurrentPlayer && !_preventPlayerTp)
             {
-                player.TeleportPlayer(otherWallCrack.transform.position + otherWallCrack.transform.forward, true, otherWallCrack.transform.eulerAngles.y);
+                OtherWallCrack._preventPlayerTp = true;
+                player.TeleportPlayer(OtherWallCrack.transform.position + OtherWallCrack.transform.forward, true,
+                    OtherWallCrack.transform.eulerAngles.y);
+                PlayTeleportSound();
+                OtherWallCrack.PlayTeleportSound();
+                StartCoroutine(Utils.CallAfterTimeCoroutine(() => OtherWallCrack._preventPlayerTp = false, 1f));
+                return;
+            }
+
+            if (Utils.IsHost)
+            {
+                EnemyAI? enemy = Cache.GetEnemyFromCollider(other);
+                if (enemy != null && Cache.GetTamedEnemyBehaviour(enemy)?.IsTamed != true && !_preventEnemiesTp.Contains(enemy.GetInstanceID()))
+                {
+                    OtherWallCrack._preventEnemiesTp.Add(enemy.GetInstanceID());
+                    TeleportEnemy(enemy,
+                        OtherWallCrack.transform.position + OtherWallCrack.transform.forward, true, true);
+                    PlayTeleportSound();
+                    OtherWallCrack.PlayTeleportSound();
+                    StartCoroutine(Utils.CallAfterTimeCoroutine(() => OtherWallCrack._preventEnemiesTp.Remove(enemy.GetInstanceID()), 1f));
+                }
             }
         }
     }
     
-    // todo prevent portal behind pipes
+    // todo test tp sound range
+    // todo fix jump syncing between clients
+    // todo fix standing jumps on clients
+    // todo sync tp sounds between all clients
+    // todo fix switch from cut wall to following on clients (because of destination = null on host)
 }

@@ -21,6 +21,8 @@ internal class Cache
     
     private static readonly Dictionary<int, DoorLock> DoorLocksColliders = new();
     
+    private static readonly Dictionary<int, EnemyAI> EnemiesColliders = new();
+    
     public static TamedEnemyBehaviour? GetTamedEnemyBehaviour(EnemyAI enemyAI)
     {
         if (enemyAI == null) return null;
@@ -129,5 +131,20 @@ internal class Cache
         DoorLocksColliders.Add(collider.GetInstanceID(), doorLock);
         
         return doorLock;
+    }
+    
+    public static EnemyAI? GetEnemyFromCollider(Collider collider)
+    {
+        if (collider == null) return null;
+        
+        if (EnemiesColliders.TryGetValue(collider.GetInstanceID(), out EnemyAI? enemyAI))
+        {
+            return enemyAI;
+        }
+        
+        enemyAI = collider.gameObject.GetComponentInParent<EnemyAI>();
+        EnemiesColliders.Add(collider.GetInstanceID(), enemyAI);
+        
+        return enemyAI;
     }
 }
