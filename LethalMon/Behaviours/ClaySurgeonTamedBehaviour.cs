@@ -42,6 +42,8 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     private Tuple<Vector3, Quaternion>? _cutWallRandom;
     
     private static readonly int Snip = Animator.StringToHash("snip");
+
+    private bool _blockActionKey = false;
     #endregion
 
     #region Cooldowns
@@ -84,16 +86,11 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     {
         base.ActionKey1Pressed();
 
-        if (!_cooldown!.IsFinished() || CurrentTamingBehaviour != TamingBehaviour.TamedFollowing || WallPositions == null || WallPositions.Count == 0)
+        if (_blockActionKey || !_cooldown!.IsFinished() || CurrentTamingBehaviour != TamingBehaviour.TamedFollowing || WallPositions == null || WallPositions.Count == 0)
             return;
-        
-        _cutWallClosest = WallPositions!.OrderBy(wallPosition => Vector3.Distance(wallPosition.Item1, ownerPlayer!.transform.position)).First();
-        _cutWallRandom = WallPositions!.OrderBy(_ => UnityEngine.Random.value).First();
-        
-        _cutWallPosition = RoundManager.Instance.GetNavMeshPosition( _cutWallClosest.Item1);
-        MoveTowards(_cutWallPosition!.Value);
-        
-        SwitchToCustomBehaviour((int)CustomBehaviour.CutWall);
+
+        _blockActionKey = true;
+        InitCutWall();
     }
 
     #endregion
@@ -113,6 +110,12 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
             ClaySurgeon.enabled = false;
             ClaySurgeon.agent.speed = 0f;
             ClaySurgeon.transform.localScale *= 0.8f;
+            ClaySurgeon.currentInterval = ClaySurgeon.endingInterval;
+            ClaySurgeon.thisEnemyIndex = int.MaxValue; // Prevents barber from being picked as master
+            PlaceOnNavMesh();
+            ClaySurgeon.agent.destination = ClaySurgeon.transform.position;
+            if (Utils.IsHost)
+                ClaySurgeon.ChangeEnemyOwnerServerRpc(ownerPlayer!.playerClientId);
         }
         else
         {
@@ -143,6 +146,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
         {
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1,
                 true);
+            _blockActionKey = false;
         }
     }
 
@@ -153,6 +157,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
         if (behaviour == TamingBehaviour.TamedFollowing)
         {
             EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+            _blockActionKey = true;
         }
     }
 
@@ -184,6 +189,9 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
                 ClaySurgeon.agent.speed = ClaySurgeon.jumpSpeed;
             }
         }
+
+        if (!IsOwner)
+            return;
         
         if (ClaySurgeon.beatTimer <= 0f)
         {
@@ -191,7 +199,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
             
             if (ClaySurgeon.agent.destination != ClaySurgeon.transform.position)
             {
-                ClaySurgeon.DanceBeat();
+                DanceBeatServerRpc();
             }
         }
         else
@@ -199,7 +207,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
             ClaySurgeon.beatTimer -= Time.deltaTime;
         }
         
-        if (Utils.IsHost && CurrentCustomBehaviour == (int)CustomBehaviour.CutWall)
+        if (CurrentCustomBehaviour == (int)CustomBehaviour.CutWall)
         {
             if (_cutWallPosition == null)
             {
@@ -234,6 +242,18 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     }
 
     #region Methods
+
+    private void InitCutWall()
+    {
+        _cutWallClosest = WallPositions!.OrderBy(wallPosition => Vector3.Distance(wallPosition.Item1, ownerPlayer!.transform.position)).First();
+        _cutWallRandom = WallPositions!.OrderBy(_ => UnityEngine.Random.value).First();
+        
+        _cutWallPosition = RoundManager.Instance.GetNavMeshPosition( _cutWallClosest.Item1);
+        MoveTowards(_cutWallPosition!.Value);
+        
+        SwitchToCustomBehaviour((int)CustomBehaviour.CutWall);
+    }
+    
     private void CutWalls(Vector3 positionA, Quaternion rotationA, Vector3 positionB, Quaternion rotationB)
     {
         if (Utils.IsHost)
@@ -255,6 +275,8 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
         
         wallCrackAScript.OtherWallCrack = wallCrackBScript;
         wallCrackBScript.OtherWallCrack = wallCrackAScript;
+        wallCrackAScript.ClaySurgeon = this;
+        wallCrackBScript.ClaySurgeon = this;
     }
 
     internal static void LoadAssets(AssetBundle assetBundle)
@@ -277,10 +299,39 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
     {
         CutWalls(positionA, rotationA, positionB, rotationB);
     }
+    
+    [ServerRpc(RequireOwnership = false)]
+    private void PlayTeleportSoundServerRpc()
+    {
+        PlayTeleportSoundClientRpc();
+    }
+    
+    [ClientRpc]
+    private void PlayTeleportSoundClientRpc()
+    {
+        if (WallCrackA != null)
+            WallCrackA.GetComponent<WallCrack>()!.PlayTeleportSound();
+        if (WallCrackB != null)
+            WallCrackB.GetComponent<WallCrack>()!.PlayTeleportSound();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void DanceBeatServerRpc()
+    {
+        DanceBeatClientRpc();
+    }
+
+    [ClientRpc]
+    private void DanceBeatClientRpc()
+    {
+        ClaySurgeon.DanceBeat();
+    }
     #endregion
 
     internal class WallCrack : MonoBehaviour
     {
+        internal ClaySurgeonTamedBehaviour? ClaySurgeon;
+        
         internal WallCrack? OtherWallCrack;
         
         private AudioSource? _audioSource;
@@ -294,7 +345,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
             _audioSource = gameObject.GetComponent<AudioSource>();
         }
 
-        private void PlayTeleportSound()
+        internal void PlayTeleportSound()
         {
             _audioSource!.PlayOneShot(_teleportSfx);
         }
@@ -310,8 +361,7 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
                 OtherWallCrack._preventPlayerTp = true;
                 player.TeleportPlayer(OtherWallCrack.transform.position + OtherWallCrack.transform.forward, true,
                     OtherWallCrack.transform.eulerAngles.y);
-                PlayTeleportSound();
-                OtherWallCrack.PlayTeleportSound();
+                ClaySurgeon!.PlayTeleportSoundServerRpc();
                 StartCoroutine(Utils.CallAfterTimeCoroutine(() => OtherWallCrack._preventPlayerTp = false, 1f));
                 return;
             }
@@ -324,17 +374,10 @@ internal class ClaySurgeonTamedBehaviour : TamedEnemyBehaviour
                     OtherWallCrack._preventEnemiesTp.Add(enemy.GetInstanceID());
                     TeleportEnemy(enemy,
                         OtherWallCrack.transform.position + OtherWallCrack.transform.forward, true, true);
-                    PlayTeleportSound();
-                    OtherWallCrack.PlayTeleportSound();
+                    ClaySurgeon!.PlayTeleportSoundServerRpc();
                     StartCoroutine(Utils.CallAfterTimeCoroutine(() => OtherWallCrack._preventEnemiesTp.Remove(enemy.GetInstanceID()), 1f));
                 }
             }
         }
     }
-    
-    // todo test tp sound range
-    // todo fix jump syncing between clients
-    // todo fix standing jumps on clients
-    // todo sync tp sounds between all clients
-    // todo fix switch from cut wall to following on clients (because of destination = null on host)
 }
