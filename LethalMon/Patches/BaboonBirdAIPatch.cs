@@ -16,12 +16,6 @@ namespace LethalMon.Patches
 
             if (__instance.TryGetComponent(out BaboonHawkTamedBehaviour.TinyHawkBehaviour tinyHawkBehaviour))
             {
-                /*if (tinyHawkBehaviour.motherBird != null && tinyHawkBehaviour.motherBird.TryGetComponent(out BaboonHawkTamedBehaviour tamedBehaviour) && other.gameObject.TryGetComponent(out PlayerControllerB player))
-                {
-                    __instance.timeSinceHitting = 0f;
-                    tamedBehaviour.TinyHawkGotHitServerRpc(__instance.NetworkObject, player.NetworkObject);
-                }*/
-
                 return false;
             }
 

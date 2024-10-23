@@ -109,8 +109,8 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
         TamedEnemyBehaviour? behaviour = other.GetComponentInParent<TamedEnemyBehaviour>();
         if (enemyToCapture == null || enemyToCapture.isEnemyDead || behaviour == null || behaviour.IsTamed) return;
 
-        if (Data.CatchableMonsters.TryGetValue(enemyToCapture.enemyType.name,
-                out CatchableEnemy.CatchableEnemy catchable))
+        var catchable = Registry.GetCatchableEnemy(enemyToCapture.enemyType.name);
+        if (catchable != null)
         {
             if (catchable.CanBeCapturedBy(enemyToCapture, playerThrownBy))
             {
@@ -150,9 +150,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
 
         if (!this.enemyCaptured || this.playerThrownBy == null) return;
         
-        TamedEnemyBehaviour? playerPet = Utils.GetPlayerPet(this.playerThrownBy);
-        
-        if (playerPet != null)
+        if (Cache.GetPlayerPet(playerThrownBy, out _))
         {
             if (this.playerThrownBy == Utils.CurrentPlayer)
             {
@@ -195,13 +193,32 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
     {
         base.GetItemDataToSave();
 
-        if (!this.enemyCaptured || this.catchableEnemy == null)
+        try
         {
-            return -1;
+            if (!this.enemyCaptured || this.enemyType == null)
+            {
+                return -1;
+            }
+            else
+            {
+                var enemyTypeId = Registry.GetEnemyTypeId(this.enemyType.name);
+                if (enemyTypeId != null)
+                {
+                    return enemyTypeId.Value;
+                }
+                else
+                {
+                    LethalMon.Log(
+                        $"Cannot save ball content: enemy type ID of {this.enemyType.name} not found in registry",
+                        LethalMon.LogType.Error);
+                    return -1;
+                }
+            }
         }
-        else
+        catch (Exception e)
         {
-            return this.catchableEnemy.Id;
+            LethalMon.Log($"Error while saving ball content: {e.Message}", LethalMon.LogType.Error);
+            return -1;
         }
     }
 
@@ -209,11 +226,26 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
     {
         base.LoadItemSaveData(saveData);
 
-        if (saveData != 0 && !this.enemyCaptured && Data.CatchableMonsters.Count(entry => entry.Value.Id == saveData) != 0)
+        try
         {
-            KeyValuePair<string, CatchableEnemy.CatchableEnemy> catchable = Data.CatchableMonsters.First(entry => entry.Value.Id == saveData);
-            EnemyType type = Resources.FindObjectsOfTypeAll<EnemyType>().First(type => type.name == catchable.Key);
-            SetCaughtEnemy(type, string.Empty);
+            var catchable = Registry.GetCatchableEnemy(saveData);
+            if (saveData != 0 && !this.enemyCaptured && catchable != null)
+            {
+                var type = Utils.GetFirstEnemyType(Registry.GetEnemyTypeName(saveData));
+                if (type != null)
+                {
+                    this.SetCaughtEnemy(type, string.Empty);
+                }
+                else
+                {
+                    LethalMon.Log($"Cannot load ball content: enemy type with ID {saveData} not found in registry",
+                        LethalMon.LogType.Error);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log($"Error while loading ball content: {e.Message}", LethalMon.LogType.Error);
         }
     }
     
@@ -245,7 +277,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
         if (ModelReplacementAPICompatibility.Instance.Enabled)
             ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(enemy.gameObject, isEnemy: true)?.SetActive(true);
 
-        Data.CatchableMonsters[this.enemyType!.name].CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
+        Registry.GetCatchableEnemy(this.enemyType!.name)!.CatchFailBehaviour(this.enemyAI!, this.lastThrower!);
 
         Utils.SpawnPoofCloudAt(this.transform.position);
 
@@ -289,16 +321,16 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
         }
 
         LethalMon.Logger.LogInfo("TouchGround: TamedEnemyBehaviour found");
-        tamedBehaviour.ballType = this.ballType;
-        tamedBehaviour.ballValue = this.scrapValue;
-        tamedBehaviour.scrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-        tamedBehaviour.alreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+        tamedBehaviour.BallType = this.ballType;
+        tamedBehaviour.BallValue = this.scrapValue;
+        tamedBehaviour.ScrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
+        tamedBehaviour.AlreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
         tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
         var enemyPosition = tamedBehaviour.Enemy.transform.position;
         tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);
-        tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(thrower.transform.position - enemyPosition);
+        tamedBehaviour.Enemy.transform.rotation = Quaternion.LookRotation(this.playerThrownBy.transform.position - enemyPosition);
         tamedBehaviour.SetCooldownTimers(cooldowns);
-        tamedBehaviour.isDnaComplete = isDnaComplete;
+        tamedBehaviour.IsDnaComplete = isDnaComplete;
         tamedBehaviour.ForceEnemySkinRegistryId = enemySkinRegistryId;
         
         gameObj.GetComponentInChildren<NetworkObject>().Spawn(destroyWithScene: true);
@@ -340,7 +372,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
         this.grabbable = false; // Make it ungrabbable
         this.grabbableToEnemies = false;
         
-        Data.CatchableMonsters[this.enemyAI!.enemyType.name].BeforeCapture(this.enemyAI, playerThrownBy!);
+        Registry.GetCatchableEnemy(this.enemyAI!.enemyType.name)!.BeforeCapture(this.enemyAI, playerThrownBy!);
         this.enemyAI!.gameObject.SetActive(false); // Hide enemy
         if (ModelReplacementAPICompatibility.Instance.Enabled)
             ModelReplacementAPICompatibility.FindCurrentReplacementModelIn(this.enemyAI.gameObject, isEnemy: true)?.SetActive(false);
@@ -533,7 +565,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
     public virtual void SetCaughtEnemy(EnemyType enemyType, string enemySkinRegistryId)
     {
         this.enemyType = enemyType;
-        this.catchableEnemy = Data.CatchableMonsters[this.enemyType.name];
+        this.catchableEnemy = Registry.GetCatchableEnemy(this.enemyType.name);
         this.enemyCaptured = true;
         this.enemySkinRegistryId = enemySkinRegistryId;
         this.ChangeName();
@@ -581,7 +613,7 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
         
         enemyNetworkObject.gameObject.SetActive(false);
 
-        if (!Data.CatchableMonsters.TryGetValue(enemyName, out CatchableEnemy.CatchableEnemy _))
+        if (!Registry.IsEnemyRegistered(enemyName))
         {
             LethalMon.Log("Enemy not catchable (maybe mod version mismatch).", LethalMon.LogType.Error);
             return;
@@ -610,6 +642,8 @@ public abstract class BallItem : ThrowableItem, IAdvancedSaveableItem
             HUDManagerPatch.UpdateTamedMonsterAction(tamedBehaviour.FollowingBehaviourDescription);
             enemyNetworkObject.gameObject.SetActive(true);
             tamedBehaviour.OnCallFromBall();
+            
+            Cache.SetPlayerPet(ownerPlayer, tamedBehaviour);
             
             Destroy(this.gameObject);
         }));

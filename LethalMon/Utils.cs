@@ -26,9 +26,12 @@ public class Utils
         action();
     }
     
-    public static TamedEnemyBehaviour? GetPlayerPet(PlayerControllerB player)
+    public static void CallAfterTime(Action action, float time) => GameNetworkManager.Instance.StartCoroutine(CallAfterTimeCoroutine(action, time));
+    
+    public static IEnumerator CallAfterTimeCoroutine(Action action, float time)
     {
-        return GameObject.FindObjectsOfType<TamedEnemyBehaviour>().FirstOrDefault(tamedBehaviour => tamedBehaviour.IsTamed && tamedBehaviour.ownerPlayer == player);
+        yield return new WaitForSeconds(time);
+        action();
     }
 
     public static Vector3 GetPositionInFrontOfPlayerEyes(PlayerControllerB player)
@@ -204,14 +207,18 @@ public class Utils
     {
         return EnemyTypes.FirstOrDefault(e => e.name == enemyType && e.enemyPrefab != null)?.enemyPrefab;
     }
-
+    
+    public static EnemyType? GetFirstEnemyType(string enemy)
+    {
+        return EnemyTypes.FirstOrDefault(e => e.name == enemy);
+    }
     public static void OpenDoorsAsEnemyAroundPosition(Vector3 position)
     {
         Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
         foreach (Collider collider in colliders)
         {
-            DoorLock doorLock = collider.GetComponentInParent<DoorLock>();
-            if (doorLock != null && !doorLock.isDoorOpened && !doorLock.isLocked)
+            var doorLock = Cache.GetDoorLockFromCollider(collider);
+            if (doorLock != null && doorLock is { isDoorOpened: false, isLocked: false })
             {
                 LethalMon.Log("Door opened at " + position);
                 if (doorLock.gameObject.TryGetComponent(out AnimatedObjectTrigger trigger))
@@ -297,7 +304,7 @@ public class Utils
         var enemyAI = gameObject.GetComponent<EnemyAI>();
         enemyAI.enabled = StartOfRound.Instance.testRoom == null;
         if (enemyAI.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
-            tamedEnemyBehaviour.isOutside = IsEnemyOutside(enemyAI);
+            tamedEnemyBehaviour.IsOutside = IsEnemyOutside(enemyAI);
 
         return enemyAI;
     }
@@ -471,6 +478,51 @@ public class Utils
     }
     #endregion
 
+    #region Game
+
+    public static void UnlockPCIfNotUnlocked()
+    {
+        try
+        {
+            if (!Utils.IsHost)
+                return;
+            
+            if (PC.PC.pcPrefab == null)
+            {
+                LethalMon.Log("PC prefab is null, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            var placeableShipObject = PC.PC.pcPrefab.GetComponentInChildren<PlaceableShipObject>();
+
+            if (placeableShipObject == null)
+            {
+                LethalMon.Log("PC PlaceableShipObject is null, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            var unlockable =
+                StartOfRound.Instance.unlockablesList.unlockables.Find(u => u.prefabObject == PC.PC.pcPrefab);
+
+            if (unlockable == null)
+            {
+                LethalMon.Log("PC Unlockable not found, returning", LethalMon.LogType.Error);
+                return;
+            }
+
+            LethalMon.Log("Unlockable ID: " + placeableShipObject.unlockableID);
+            LethalMon.Log("Unlockable has been unlocked: " + unlockable.hasBeenUnlockedByPlayer);
+
+            if (!unlockable.hasBeenUnlockedByPlayer)
+                StartOfRound.Instance.UnlockShipObject(placeableShipObject.unlockableID);
+        }
+        catch (Exception e)
+        {
+            LethalMon.Log(e.ToString(), LethalMon.LogType.Error);
+        }
+    }
+    #endregion
+    
     #region Shader & Materials
     public static List<Renderer> GetRenderers(GameObject? g)
     {

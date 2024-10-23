@@ -3,7 +3,7 @@ using LethalMon.Behaviours;
 
 namespace LethalMon.Patches;
 
-public class BushWolfEnemyPatch
+internal class BushWolfEnemyPatch
 {
     [HarmonyPatch(typeof(BushWolfEnemy), nameof(BushWolfEnemy.Start))]
     [HarmonyPostfix]

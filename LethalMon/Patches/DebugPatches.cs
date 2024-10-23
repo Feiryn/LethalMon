@@ -8,6 +8,7 @@ using LethalMon.Items;
 using LethalMon.CustomPasses;
 using System;
 using System.Linq;
+using LethalMon.Behaviours;
 using LethalMon.Save;
 
 namespace LethalMon.Patches
@@ -62,12 +63,24 @@ namespace LethalMon.Patches
 
             else if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.CaveDweller);
+                if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour) && tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                {
+                    if (claySurgeon.WallCrackA != null)
+                    {
+                        Utils.CurrentPlayer.TeleportPlayer(claySurgeon.WallCrackA.transform.position + claySurgeon.WallCrackA.transform.forward);
+                    }
+                }
             }
 
             else if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                SpawnEnemyInFrontOfCurrentPlayer(Utils.Enemy.Crawler, 0.5f);
+                if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour) && tamedEnemyBehaviour is ClaySurgeonTamedBehaviour claySurgeon)
+                {
+                    if (claySurgeon.WallCrackB != null)
+                    {
+                        Utils.CurrentPlayer.TeleportPlayer(claySurgeon.WallCrackB.transform.position + claySurgeon.WallCrackB.transform.forward);
+                    }
+                }
             }
 
             else if (Keyboard.current.f7Key.wasPressedThisFrame)
@@ -179,7 +192,7 @@ namespace LethalMon.Patches
             if (!ball.TryGetComponent(out BallItem ballItem))
                 return null;
 
-            var enemyName = Data.CatchableMonsters.ElementAt(UnityEngine.Random.RandomRangeInt(0, Data.CatchableMonsters.Count - 1)).Key;
+            var enemyName = Registry.CatchableEnemies.ElementAt(UnityEngine.Random.RandomRangeInt(0, Registry.CatchableEnemies.Count - 1)).Key;
                     ballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);
 
             return ballItem;
@@ -196,7 +209,7 @@ namespace LethalMon.Patches
             if(withEnemyInside != null)
             {
                 var enemyName = withEnemyInside.ToString();
-                if (!Data.CatchableMonsters.ContainsKey(enemyName))
+                if (!Registry.IsEnemyRegistered(enemyName))
                     LethalMon.Logger.LogInfo("Spawning ball: Enemy not found.");
                 else
                     ballItem.SetCaughtEnemyServerRpc(enemyName, string.Empty);

@@ -12,19 +12,21 @@ namespace LethalMon.Patches
 
         [HarmonyPatch(typeof(SandSpiderAI), nameof(SandSpiderAI.OnCollideWithPlayer))]
         [HarmonyPrefix]
-        public static bool OnCollideWithPlayerPrefix(SandSpiderAI __instance) => !TryGetTamedBehaviour(__instance, out _);
+        public static bool OnCollideWithPlayerPrefix(SandSpiderAI __instance) => !(Cache.GetTamedEnemyBehaviour(__instance)?.IsTamed ?? false);
 
         [HarmonyPatch(typeof(SandSpiderAI), nameof(SandSpiderAI.PlayerTripWebServerRpc))]
         [HarmonyPrefix]
-        public static bool PlayerTripWebServerRpcPrefix(SandSpiderAI __instance) => !TryGetTamedBehaviour(__instance, out _);
+        public static bool PlayerTripWebServerRpcPrefix(SandSpiderAI __instance) => !(Cache.GetTamedEnemyBehaviour(__instance)?.IsTamed ?? false);
 
         [HarmonyPatch(typeof(SandSpiderWebTrap), nameof(SandSpiderWebTrap.OnTriggerStay))]
         [HarmonyPrefix]
         public static bool OnTriggerStayPrefix(SandSpiderWebTrap __instance, Collider other)
         {
-            if (GameNetworkManager.Instance == null || __instance.hinderingLocalPlayer || !TryGetTamedBehaviour(__instance.mainScript, out SpiderTamedBehaviour? spiderEnemyBehaviour))
+            TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance.mainScript);
+            if (GameNetworkManager.Instance == null || __instance.hinderingLocalPlayer || !(tamedEnemyBehaviour?.IsTamed ?? false))
                 return true;
 
+            SpiderTamedBehaviour? spiderEnemyBehaviour = tamedEnemyBehaviour as SpiderTamedBehaviour;
             if (Time.realtimeSinceStartup - spiderEnemyBehaviour!.timeOfLastWebJump < 1f) return false;
 
             if (other.TryGetComponent(out PlayerControllerB player) && player == Utils.CurrentPlayer)
@@ -40,19 +42,8 @@ namespace LethalMon.Patches
         [HarmonyPrefix]
         public static bool TriggerChaseWithPlayerPrefix(SandSpiderAI __instance/*, PlayerControllerB playerScript*/)
         {
-            return !TryGetTamedBehaviour(__instance, out SpiderTamedBehaviour? spiderEnemyBehaviour) || spiderEnemyBehaviour == null || !spiderEnemyBehaviour.IsTamed;
-        }
-
-        private static bool TryGetTamedBehaviour(SandSpiderAI spider, out SpiderTamedBehaviour? behaviour)
-        {
-            behaviour = null;
-            if (untamedSpiders.Contains(spider)) return false;
-
-            if (spider.TryGetComponent(out behaviour) && behaviour!.IsTamed)
-                return true;
-
-            untamedSpiders.Add(spider);
-            return false;
+            TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+            return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
         }
     }
 }

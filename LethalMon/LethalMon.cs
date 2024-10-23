@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -29,8 +27,6 @@ public class LethalMon : BaseUnityPlugin
     internal static Harmony? Harmony { get; set; }
 
     internal static GameObject? hudPrefab = null;
-
-    internal static Dictionary<string, Sprite> monstersSprites = [];
 
     private void Awake()
     {
@@ -84,6 +80,7 @@ public class LethalMon : BaseUnityPlugin
         Utils.LoadSeeThroughShader(assetBundle);
         Utils.LoadWireframeMaterial(assetBundle);
 
+        ClaySurgeonTamedBehaviour.LoadAssets(assetBundle);
         MaskedTamedBehaviour.LoadGhostAudio(assetBundle);
         BaboonHawkTamedBehaviour.LoadAudio(assetBundle);
         HoarderBugTamedBehaviour.LoadAudio(assetBundle);
@@ -93,14 +90,11 @@ public class LethalMon : BaseUnityPlugin
 
         hudPrefab = assetBundle.LoadAsset<GameObject>("Assets/UI/MonsterInfo.prefab");
 
-        // Load monsters sprites
-        const string monstersIconsNamePath = "assets/ui/monstersicons/";
-        monstersSprites = assetBundle.GetAllAssetNames()
-            .Where(assetName => assetName.StartsWith(monstersIconsNamePath) && assetName.EndsWith(".png"))
-            .ToDictionary(
-                assetName => assetName.Substring(monstersIconsNamePath.Length, assetName.Length - monstersIconsNamePath.Length - 4),
-                assetName => assetBundle.LoadAsset<Sprite>(assetName)
-            );
+        // Load fallback monster sprite
+        Registry.FallbackSprite = assetBundle.LoadAsset<Sprite>("assets/ui/monstersicons/Unknown.png");
+
+        // Load vanilla monsters
+        Registry.RegisterVanillaEnemies(assetBundle);
     }
 
     private void ApplyHarmonyPatches()
@@ -119,6 +113,7 @@ public class LethalMon : BaseUnityPlugin
         Harmony.PatchAll(typeof(GameNetworkManagerPatch));
         Harmony.PatchAll(typeof(TerminalPatch));
         Harmony.PatchAll(typeof(AdvancedSavePatch));
+        Harmony.PatchAll(typeof(DungeonGeneratorPatch));
 
         // Enemies
         Harmony.PatchAll(typeof(EnemyAIPatch));

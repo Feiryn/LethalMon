@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
-public class TutorialApp : PCApp
+internal class TutorialApp : PCApp
 {
     #region AppComponents
     private readonly Button _nextPageButton;

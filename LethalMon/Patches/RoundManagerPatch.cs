@@ -6,7 +6,7 @@ using static LethalMon.ModConfig.ConfigValues;
 
 namespace LethalMon.Patches;
 
-public class RoundManagerPatch
+internal class RoundManagerPatch
 {
     private static void ChangeIsScrapForBalls(bool isScrap, bool fullOnly)
     {
@@ -53,9 +53,9 @@ public class RoundManagerPatch
                 BallItem ballItem = networkObject.gameObject.GetComponent<BallItem>();
                 if (ballItem != null &&  UnityEngine.Random.Range(0f, 1f) <= ModConfig.Instance.values.FilledBallsPercentage)
                 {
-                    int totalDifficulty = Data.CatchableMonsters.Sum(cm => 10 - cm.Value.CatchDifficulty);
+                    int totalDifficulty = Registry.CatchableEnemies.Sum(cm => 10 - cm.Value.CatchDifficulty);
                     int randomValue = UnityEngine.Random.Range(0, totalDifficulty);
-                    foreach (var catchableMonster in Data.CatchableMonsters)
+                    foreach (var catchableMonster in Registry.CatchableEnemies)
                     {
                         randomValue -= 10 - catchableMonster.Value.CatchDifficulty;
                         if (randomValue <= 0)

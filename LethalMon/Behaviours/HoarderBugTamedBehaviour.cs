@@ -7,7 +7,7 @@ using GameNetcodeStuff;
 
 namespace LethalMon.Behaviours;
 
-public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
+internal class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
     private HoarderBugAI? _HoarderBug = null;
@@ -26,7 +26,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     internal const float SearchTimer = 1f; // in seconds
 
-    internal override bool CanDefend => false;
+    public override bool CanDefend => false;
 
     internal static AudioClip? FlySFX = null;
 
@@ -44,7 +44,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         BringBackItem,
         HoldItem
     }
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new (CustomBehaviour.GettingItem.ToString(), "Saw an interesting item!", OnGettingItem),
         new (CustomBehaviour.BringBackItem.ToString(), "Brings an item to you!", OnBringBackItem),
@@ -106,14 +106,14 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
     private static readonly string BringItemCooldownId = "hoarderbug_bringitem";
     
-    internal override Cooldown[] Cooldowns => [new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown)];
+    public override Cooldown[] Cooldowns => [new Cooldown(BringItemCooldownId, "Bring item", ModConfig.Instance.values.HoardingBugBringItemCooldown)];
 
     private CooldownNetworkBehaviour? bringItemCooldown;
 
     #endregion
 
     #region Base Methods
-    internal override void Start()
+    public override void Start()
     {
         base.Start();
 
@@ -125,7 +125,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnTamedFollowing()
+    public override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
@@ -139,7 +139,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
 
             foreach (Collider collider in colliders)
             {
-                GrabbableObject grabbable = collider.GetComponentInParent<GrabbableObject>();
+                GrabbableObject? grabbable = Cache.GetGrabbableObjectFromCollider(collider);
                 if (grabbable == null || grabbable.isInShipRoom || grabbable.isHeld || Vector3.Distance(grabbable.transform.position, ownerPlayer!.transform.position) < 8f || _alreadyGrabbedItems.Contains(grabbable.GetInstanceID())) continue;
 
                 // Check LOS
@@ -154,7 +154,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
@@ -165,7 +165,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+    public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(update, doAIInterval);
 
@@ -192,7 +192,7 @@ public class HoarderBugTamedBehaviour : TamedEnemyBehaviour
         base.OnDestroy();
     }
 
-    internal override void OnCallFromBall()
+    public override void OnCallFromBall()
     {
         base.OnCallFromBall();
         

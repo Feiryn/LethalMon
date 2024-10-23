@@ -1,3 +1,25 @@
+# 0.6.7
+
+- Barber is now catchable
+- LethalMon AI is no longer added to enemies that are not catchable, in order to reduce unpredictable bugs on enemies from other mods
+
+# 0.6.6
+
+- Greatly improved performances by caching a lot of things and reducing the number of AI calculations
+- Fixed a bug that made the content of the balls not loaded properly and prevented other items from being loaded
+
+# 0.6.5
+
+- Refactored the code, changed access modifiers and added a lot of documentation for modders that want to add their own monsters (public API)
+- Added Kidnapper Fox back (it can be found in balls in the dungeon, or can be captured if re-enabled with some mods like YesFox)
+- Completely new Eyeless Dog behaviour
+- Players are now sitting on Spore Lizard and Eyeless Dog instead of standing through them
+
+# 0.6.4
+
+- Fixed PC not respawning after players got fired
+- Fixed a bug that spammed the console or error if a tamed enemy agent was null
+
 # 0.6.3
 
 - Load enemies AIs later to prevent conflicts with other mods (like LLL's moons mod)

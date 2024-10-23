@@ -1,8 +1,4 @@
 namespace LethalMon.CatchableEnemy;
 
-public class CatchableMouthDog : CatchableEnemy
-{
-    public CatchableMouthDog() : base(6, "Eyeless Dog", 2, "As a security measure, when an Eyeless dog is caught, the Capsule mechanism will shrink it down; in this state, it acts as a distress signal for other Eyeless dogs and leads them away from its owner.\nUpon failing a capture, it will attempt to lounge at the player and maul them.")
-    {
-    }
-}
+internal class CatchableMouthDog() : CatchableEnemy("Eyeless Dog", 8,
+    "The eyeless dog is a fast and reliable mount, that can even lounge to bite killable enemies.\nUpon failing a capture, it will attempt to lounge at the player and maul them.");

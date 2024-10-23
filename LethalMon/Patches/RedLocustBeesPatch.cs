@@ -5,7 +5,7 @@ using LethalMon.Behaviours;
 
 namespace LethalMon.Patches;
 
-public class RedLocustBeesPatch
+internal class RedLocustBeesPatch
 {
     public static readonly Dictionary<int, DateTime> AngryUntil = new();
     
@@ -34,7 +34,7 @@ public class RedLocustBeesPatch
     [HarmonyPrefix]
     public static bool SpawnHiveNearEnemyPrefix(RedLocustBees __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
 
         return !(tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsOwnedByAPlayer());
     }

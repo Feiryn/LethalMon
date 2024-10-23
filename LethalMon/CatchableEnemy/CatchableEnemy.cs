@@ -6,9 +6,12 @@ using UnityEngine;
 namespace LethalMon.CatchableEnemy;
 
 /// <summary>
-/// An enemy that can be catched
+/// Represents a catchable enemy.
 /// </summary>
-public abstract class CatchableEnemy(int id, string displayName, int catchDifficulty, string behaviourDescription)
+/// <param name="displayName">The display name of the monster</param>
+/// <param name="catchDifficulty">The difficulty to capture the monster (0-9). <see cref="Data.CaptureProbabilities"/></param>
+/// <param name="behaviourDescription">The behaviour description of the monster shown in the PC's dex</param>
+public abstract class CatchableEnemy(string displayName, int catchDifficulty, string behaviourDescription)
 {
     private readonly int _baseCatchDifficulty = catchDifficulty;
     
@@ -26,16 +29,13 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
     /// The display name of the monster
     /// </summary>
     public string DisplayName { private set; get; } = displayName;
-
-    /// <summary>
-    /// The ID of the monster (used to save the monster in the ball when the game is closed). Must be unique across the mod
-    /// todo Replace because there can be collisions
-    /// </summary>
-    public int Id { get; } = id;
     
+    /// <summary>
+    /// The behaviour description of the monster shown in the PC's dex
+    /// </summary>
     public string BehaviourDescription { get; } = behaviourDescription;
 
-    public float GetCaptureProbability(int ballStrength, EnemyAI? enemyAI = null)
+    internal float GetCaptureProbability(int ballStrength, EnemyAI? enemyAI = null)
     {
         if (ballStrength < 0 || ballStrength >= Data.CaptureProbabilities.Length || this.CatchDifficulty < 0 || this.CatchDifficulty >= Data.CaptureProbabilities[0].Length)
         {
@@ -44,7 +44,7 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
 
         var captureProbability = Data.CaptureProbabilities[ballStrength][this.CatchDifficulty];
 
-        IncreaseProbabilityByReducedHP(enemyAI, ref captureProbability);
+        IncreaseProbabilityByReducedHp(enemyAI, ref captureProbability);
 
         return captureProbability;
     }
@@ -56,7 +56,7 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
      * 
      * formula: a + a * b * c * (1 - a)
      */
-    public void IncreaseProbabilityByReducedHP(EnemyAI? enemyAI, ref float captureProbability)
+    private static void IncreaseProbabilityByReducedHp(EnemyAI? enemyAI, ref float captureProbability)
     {
         var multiplier = ModConfig.Instance.values.EnemyHPCaptureProbabilityMultiplier;
         if (multiplier <= 0f || captureProbability >= 1f)
@@ -75,19 +75,25 @@ public abstract class CatchableEnemy(int id, string displayName, int catchDiffic
         captureProbability = Mathf.Min(captureProbability + additionalSuccessChance, 1f);
        // LethalMon.Log("Now has a captureProbability of " + captureProbability);
     }
-
-    /// <summary>
-    /// Behaviour triggered if the capture fails
-    /// </summary>
-    /// <param name="enemyAI">Enemy that was captured</param>
-    /// <param name="player">The player that threw the ball</param>
-    public void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player)
+    
+    internal void CatchFailBehaviour(EnemyAI enemyAI, PlayerControllerB player)
     {
         if (ModConfig.Instance.values.MonstersReactToFailedCaptures && enemyAI.gameObject.TryGetComponent(out TamedEnemyBehaviour tamedEnemyBehaviour))
             tamedEnemyBehaviour.OnEscapedFromBall(player);
     }
 
+    /// <summary>
+    /// Function to check if the enemy can be captured by the player.
+    /// </summary>
+    /// <param name="enemyAI"></param>
+    /// <param name="player"></param>
+    /// <returns>Whether the enemy can be captured by the player</returns>
     public virtual bool CanBeCapturedBy(EnemyAI enemyAI, PlayerControllerB player) { return true; }
     
+    /// <summary>
+    /// Function to execute before capturing the enemy.
+    /// </summary>
+    /// <param name="enemyAI">The enemy AI</param>
+    /// <param name="player">The player that threw the ball</param>
     public virtual void BeforeCapture(EnemyAI enemyAI, PlayerControllerB player) { }
 }

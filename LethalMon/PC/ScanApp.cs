@@ -9,7 +9,7 @@ using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
-public class ScanApp : PCApp
+internal class ScanApp : PCApp
 {
     #region AppComponents
 
@@ -176,7 +176,7 @@ public class ScanApp : PCApp
                 }
             }
             
-            string successText = $"Scan of {Data.CatchableMonsters[currentBall.enemyType.name].DisplayName} successful!";
+            string successText = $"Scan of {Registry.GetCatchableEnemy(currentBall.enemyType.name)!.DisplayName} successful!";
             if (_lastScanUnlockedDexEntry)
             {
                 successText += "\nThe monster has been added to the dex.";

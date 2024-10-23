@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace LethalMon.Behaviours;
 
-public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
+internal class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 {
     #region Properties
     internal NutcrackerEnemyAI? _nutcracker = null;
@@ -22,7 +22,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override string DefendingBehaviourDescription => "Shoots at an enemy!";
+    public override string DefendingBehaviourDescription => "Shoots at an enemy!";
     #endregion
     
     #region Custom behaviours
@@ -31,7 +31,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         LookForPlayer = 1,
         Rampage = 2
     }
-    internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+    public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
     [
         new Tuple<string, string, Action>(CustomBehaviour.LookForPlayer.ToString(), "Is looking for you!", OnLookForPlayer),
         new Tuple<string, string, Action>(CustomBehaviour.Rampage.ToString(), "Is on a rampage!", OnRampage)
@@ -78,14 +78,14 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         SwitchToDefaultBehaviour(0);
     }
 
-    internal override void OnTamedFollowing()
+    public override void OnTamedFollowing()
     {
         base.OnTamedFollowing();
 
         TargetNearestEnemy(true, false);
     }
 
-    internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+    public override void InitTamingBehaviour(TamingBehaviour behaviour)
     {
         base.InitTamingBehaviour(behaviour);
 
@@ -109,7 +109,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
     
     
 
-    internal override void OnTamedDefending()
+    public override void OnTamedDefending()
     {
         base.OnTamedDefending();
         
@@ -136,7 +136,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
 
     #region Base Methods
 
-    internal override void Start()
+    public override void Start()
     {
         base.Start();
 
@@ -147,7 +147,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+    public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
     {
         base.OnEscapedFromBall(playerWhoThrewBall);
 
@@ -163,7 +163,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         }
     }
 
-    internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+    public override void OnUpdate(bool update = false, bool doAIInterval = true)
     {
         base.OnUpdate(false, false);
 
@@ -186,7 +186,7 @@ public class NutcrackerTamedBehaviour : TamedEnemyBehaviour
         Nutcracker.creatureAnimator.SetBool("Aiming", Nutcracker.aimingGun);
     }
 
-    internal override void OnRetrieveInBall()
+    public override void OnRetrieveInBall()
     {
         base.OnRetrieveInBall();
 

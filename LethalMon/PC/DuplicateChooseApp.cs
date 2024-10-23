@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace LethalMon.PC;
 
-public class DuplicateChooseApp : PCApp
+internal class DuplicateChooseApp : PCApp
 {
     #region AppComponents
     private readonly Button[] _monstersButtons;
@@ -30,7 +30,7 @@ public class DuplicateChooseApp : PCApp
         _nextPageButton = screen.transform.Find("Window/DuplicateChooseMenu/NextPage").GetComponent<Button>();
         _previousPageButton = screen.transform.Find("Window/DuplicateChooseMenu/PreviousPage").GetComponent<Button>();
 
-        _enemies = Data.CatchableMonsters.OrderBy(kvp => kvp.Value.DisplayName).Select(entry => entry.Key).ToArray();
+        _enemies = Registry.CatchableEnemies.OrderBy(kvp => kvp.Value.DisplayName).Select(entry => entry.Key).ToArray();
         
         _nextPageButton.onClick.AddListener(NextPage);
         _previousPageButton.onClick.AddListener(PreviousPage);
@@ -60,15 +60,15 @@ public class DuplicateChooseApp : PCApp
                 
                 if (unlockedDnaEntries.Contains(enemy))
                 {
-                    monsterName.text = Data.CatchableMonsters[enemy].DisplayName;
-                    avatar.sprite = LethalMon.monstersSprites[enemy.ToLower()];
+                    monsterName.text = Registry.GetCatchableEnemy(enemy)!.DisplayName;
+                    avatar.sprite = Registry.GetEnemySprite(enemy);
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() => Duplicate(enemy));
                 }
                 else
                 {
                     monsterName.text = "???";
-                    avatar.sprite = LethalMon.monstersSprites["unknown"];
+                    avatar.sprite = Registry.FallbackSprite;
                     button.onClick.RemoveAllListeners();
                 }
             }

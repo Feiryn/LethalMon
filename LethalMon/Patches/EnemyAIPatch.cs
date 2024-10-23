@@ -1,17 +1,19 @@
 using System.Diagnostics;
+using GameNetcodeStuff;
 using HarmonyLib;
 using LethalMon.Behaviours;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace LethalMon.Patches;
 
-public class EnemyAIPatch
+internal class EnemyAIPatch
 {
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnDestroy))]
     [HarmonyPrefix]
     private static void OnDestroyPreFix(EnemyAI __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             LethalMon.Log("Destroying TamedEnemyBehaviour component");
@@ -26,7 +28,7 @@ public class EnemyAIPatch
     [HarmonyPrefix]
     private static void SwitchToBehaviourStateOnLocalClientPrefix(EnemyAI __instance)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             if (__instance.currentBehaviourStateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
@@ -47,7 +49,7 @@ public class EnemyAIPatch
     [HarmonyPostfix]
     private static void SwitchToBehaviourStateOnLocalClientPostfix(EnemyAI __instance, int stateIndex)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null)
         {
             if (stateIndex > tamedEnemyBehaviour.LastDefaultBehaviourIndex)
@@ -77,40 +79,64 @@ public class EnemyAIPatch
     [HarmonyPrefix]
     private static bool HitEnemyPrefix(EnemyAI __instance/*, int force = -1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemy))]
     [HarmonyPrefix]
     private static bool KillEnemyPrefix(EnemyAI __instance/*, bool destroy = false*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyClientRpc))]
     [HarmonyPrefix]
     private static bool KillEnemyClientRpcPrefix(EnemyAI __instance/*, bool destroy*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyServerRpc))]
     [HarmonyPrefix]
     private static bool KillEnemyServerRpcPrefix(EnemyAI __instance/*, bool destroy*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
     }
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.KillEnemyOnOwnerClient))]
     [HarmonyPrefix]
     private static bool KillEnemyOnOwnerClientPrefix(EnemyAI __instance/*, bool overrideDestroy = false*/)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
-        return tamedEnemyBehaviour == null || tamedEnemyBehaviour.ownerPlayer == null;
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        return tamedEnemyBehaviour == null || !tamedEnemyBehaviour.IsTamed;
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithEnemy))]
+    [HarmonyPostfix]
+    private static void OnCollideWithEnemyPostfix(EnemyAI __instance, Collider other, EnemyAI collidedEnemy = null)
+    {
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
+        if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsTamed)
+        {
+            tamedEnemyBehaviour.OnCollideWithEnemy(other, collidedEnemy);
+        }
+    }
+    
+    [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithPlayer))]
+    [HarmonyPrefix]
+    private static bool OnCollideWithPlayerPrefix(EnemyAI __instance, Collider other)
+    {
+        PlayerControllerB? player = Cache.GetPlayerFromCollider(other);
+        if (player != null && Cache.GetPlayerPet(player, out var tamedEnemyBehaviour) && tamedEnemyBehaviour!.IsTamed && tamedEnemyBehaviour is MouthDogTamedBehaviour mouthDogTamedBehaviour)
+        {
+            return mouthDogTamedBehaviour.enemyBeingDamaged == null;
+        }
+
+        return true;
     }
     
     #if DEBUG
@@ -118,7 +144,7 @@ public class EnemyAIPatch
     [HarmonyPrefix]
     private static void SwitchToBehaviourStatePrefix(EnemyAI __instance, int stateIndex)
     {
-        TamedEnemyBehaviour tamedEnemyBehaviour = __instance.GetComponent<TamedEnemyBehaviour>();
+        TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
 
         if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.ownerPlayer != null)
         {

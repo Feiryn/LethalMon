@@ -56,6 +56,7 @@ Lethal Monsters Inc. scientists are still experimenting with the balls, So not a
 
 Here are the monsters that can be captured:
 - Baboon Hawk
+- Barber
 - Bees
 - Bracken
 - Butler
@@ -63,6 +64,7 @@ Here are the monsters that can be captured:
 - Ghost Girl
 - Hoarding Bug
 - Hygrodere
+- Kidnapper Fox
 - Masked
 - Nutcracker
 - Spider
@@ -71,7 +73,6 @@ Here are the monsters that can be captured:
 - Tulip snake
 
 Here are the monsters that cannot be captured yet:
-- Barber
 - Coil-head
 - Earth Leviathan
 - Forest Keeper
@@ -91,18 +92,17 @@ You can fix this by installing the mod [NavMeshInCompany](https://thunderstore.i
 
 We also got you covered with additional mods that add up on this one:
 - [LethalMonReservedSlot](https://thunderstore.io/c/lethal-company/p/Niro/LethalMonReservedSlot/) - A reserved slot for the first pokeball you pick up!
+- Kidnapper Fox can be captured if re-enabled with [YesFox](https://thunderstore.io/c/lethal-company/p/Dev1A3/YesFox/) or other mods that re-enable it
 
-## Lethal Monsters Inc. is recruiting!
+## API
 
-We are looking for scientists to help us with the mod.
+If you are a modder and want to add your own monsters, you can use the API provided by this mod.
 
-We need people to help us with:
-- Coding
-- Modeling
-- Animating
-- Testing
+The complete documentation is not finished yet, but you can register your own monster by calling `LethalMon.Registry.RegisterEnemy`, and by look at the code of [ExampleTamedBehaviour.cs](https://github.com/Feiryn/LethalMon/blob/master/LethalMon/Behaviours/ExampleTamedBehaviour.cs) and other behaviours in the same folder.
 
-If you are interested, please contact us on the LC discord modding server https://discord.com/invite/lcmod (thread in #mod-releases).
+All public methods and fields are documented in the code, so you can take a look at it to understand how to use the API.
+
+If you need help with implementing your own monster, you can ask for help in the LethalMon thread on the LC discord modding server https://discord.com/invite/lcmod
 
 ## Bug reports
 

@@ -32,7 +32,7 @@ namespace LethalMon.Behaviours
 
         private bool TargetingUs => targetPlayer == Utils.CurrentPlayer;
 
-        internal override string DefendingBehaviourDescription => "Saw an enemy to hunt!";
+        public override string DefendingBehaviourDescription => "Saw an enemy to hunt!";
 
         #endregion
 
@@ -40,11 +40,15 @@ namespace LethalMon.Behaviours
 
         private const string TeleportCooldownId = "dressgirl_tp";
     
-        internal override Cooldown[] Cooldowns => [new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown)];
+        public override Cooldown[] Cooldowns => [new Cooldown(TeleportCooldownId, "Attack enemy", ModConfig.Instance.values.DressGirlTeleportCooldown)];
 
         private CooldownNetworkBehaviour? teleportCooldown;
 
-        internal override bool CanDefend => teleportCooldown != null && teleportCooldown.IsFinished();
+        public override bool CanDefend => teleportCooldown != null && teleportCooldown.IsFinished();
+        
+        private const float CheckDestinationInterval = 0.5f;
+        
+        private float _checkDestinationTimer = 0f;
         #endregion
         
         #region Custom behaviours
@@ -55,7 +59,7 @@ namespace LethalMon.Behaviours
             EscapePhaseFakeHunt,
             EscapePhaseHunt
         }
-        internal override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
+        public override List<Tuple<string, string, Action>>? CustomBehaviourHandler =>
         [
             new (CustomBehaviour.RunningBackToOwner.ToString(), "Runs back to you...", OnRunningBackToOwner),
             new (CustomBehaviour.EscapePhaseStare.ToString(), "Is watching you!", OnEscapePhaseStare),
@@ -63,7 +67,7 @@ namespace LethalMon.Behaviours
             new (CustomBehaviour.EscapePhaseHunt.ToString(), "Is hunting you!", OnEscapePhaseHunt)
         ];
 
-        internal override void InitCustomBehaviour(int behaviour)
+        public override void InitCustomBehaviour(int behaviour)
         {
             base.InitCustomBehaviour(behaviour);
 
@@ -175,20 +179,25 @@ namespace LethalMon.Behaviours
 
         public void OnRunningBackToOwner()
         {
-            //LethalMon.Log("OnRunningBackToOwner: " + GhostGirl.transform.position);
+            _checkDestinationTimer += Time.deltaTime;
 
             if(ownerPlayer == Utils.CurrentPlayer)
                 AnimateWalking();
 
-            if (ownerPlayer == null || ownerPlayer.isPlayerDead
-                || DistanceToOwner < 8f // Reached owner
-                || _ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+            if (_checkDestinationTimer >= CheckDestinationInterval)
             {
-                SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
-                EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
-                return;
+                _checkDestinationTimer = 0f;
+                
+                if (ownerPlayer == null || ownerPlayer.isPlayerDead
+                                        || DistanceToOwner < 8f // Reached owner
+                                        || _ownerInsideFactory != ownerPlayer.isInsideFactory) // Owner left/inserted factory
+                {
+                    SwitchToTamingBehaviour(TamingBehaviour.TamedFollowing);
+                    EnableActionKeyControlTip(ModConfig.Instance.ActionKey1, false);
+                    return;
+                }
             }
-
+            
             if (GhostGirl.agent != null)
             {
                 GhostGirl.agent.speed = 8f;
@@ -323,9 +332,9 @@ namespace LethalMon.Behaviours
         [
             new ActionKey() { Key = ModConfig.Instance.ActionKey1, Description = "Teleport to Ghost Girl" }
         ];
-        internal override List<ActionKey> ActionKeys => _actionKeys;
+        public override List<ActionKey> ActionKeys => _actionKeys;
 
-        internal override void ActionKey1Pressed()
+        public override void ActionKey1Pressed()
         {
             base.ActionKey1Pressed();
 
@@ -339,7 +348,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -359,14 +368,14 @@ namespace LethalMon.Behaviours
             teleportCooldown = GetCooldownWithId(TeleportCooldownId);
         }
 
-        internal override void LateUpdate()
+        public override void LateUpdate()
         {
             base.LateUpdate();
 
             AnimateWalking();
         }
 
-        internal override void InitTamingBehaviour(TamingBehaviour behaviour)
+        public override void InitTamingBehaviour(TamingBehaviour behaviour)
         {
             base.InitTamingBehaviour(behaviour);
 
@@ -378,7 +387,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedFollowing()
+        public override void OnTamedFollowing()
         {
             base.OnTamedFollowing();
 
@@ -397,7 +406,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnTamedDefending()
+        public override void OnTamedDefending()
         {
             base.OnTamedDefending();
 
@@ -426,7 +435,7 @@ namespace LethalMon.Behaviours
                 GhostGirl.creatureVoice.volume = Mathf.Max((20f - DistanceToTargetEnemy) / 15f, 0f);
             }
         }
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 

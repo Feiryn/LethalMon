@@ -34,7 +34,7 @@ namespace LethalMon.Behaviours
         #endregion
 
         #region Base Methods
-        internal override void Start()
+        public override void Start()
         {
             base.Start();
 
@@ -86,7 +86,7 @@ namespace LethalMon.Behaviours
             {
                 if (enemyType.enemyPrefab == null)
                 {
-                    LethalMon.Log("Unable to get blob prefab.", LethalMon.LogType.Error);
+                    LethalMon.Log("Unable to get blob prefab.");
                     continue;
                 }
 
@@ -140,7 +140,7 @@ namespace LethalMon.Behaviours
             }
         }
 
-        internal override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
+        public override void OnEscapedFromBall(PlayerControllerB playerWhoThrewBall)
         {
             base.OnEscapedFromBall(playerWhoThrewBall);
 
@@ -153,7 +153,7 @@ namespace LethalMon.Behaviours
                 Blob.FixedUpdate();
         }
 
-        internal override void OnUpdate(bool update = false, bool doAIInterval = true)
+        public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);
 
@@ -166,7 +166,7 @@ namespace LethalMon.Behaviours
             Blob.movingTowardsTargetPlayer = false;
         }
 
-        internal override void DoAIInterval()
+        public override void DoAIInterval()
         {
             //base.DoAIInterval();
 
