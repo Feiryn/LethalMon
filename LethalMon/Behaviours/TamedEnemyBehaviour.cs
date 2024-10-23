@@ -329,10 +329,11 @@ public class TamedEnemyBehaviour : NetworkBehaviour
         _alreadyAddedBehaviours = true;
         
         int addedDefaultCustomBehaviours = 0, addedBehaviours = 0, enemyCount = 0;
+        string[] registeredEnemies = Registry.GetEnemyTypes();
         foreach (var enemyType in Utils.EnemyTypes)
         {
             enemyCount++;
-            if (enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI) || enemyAI == null) continue;
+            if (!registeredEnemies.Contains(enemyType.name) || enemyType?.enemyPrefab == null || !enemyType.enemyPrefab.TryGetComponent(out EnemyAI enemyAI) || enemyAI == null) continue;
 
             // Behaviour controller
             var tamedBehaviourType = Registry.GetTamedBehaviour(enemyAI.GetType());

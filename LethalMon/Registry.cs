@@ -112,6 +112,11 @@ public static class Registry
     {
         return CatchableEnemies.FirstOrDefault(cm => _enemiesTypesIds.GetValueOrDefault(cm.Key) == enemyTypeId).Key;
     }
+
+    internal static string[] GetEnemyTypes()
+    {
+        return CatchableEnemies.Keys.ToArray();
+    }
     
     /// <summary>
     /// Remove an enemy type from the registry.
