@@ -1,3 +1,8 @@
+# 0.6.7
+
+- Barber is now catchable
+- LethalMon AI is no longer added to enemies that are not catchable, in order to reduce unpredictable bugs on enemies from other mods
+
 # 0.6.6
 
 - Greatly improved performances by caching a lot of things and reducing the number of AI calculations

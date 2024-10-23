@@ -56,6 +56,7 @@ Lethal Monsters Inc. scientists are still experimenting with the balls, So not a
 
 Here are the monsters that can be captured:
 - Baboon Hawk
+- Barber
 - Bees
 - Bracken
 - Butler
@@ -72,7 +73,6 @@ Here are the monsters that can be captured:
 - Tulip snake
 
 Here are the monsters that cannot be captured yet:
-- Barber
 - Coil-head
 - Earth Leviathan
 - Forest Keeper
