@@ -1,3 +1,11 @@
+# 0.6.9
+
+- Fixed a bug that made clients unable to retrieve monsters using P
+
+# 0.6.8
+
+- Update netcode patcher CLI for v73
+
 # 0.6.7
 
 - Barber is now catchable

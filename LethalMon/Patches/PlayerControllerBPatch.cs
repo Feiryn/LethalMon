@@ -22,74 +22,6 @@ internal class PlayerControllerBPatch
     private static string[]? testEnemyTypes;
     
     private static bool SentBallScanTip = false;
-    
-    internal static void InitializeRPCS()
-    {
-        NetworkManager.__rpc_func_table.Add(346187524u, __rpc_handler_346187524u);
-    }
-    
-    public static void SendPetRetrievePacket(PlayerControllerB player)
-    {
-        ServerRpcParams rpcParams = default;
-        FastBufferWriter writer = (FastBufferWriter) player.GetType().GetMethod("__beginSendServerRpc", BindingFlags.NonPublic | BindingFlags.Instance)
-            .Invoke(player,
-            [
-                346187524u,
-                rpcParams,
-                RpcDelivery.Reliable
-            ]);
-        player.GetType().GetMethod("__endSendServerRpc", BindingFlags.NonPublic | BindingFlags.Instance)
-            .Invoke(player,
-            [
-                writer,
-                346187524u,
-                rpcParams,
-                RpcDelivery.Reliable
-            ]);
-        LethalMon.Log("Send pet retrieve server rpc send finished");
-    }
-    
-    private static void __rpc_handler_346187524u(NetworkBehaviour target, FastBufferReader reader,
-        __RpcParams rpcParams)
-    {
-        NetworkManager networkManager = target.NetworkManager;
-        if (networkManager != null && networkManager.IsListening)
-        {
-            LethalMon.Log("Execute RPC handler " + MethodBase.GetCurrentMethod().Name);
-            
-            PlayerControllerB player = (PlayerControllerB) target;
-
-            if (Cache.GetPlayerPet(player, out var tamedEnemyBehaviour))
-            {
-                PetRetrieve(player, tamedEnemyBehaviour!);
-            }
-            else
-            {
-                LethalMon.Log("No tamed enemy found for " + player + " but they sent a retrieve ball RPC");
-            }
-        }
-    }
-
-    private static void PetRetrieve(PlayerControllerB player, TamedEnemyBehaviour tamedEnemyBehaviour)
-    {
-        Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
-        PokeballItem? pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
-        if (pokeballItem == null) return;
-
-        bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
-        player.SetItemInElevator(inShip, inShip, pokeballItem);
-        pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
-        
-        if (StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos))
-        {
-            player.SetItemInElevator(inShip, inShip, pokeballItem);
-            pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
-        }
-        else
-        {
-            pokeballItem.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
-        }
-    }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ConnectClientToPlayerObject))]
     [HarmonyPostfix]
@@ -115,18 +47,10 @@ internal class PlayerControllerBPatch
 
     internal static void RetrieveBallKeyPressed(InputAction.CallbackContext dashContext)
     {
-        if (Utils.IsHost)
+        if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour))
         {
             LethalMon.Log("RetrieveBallKeyPressed");
-
-            if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour))
-            {
-                PetRetrieve(Utils.CurrentPlayer, tamedEnemyBehaviour);
-            }
-        }
-        else
-        {
-            SendPetRetrievePacket(Utils.CurrentPlayer);
+            tamedEnemyBehaviour!.RetrieveBallKeyPressed();
         }
     }
     internal static void ActionKey1Pressed(InputAction.CallbackContext dashContext)

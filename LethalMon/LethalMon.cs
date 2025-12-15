@@ -38,9 +38,6 @@ public class LethalMon : BaseUnityPlugin
         NetcodePatching();
         ApplyHarmonyPatches();
 
-        // Static RPCs
-        PlayerControllerBPatch.InitializeRPCS();
-
         Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
     }
 

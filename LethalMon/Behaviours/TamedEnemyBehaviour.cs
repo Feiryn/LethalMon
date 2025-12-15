@@ -1349,6 +1349,67 @@ public class TamedEnemyBehaviour : NetworkBehaviour
     }
     #endregion
 
+    #region RPCs
+    internal static void PetRetrieve(PlayerControllerB player, TamedEnemyBehaviour tamedEnemyBehaviour)
+    {
+        Vector3 spawnPos = Utils.GetPositionInFrontOfPlayerEyes(player);
+        PokeballItem? pokeballItem = tamedEnemyBehaviour.RetrieveInBall(spawnPos);
+        if (pokeballItem == null) return;
+
+        bool inShip = StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos);
+        player.SetItemInElevator(inShip, inShip, pokeballItem);
+        pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        
+        if (StartOfRound.Instance.shipBounds.bounds.Contains(spawnPos))
+        {
+            player.SetItemInElevator(inShip, inShip, pokeballItem);
+            pokeballItem.transform.SetParent(StartOfRound.Instance.elevatorTransform, worldPositionStays: true);
+        }
+        else
+        {
+            pokeballItem.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+        }
+    }
+    
+    internal void RetrieveBallKeyPressed()
+    {
+        if (Utils.IsHost)
+        {
+            LethalMon.Log("Player is host, retrieving pet directly");
+
+            if (Cache.GetPlayerPet(Utils.CurrentPlayer, out var tamedEnemyBehaviour))
+            {
+                PetRetrieve(Utils.CurrentPlayer, tamedEnemyBehaviour!);
+            }
+        }
+        else
+        {
+            LethalMon.Log("Player is client, sending pet retrieve RPC");
+            
+            RetrievePetServerRPC();
+        }
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    public void RetrievePetServerRPC()
+    {
+        LethalMon.Log("Execute pet retrieve RPC");
+
+        if (!this.ownerPlayer)
+        {
+            LethalMon.Log("No owner player found for tamed enemy when trying to retrieve pet", LethalMon.LogType.Error);
+            return;
+        }
+
+        if (Cache.GetPlayerPet(this.ownerPlayer!, out var tamedEnemyBehaviour))
+        {
+            LethalMon.Log("Owner player found, retrieving pet");
+            
+            PetRetrieve(this.ownerPlayer!, tamedEnemyBehaviour!);
+        }
+    }
+    #endregion
+
 #if DEBUG
     #region DEBUG
     internal void SetTamedByHost_DEBUG()
