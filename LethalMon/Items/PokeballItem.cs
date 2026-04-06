@@ -217,7 +217,7 @@ public abstract class PokeballItem : ThrowableItem, IAdvancedSaveableItem
             tamedBehaviour.BallType = this.ballType;
             tamedBehaviour.BallValue = this.scrapValue;
             tamedBehaviour.ScrapPersistedThroughRounds = this.scrapPersistedThroughRounds;
-            tamedBehaviour.AlreadyCollectedThisRound = RoundManager.Instance.scrapCollectedThisRound.Contains(this);
+            tamedBehaviour.AlreadyCollectedThisRound = RoundManager.Instance.scrapDroppedInShip.Contains(this);
             tamedBehaviour.SwitchToTamingBehaviour(TamedEnemyBehaviour.TamingBehaviour.TamedFollowing);
             var enemyPosition = tamedBehaviour.Enemy.transform.position;
             tamedBehaviour.Enemy.SetDestinationToPosition(enemyPosition);

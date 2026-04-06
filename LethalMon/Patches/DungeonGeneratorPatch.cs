@@ -9,7 +9,7 @@ namespace LethalMon.Patches;
 
 public class DungeonGeneratorPatch
 {
-    [HarmonyPatch(typeof(DungeonGenerator), nameof(DungeonGenerator.ProcessGlobalProps))]
+    [HarmonyPatch(typeof(DungeonGenerator), "ProcessGlobalProps")]
     [HarmonyPrefix]
     private static void ProcessGlobalPropsPrefix(DungeonGenerator __instance)
     {
@@ -39,7 +39,7 @@ public class DungeonGeneratorPatch
         }
     }
 
-    [HarmonyPatch(typeof(DungeonGenerator), nameof(DungeonGenerator.ProcessGlobalProps))]
+    [HarmonyPatch(typeof(DungeonGenerator), "ProcessGlobalProps")]
     [HarmonyPostfix]
     private static void ProcessGlobalPropsPostfix(DungeonGenerator __instance)
     {

@@ -147,12 +147,6 @@ namespace LethalMon.Behaviours
             Blob.transform.localScale *= 1.5f;
         }
 
-        internal void FixedUpdate()
-        {
-            if(IsTamed)
-                Blob.FixedUpdate();
-        }
-
         public override void OnUpdate(bool update = false, bool doAIInterval = true)
         {
             base.OnUpdate(update, doAIInterval);

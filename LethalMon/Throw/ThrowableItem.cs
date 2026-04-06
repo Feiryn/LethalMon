@@ -263,7 +263,7 @@ namespace LethalMon.Throw
             }
         }
 
-        public new void FallToGround(bool randomizePosition = false)
+        public void FallToGround(bool randomizePosition = false)
         {
             this.fallTime = 0;
             this._throwTime = 0;

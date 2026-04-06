@@ -39,13 +39,13 @@ namespace LethalMon.Behaviours
         
         private static readonly float thighRRotationZ = -20.61f;
         
-        private Transform _shinL = null;
+        private Transform _shinL = null!;
         
-        private Transform _shinR = null;
+        private Transform _shinR = null!;
         
-        private Transform _thighL = null;
+        private Transform _thighL = null!;
         
-        private Transform _thighR = null;
+        private Transform _thighR = null!;
         #endregion
         
         #region Properties

@@ -44,15 +44,15 @@
         <!-- Define a property to check for Linux -->
         <IsLinux Condition="'$(OS)' == 'Unix' or '$(OS)' == 'Linux'">true</IsLinux>
     </PropertyGroup>
-    
+
     <!-- Primary Package References -->
     <ItemGroup>
         <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
         <PackageReference Include="BepInEx.Core" Version="5.*" PrivateAssets="all" />
         <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" PrivateAssets="all" />
-        <PackageReference Include="LethalCompany.GameLibs.Steam" Version="*-*" PrivateAssets="all" />
+        <PackageReference Include="LethalCompany.GameLibs.Steam" Version="81.0.0-ngd.0" PrivateAssets="all" />
         <PackageReference Include="UnityEngine" Version="5.6.1" />
-        <PackageReference Include="UnityEngine.Modules" Version="2022.3.9" IncludeAssets="compile" PrivateAssets="all" />
+        <PackageReference Include="UnityEngine.Modules" Version="2022.3.62" IncludeAssets="compile" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
@@ -79,7 +79,7 @@
         <HintPath>Mirage.dll</HintPath>
       </Reference>
     </ItemGroup>
-    
+
     <Target Name="NetcodePatchLinux" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'true'">
         <Exec Command="$HOME/.dotnet/tools/netcode-patch -uv 2022.3.62 -nv 1.12.0 -tv 1.0.0 &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
     </Target>
@@ -87,7 +87,7 @@
     <Target Name="NetcodePatchWindows" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'false'">
         <Exec Command="netcode-patch -uv 2022.3.62 -nv 1.12.0 -tv 1.0.0 &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
     </Target>
-    
+
     <Target Name="CopyPostBuildWindows" AfterTargets="PostBuildEvent" Condition="'$(IsLinux)' == 'false'">
         <Exec Command="copy /Y  &quot;$(ProjectDir)bin\Debug\netstandard2.1\LethalMon.dll&quot; &quot;C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\$(ProjectName)\LethalMon.dll&quot;" />
     </Target>

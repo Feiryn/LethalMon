@@ -117,7 +117,7 @@ internal class EnemyAIPatch
     
     [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.OnCollideWithEnemy))]
     [HarmonyPostfix]
-    private static void OnCollideWithEnemyPostfix(EnemyAI __instance, Collider other, EnemyAI collidedEnemy = null)
+    private static void OnCollideWithEnemyPostfix(EnemyAI __instance, Collider other, EnemyAI collidedEnemy = null!)
     {
         TamedEnemyBehaviour? tamedEnemyBehaviour = Cache.GetTamedEnemyBehaviour(__instance);
         if (tamedEnemyBehaviour != null && tamedEnemyBehaviour.IsTamed)

@@ -1,3 +1,7 @@
+# 0.6.10
+
+- Update mod for v80
+
 # 0.6.9
 
 - Fixed a bug that made clients unable to retrieve monsters using P
